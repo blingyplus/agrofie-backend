@@ -6,16 +6,14 @@ import (
 	"os"
 
 	"github.com/blingyplus/agrofie-backend/internal/config"
-	"github.com/blingyplus/agrofie-backend/internal/health"
+	"github.com/blingyplus/agrofie-backend/internal/httpsvc"
 )
 
 func main() {
 	cfg := config.Load("booking")
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /healthz", health.Handler(cfg.ServiceName))
-
+	handler := httpsvc.BookingHandler(cfg.ServiceName)
 	slog.Info("booking service listening", "addr", cfg.Addr())
-	if err := http.ListenAndServe(cfg.Addr(), mux); err != nil {
+	if err := http.ListenAndServe(cfg.Addr(), handler); err != nil {
 		slog.Error("booking stopped", "err", err)
 		os.Exit(1)
 	}

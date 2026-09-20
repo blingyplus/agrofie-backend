@@ -5,23 +5,39 @@
 **Modular monorepo backend** (`agrofie-backend`): multiple Go binaries, shared module, one Postgres. Splits cleanly to Kubernetes services later.
 
 ```
-Expo client  --GraphQL-->  gateway  --HTTP/ConnectRPC-->  auth | booking | payments
-                                |                              |
-                             Postgres 17                    Redis 8
+Expo client  --GraphQL (gqlgen)-->  gateway  --ConnectRPC-->  auth | booking | payments
+                                         |                         |
+                                      sqlc/pgx                  Redis 8
+                                         |
+                                      Postgres 17
 ```
 
 | Binary | Port | Responsibility |
 | --- | --- | --- |
-| `cmd/gateway` | 8080 | Public GraphQL, CORS, aggregates health |
-| `cmd/auth` | 8081 | Users, sessions, roles, verifications |
-| `cmd/booking` | 8082 | Talent, availability, bookings, reviews/disputes |
-| `cmd/payments` | 8083 | Escrow ledger + payment provider adapter |
+| `cmd/gateway` | 8080 | Public GraphQL (gqlgen), CORS, Connect health probe |
+| `cmd/auth` | 8081 | Identity (Connect + `/healthz`) |
+| `cmd/booking` | 8082 | Talent/bookings (Connect + `/healthz`) |
+| `cmd/payments` | 8083 | Escrow adapter stub (Connect + `/healthz`) |
 | `cmd/migrate` | — | golang-migrate runner |
+
+### Package layout (hardened)
+
+| Package | Role |
+| --- | --- |
+| `internal/domain` | Shared immutable codes (roles, booking statuses) |
+| `internal/db` | sqlc-generated typed SQL |
+| `internal/lookup` | Application service for admin-controlled taxonomies |
+| `internal/payments` | Payment provider port + fake adapter |
+| `internal/httpsvc` | HTTP/Connect adapters for auth/booking/payments |
+| `internal/gateway/probe` | Connect client that probes downstream health |
+| `graph/` | gqlgen schema, generated exec, resolvers |
+
+Generate: `make sqlc`, `make gqlgen`, `make proto`.
 
 ## API protocols
 
-- **External:** GraphQL (clients request only needed fields — important for bandwidth).
-- **Internal:** ConnectRPC / gRPC contracts in `proto/agrofie/v1` (`make proto`). Scaffold services expose `/healthz` over HTTP; wire generated Connect handlers as RPCs grow.
+- **External:** GraphQL via gqlgen (clients request only needed fields — important for bandwidth).
+- **Internal:** ConnectRPC contracts in `proto/agrofie/v1` (`make proto`). Services expose Connect Health + `/healthz`. Gateway probes via Connect clients.
 
 ## Payments (Ghana)
 

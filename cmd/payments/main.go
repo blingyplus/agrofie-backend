@@ -6,19 +6,17 @@ import (
 	"os"
 
 	"github.com/blingyplus/agrofie-backend/internal/config"
-	"github.com/blingyplus/agrofie-backend/internal/health"
+	"github.com/blingyplus/agrofie-backend/internal/httpsvc"
 	"github.com/blingyplus/agrofie-backend/internal/payments"
 )
 
 func main() {
 	cfg := config.Load("payments")
-	_ = payments.FakeProvider{} // wire real Paystack adapter later
+	_ = payments.FakeProvider{} // wire real Paystack adapter in application layer later
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /healthz", health.Handler(cfg.ServiceName))
-
+	handler := httpsvc.PaymentsHandler(cfg.ServiceName)
 	slog.Info("payments service listening", "addr", cfg.Addr())
-	if err := http.ListenAndServe(cfg.Addr(), mux); err != nil {
+	if err := http.ListenAndServe(cfg.Addr(), handler); err != nil {
 		slog.Error("payments stopped", "err", err)
 		os.Exit(1)
 	}

@@ -1,9 +1,8 @@
 package payments
 
-// Provider is the application-level payment hold interface.
-// Paystack Ghana does not offer true escrow products; Agrofie holds funds
-// on the platform merchant account and records them in escrow_ledger, then
-// releases via Transfer API. Do not treat Paystack Split as escrow.
+// Provider is the application-level payment hold port.
+// Paystack Ghana does not offer true escrow; Agrofie charges the platform
+// merchant, records escrow_ledger rows, then Transfer-releases to talent.
 type Provider interface {
 	Hold(bookingID string, amountMinor int64, currency string) (providerRef string, err error)
 	Release(providerRef string) error
@@ -20,3 +19,6 @@ func (FakeProvider) Hold(bookingID string, amountMinor int64, currency string) (
 func (FakeProvider) Release(providerRef string) error { return nil }
 
 func (FakeProvider) Refund(providerRef string) error { return nil }
+
+// Ensure FakeProvider satisfies Provider at compile time.
+var _ Provider = FakeProvider{}

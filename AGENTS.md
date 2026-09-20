@@ -9,7 +9,7 @@
 | Path | Role |
 | --- | --- |
 | `agrofie-client/` | Expo SDK 57 (iOS / Android / web), TypeScript, Expo Router |
-| `agrofie-backend/` | Go 1.25 modular services: GraphQL gateway + auth / booking / payments |
+| `agrofie-backend/` | Go 1.26 modular services: GraphQL gateway + auth / booking / payments |
 | `docs/` | Canonical product & architecture docs (copied into backend too) |
 
 ## Do

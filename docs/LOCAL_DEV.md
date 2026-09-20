@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - Node.js **22.13+** (Expo SDK 57)
-- Go **1.25+**
+- Go **1.26+**
 - Docker Desktop
 
 ## Backend

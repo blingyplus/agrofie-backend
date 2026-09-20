@@ -1,4 +1,4 @@
-.PHONY: up down migrate proto sqlc gqlgen test vuln run-gateway tidy
+.PHONY: up down migrate proto sqlc gqlgen test vuln tidy
 
 DATABASE_URL ?= postgres://agrofie:agrofie@localhost:5432/agrofie?sslmode=disable
 
@@ -15,10 +15,10 @@ migrate-down:
 	go run ./cmd/migrate -direction down
 
 proto:
-	go run github.com/bufbuild/buf/cmd/buf@latest generate
+	go run github.com/bufbuild/buf/cmd/buf@v1.50.0 generate
 
 sqlc:
-	go run github.com/sqlc-dev/sqlc/cmd/sqlc@latest generate
+	go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.29.0 generate
 
 gqlgen:
 	go run github.com/99designs/gqlgen generate
@@ -33,13 +33,13 @@ vuln:
 	go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 
 run-gateway:
-	HTTP_PORT=8080 go run ./cmd/gateway
+	go run ./cmd/gateway
 
 run-auth:
-	HTTP_PORT=8081 go run ./cmd/auth
+	go run ./cmd/auth
 
 run-booking:
-	HTTP_PORT=8082 go run ./cmd/booking
+	go run ./cmd/booking
 
 run-payments:
-	HTTP_PORT=8083 go run ./cmd/payments
+	go run ./cmd/payments

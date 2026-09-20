@@ -1,7 +1,4 @@
-# gqlgen configuration — run: make gqlgen
-# Scaffold uses a hand-rolled GraphQL dispatcher in internal/gateway that mirrors
-# graph/schema.graphqls. Replace with generated resolvers when domain mutations grow.
-
+# gqlgen configuration
 schema:
   - graph/*.graphqls
 exec:
@@ -14,3 +11,12 @@ resolver:
   layout: follow-schema
   dir: graph
   package: graph
+  filename_template: "{name}.resolvers.go"
+autobind: []
+models:
+  ID:
+    model:
+      - github.com/99designs/gqlgen/graphql.ID
+  Int:
+    model:
+      - github.com/99designs/gqlgen/graphql.Int

@@ -7,9 +7,14 @@ import (
 	"os"
 	"time"
 
+	"github.com/99designs/gqlgen/graphql/handler"
+	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/blingyplus/agrofie-backend/graph"
 	"github.com/blingyplus/agrofie-backend/internal/config"
-	"github.com/blingyplus/agrofie-backend/internal/gateway"
+	"github.com/blingyplus/agrofie-backend/internal/db"
+	"github.com/blingyplus/agrofie-backend/internal/gateway/probe"
 	"github.com/blingyplus/agrofie-backend/internal/health"
+	"github.com/blingyplus/agrofie-backend/internal/lookup"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -25,11 +30,15 @@ func main() {
 	}
 	defer pool.Close()
 
-	resolver := gateway.NewResolver(pool, cfg.AuthURL, cfg.BookingURL, cfg.PaymentsURL)
+	lookups := lookup.NewService(db.New(pool))
+	prober := probe.NewConnectProber(cfg.AuthURL, cfg.BookingURL, cfg.PaymentsURL)
+	resolver := &graph.Resolver{Lookups: lookups, Prober: prober}
+	gql := handler.NewDefaultServer(graph.NewExecutableSchema(graph.Config{Resolvers: resolver}))
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", health.Handler(cfg.ServiceName))
-	mux.Handle("/graphql", &gateway.GraphQLHandler{Resolver: resolver})
-	mux.Handle("/playground", &gateway.GraphQLHandler{Resolver: resolver})
+	mux.Handle("/graphql", gql)
+	mux.Handle("/playground", playground.Handler("Agrofie GraphQL", "/graphql"))
 
 	slog.Info("gateway listening", "addr", cfg.Addr())
 	if err := http.ListenAndServe(cfg.Addr(), withCORS(mux)); err != nil {

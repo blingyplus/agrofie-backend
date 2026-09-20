@@ -30,7 +30,7 @@ npm run codegen
 
 | Package / tool | Why |
 | --- | --- |
-| Go 1.25 | Spec concurrency choice |
+| Go 1.26 | Spec concurrency choice |
 | pgx/v5 | Postgres driver |
 | golang-migrate | SQL migrations |
 | sqlc (`make sqlc`) | Typed queries from SQL |
