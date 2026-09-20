@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package agrofie.v1;
+
+option go_package = "github.com/blingyplus/agrofie-backend/gen/agrofie/v1;agrofierv1";
+
+message HealthRequest {}
+
+message HealthResponse {
+  string status = 1;
+  string service = 2;
+}
+
+service AuthService {
+  rpc Health(HealthRequest) returns (HealthResponse);
+}
+
+service BookingService {
+  rpc Health(HealthRequest) returns (HealthResponse);
+}
+
+service PaymentsService {
+  rpc Health(HealthRequest) returns (HealthResponse);
+}

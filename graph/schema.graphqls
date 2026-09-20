@@ -1,0 +1,65 @@
+# GraphQL schema for Agrofie gateway (scaffold).
+# Lookups are admin-controlled; clients must not hardcode genres/regions.
+
+scalar Time
+
+type Query {
+  health: Health!
+  countries(activeOnly: Boolean = true): [Country!]!
+  geoPlaces(countryCode: String = "GH", parentCode: String, activeOnly: Boolean = true): [GeoPlace!]!
+  genres(activeOnly: Boolean = true): [Lookup!]!
+  talentTypes(activeOnly: Boolean = true): [Lookup!]!
+  eventTypes(activeOnly: Boolean = true): [Lookup!]!
+  languages(activeOnly: Boolean = true): [Lookup!]!
+  roles(activeOnly: Boolean = true): [Lookup!]!
+  bookingStatuses(activeOnly: Boolean = true): [Lookup!]!
+}
+
+type Mutation {
+  """Rename a lookup display name. Never changes immutable code."""
+  updateLookupName(table: LookupTable!, code: String!, name: String!): Lookup!
+  setLookupActive(table: LookupTable!, code: String!, isActive: Boolean!): Lookup!
+}
+
+enum LookupTable {
+  GENRES
+  TALENT_TYPES
+  EVENT_TYPES
+  LANGUAGES
+  ROLES
+  BOOKING_STATUSES
+  DISPUTE_REASONS
+  CANCELLATION_REASONS
+}
+
+type Health {
+  status: String!
+  service: String!
+  auth: String!
+  booking: String!
+  payments: String!
+}
+
+type Lookup {
+  id: ID!
+  code: String!
+  name: String!
+  sortOrder: Int!
+  isActive: Boolean!
+}
+
+type Country {
+  id: ID!
+  code: String!
+  name: String!
+  isActive: Boolean!
+}
+
+type GeoPlace {
+  id: ID!
+  code: String!
+  name: String!
+  placeLevel: String!
+  parentCode: String
+  isActive: Boolean!
+}

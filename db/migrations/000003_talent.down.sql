@@ -1,0 +1,11 @@
+ALTER TABLE profiles DROP CONSTRAINT IF EXISTS profiles_avatar_media_fk;
+DROP TABLE IF EXISTS availability_blocks;
+DROP TABLE IF EXISTS verifications;
+DROP TABLE IF EXISTS media_assets;
+DROP TABLE IF EXISTS talent_rates;
+DROP TABLE IF EXISTS talent_service_areas;
+DROP TABLE IF EXISTS talent_languages;
+DROP TABLE IF EXISTS talent_genres;
+DROP TABLE IF EXISTS talent_types_map;
+DROP TABLE IF EXISTS organizer_profiles;
+DROP TABLE IF EXISTS talent_profiles;

@@ -1,0 +1,114 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: agrofie
+      POSTGRES_PASSWORD: agrofie
+      POSTGRES_DB: agrofie
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agrofie -d agrofie"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:8-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: migrate
+    environment:
+      DATABASE_URL: postgres://agrofie:agrofie@postgres:5432/agrofie?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["-direction", "up"]
+    restart: "no"
+
+  auth:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    environment:
+      HTTP_PORT: "8081"
+      DATABASE_URL: postgres://agrofie:agrofie@postgres:5432/agrofie?sslmode=disable
+      REDIS_URL: redis://redis:6379/0
+    command: ["auth"]
+    ports:
+      - "8081:8081"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  booking:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    environment:
+      HTTP_PORT: "8082"
+      DATABASE_URL: postgres://agrofie:agrofie@postgres:5432/agrofie?sslmode=disable
+      REDIS_URL: redis://redis:6379/0
+    command: ["booking"]
+    ports:
+      - "8082:8082"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  payments:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    environment:
+      HTTP_PORT: "8083"
+      DATABASE_URL: postgres://agrofie:agrofie@postgres:5432/agrofie?sslmode=disable
+    command: ["payments"]
+    ports:
+      - "8083:8083"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    environment:
+      HTTP_PORT: "8080"
+      DATABASE_URL: postgres://agrofie:agrofie@postgres:5432/agrofie?sslmode=disable
+      REDIS_URL: redis://redis:6379/0
+      AUTH_URL: http://auth:8081
+      BOOKING_URL: http://booking:8082
+      PAYMENTS_URL: http://payments:8083
+    command: ["gateway"]
+    ports:
+      - "8080:8080"
+    depends_on:
+      auth:
+        condition: service_started
+      booking:
+        condition: service_started
+      payments:
+        condition: service_started
+
+volumes:
+  pgdata:
