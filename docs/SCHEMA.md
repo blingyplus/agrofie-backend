@@ -23,10 +23,12 @@ Rule: if a **name, type, status, or category can change** or needs **admin contr
 
 | Table | Purpose |
 | --- | --- |
-| `users` | Auth only (email/phone/hash/status) — **no display name** |
+| `users` | Marketplace identity: email/phone/status + `kratos_identity_id` (UUID, unique, not null). `password_hash` unused — Ory Kratos stores credentials. |
 | `profiles` | `display_name`, `legal_name`, avatar |
-| `user_roles` | M2M roles |
-| `sessions` | Token sessions (Redis may cache later) |
+| `user_roles` | M2M roles (`talent` / `organizer` / `admin` via `roles` lookup) |
+| `sessions` | **Unused this slice** — Kratos session tokens are the source of truth (avoids dual-write). Redis cache later if needed. |
+
+Kratos tables live in Postgres schema `kratos` (same database, `search_path=kratos`). Do not query them from app SQL — use the auth service / Kratos Admin API.
 
 ## Talent / organizer
 
@@ -52,5 +54,7 @@ Rule: if a **name, type, status, or category can change** or needs **admin contr
 
 - Country Ghana; 16 regions; starter cities (Accra, Tema, Kumasi, Tamale, …)
 - Roles, statuses, GHS, Ghana-relevant genres/types/event types/languages
+
+Admin user is **not** SQL-seeded. Use `make seed-admin` with `ADMIN_EMAIL` / `ADMIN_PASSWORD` from `.env`.
 
 Migrations live in `agrofie-backend/db/migrations/`.

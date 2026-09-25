@@ -156,7 +156,3 @@ SET is_active = sqlc.arg(is_active), updated_at = now()
 WHERE code = sqlc.arg(code)
 RETURNING id, code, name, sort_order, is_active;
 
--- name: GetUserByEmail :one
-SELECT id, email, phone, password_hash, user_status_id, created_at, updated_at
-FROM users
-WHERE email = $1;

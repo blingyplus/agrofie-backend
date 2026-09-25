@@ -11,8 +11,60 @@ message HealthResponse {
   string service = 2;
 }
 
+message User {
+  string id = 1;
+  string email = 2;
+  string phone = 3;
+  string display_name = 4;
+  repeated string role_codes = 5;
+}
+
+message RegisterRequest {
+  string email = 1;
+  string phone = 2;
+  string password = 3;
+  string display_name = 4;
+  string role_code = 5; // talent | organizer only
+}
+
+message LoginRequest {
+  string identifier = 1; // email or phone
+  string password = 2;
+}
+
+message LogoutRequest {
+  string session_token = 1;
+}
+
+message WhoAmIRequest {
+  string session_token = 1;
+}
+
+message AuthSession {
+  string session_token = 1;
+  User user = 2;
+}
+
+message RegisterResponse {
+  AuthSession session = 1;
+}
+
+message LoginResponse {
+  AuthSession session = 1;
+}
+
+message LogoutResponse {}
+
+message WhoAmIResponse {
+  User user = 1;
+}
+
 service AuthService {
   rpc Health(HealthRequest) returns (HealthResponse);
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+  rpc Login(LoginRequest) returns (LoginResponse);
+  rpc Logout(LogoutRequest) returns (LogoutResponse);
+  rpc WhoAmI(WhoAmIRequest) returns (WhoAmIResponse);
 }
 
 service BookingService {

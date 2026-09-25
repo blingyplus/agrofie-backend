@@ -39,6 +39,14 @@ const (
 const (
 	// AuthServiceHealthProcedure is the fully-qualified name of the AuthService's Health RPC.
 	AuthServiceHealthProcedure = "/agrofie.v1.AuthService/Health"
+	// AuthServiceRegisterProcedure is the fully-qualified name of the AuthService's Register RPC.
+	AuthServiceRegisterProcedure = "/agrofie.v1.AuthService/Register"
+	// AuthServiceLoginProcedure is the fully-qualified name of the AuthService's Login RPC.
+	AuthServiceLoginProcedure = "/agrofie.v1.AuthService/Login"
+	// AuthServiceLogoutProcedure is the fully-qualified name of the AuthService's Logout RPC.
+	AuthServiceLogoutProcedure = "/agrofie.v1.AuthService/Logout"
+	// AuthServiceWhoAmIProcedure is the fully-qualified name of the AuthService's WhoAmI RPC.
+	AuthServiceWhoAmIProcedure = "/agrofie.v1.AuthService/WhoAmI"
 	// BookingServiceHealthProcedure is the fully-qualified name of the BookingService's Health RPC.
 	BookingServiceHealthProcedure = "/agrofie.v1.BookingService/Health"
 	// PaymentsServiceHealthProcedure is the fully-qualified name of the PaymentsService's Health RPC.
@@ -48,6 +56,10 @@ const (
 // AuthServiceClient is a client for the agrofie.v1.AuthService service.
 type AuthServiceClient interface {
 	Health(context.Context, *connect.Request[v1.HealthRequest]) (*connect.Response[v1.HealthResponse], error)
+	Register(context.Context, *connect.Request[v1.RegisterRequest]) (*connect.Response[v1.RegisterResponse], error)
+	Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error)
+	Logout(context.Context, *connect.Request[v1.LogoutRequest]) (*connect.Response[v1.LogoutResponse], error)
+	WhoAmI(context.Context, *connect.Request[v1.WhoAmIRequest]) (*connect.Response[v1.WhoAmIResponse], error)
 }
 
 // NewAuthServiceClient constructs a client for the agrofie.v1.AuthService service. By default, it
@@ -67,12 +79,40 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(authServiceMethods.ByName("Health")),
 			connect.WithClientOptions(opts...),
 		),
+		register: connect.NewClient[v1.RegisterRequest, v1.RegisterResponse](
+			httpClient,
+			baseURL+AuthServiceRegisterProcedure,
+			connect.WithSchema(authServiceMethods.ByName("Register")),
+			connect.WithClientOptions(opts...),
+		),
+		login: connect.NewClient[v1.LoginRequest, v1.LoginResponse](
+			httpClient,
+			baseURL+AuthServiceLoginProcedure,
+			connect.WithSchema(authServiceMethods.ByName("Login")),
+			connect.WithClientOptions(opts...),
+		),
+		logout: connect.NewClient[v1.LogoutRequest, v1.LogoutResponse](
+			httpClient,
+			baseURL+AuthServiceLogoutProcedure,
+			connect.WithSchema(authServiceMethods.ByName("Logout")),
+			connect.WithClientOptions(opts...),
+		),
+		whoAmI: connect.NewClient[v1.WhoAmIRequest, v1.WhoAmIResponse](
+			httpClient,
+			baseURL+AuthServiceWhoAmIProcedure,
+			connect.WithSchema(authServiceMethods.ByName("WhoAmI")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // authServiceClient implements AuthServiceClient.
 type authServiceClient struct {
-	health *connect.Client[v1.HealthRequest, v1.HealthResponse]
+	health   *connect.Client[v1.HealthRequest, v1.HealthResponse]
+	register *connect.Client[v1.RegisterRequest, v1.RegisterResponse]
+	login    *connect.Client[v1.LoginRequest, v1.LoginResponse]
+	logout   *connect.Client[v1.LogoutRequest, v1.LogoutResponse]
+	whoAmI   *connect.Client[v1.WhoAmIRequest, v1.WhoAmIResponse]
 }
 
 // Health calls agrofie.v1.AuthService.Health.
@@ -80,9 +120,33 @@ func (c *authServiceClient) Health(ctx context.Context, req *connect.Request[v1.
 	return c.health.CallUnary(ctx, req)
 }
 
+// Register calls agrofie.v1.AuthService.Register.
+func (c *authServiceClient) Register(ctx context.Context, req *connect.Request[v1.RegisterRequest]) (*connect.Response[v1.RegisterResponse], error) {
+	return c.register.CallUnary(ctx, req)
+}
+
+// Login calls agrofie.v1.AuthService.Login.
+func (c *authServiceClient) Login(ctx context.Context, req *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error) {
+	return c.login.CallUnary(ctx, req)
+}
+
+// Logout calls agrofie.v1.AuthService.Logout.
+func (c *authServiceClient) Logout(ctx context.Context, req *connect.Request[v1.LogoutRequest]) (*connect.Response[v1.LogoutResponse], error) {
+	return c.logout.CallUnary(ctx, req)
+}
+
+// WhoAmI calls agrofie.v1.AuthService.WhoAmI.
+func (c *authServiceClient) WhoAmI(ctx context.Context, req *connect.Request[v1.WhoAmIRequest]) (*connect.Response[v1.WhoAmIResponse], error) {
+	return c.whoAmI.CallUnary(ctx, req)
+}
+
 // AuthServiceHandler is an implementation of the agrofie.v1.AuthService service.
 type AuthServiceHandler interface {
 	Health(context.Context, *connect.Request[v1.HealthRequest]) (*connect.Response[v1.HealthResponse], error)
+	Register(context.Context, *connect.Request[v1.RegisterRequest]) (*connect.Response[v1.RegisterResponse], error)
+	Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error)
+	Logout(context.Context, *connect.Request[v1.LogoutRequest]) (*connect.Response[v1.LogoutResponse], error)
+	WhoAmI(context.Context, *connect.Request[v1.WhoAmIRequest]) (*connect.Response[v1.WhoAmIResponse], error)
 }
 
 // NewAuthServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -98,10 +162,42 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(authServiceMethods.ByName("Health")),
 		connect.WithHandlerOptions(opts...),
 	)
+	authServiceRegisterHandler := connect.NewUnaryHandler(
+		AuthServiceRegisterProcedure,
+		svc.Register,
+		connect.WithSchema(authServiceMethods.ByName("Register")),
+		connect.WithHandlerOptions(opts...),
+	)
+	authServiceLoginHandler := connect.NewUnaryHandler(
+		AuthServiceLoginProcedure,
+		svc.Login,
+		connect.WithSchema(authServiceMethods.ByName("Login")),
+		connect.WithHandlerOptions(opts...),
+	)
+	authServiceLogoutHandler := connect.NewUnaryHandler(
+		AuthServiceLogoutProcedure,
+		svc.Logout,
+		connect.WithSchema(authServiceMethods.ByName("Logout")),
+		connect.WithHandlerOptions(opts...),
+	)
+	authServiceWhoAmIHandler := connect.NewUnaryHandler(
+		AuthServiceWhoAmIProcedure,
+		svc.WhoAmI,
+		connect.WithSchema(authServiceMethods.ByName("WhoAmI")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/agrofie.v1.AuthService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AuthServiceHealthProcedure:
 			authServiceHealthHandler.ServeHTTP(w, r)
+		case AuthServiceRegisterProcedure:
+			authServiceRegisterHandler.ServeHTTP(w, r)
+		case AuthServiceLoginProcedure:
+			authServiceLoginHandler.ServeHTTP(w, r)
+		case AuthServiceLogoutProcedure:
+			authServiceLogoutHandler.ServeHTTP(w, r)
+		case AuthServiceWhoAmIProcedure:
+			authServiceWhoAmIHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -113,6 +209,22 @@ type UnimplementedAuthServiceHandler struct{}
 
 func (UnimplementedAuthServiceHandler) Health(context.Context, *connect.Request[v1.HealthRequest]) (*connect.Response[v1.HealthResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agrofie.v1.AuthService.Health is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) Register(context.Context, *connect.Request[v1.RegisterRequest]) (*connect.Response[v1.RegisterResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agrofie.v1.AuthService.Register is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agrofie.v1.AuthService.Login is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) Logout(context.Context, *connect.Request[v1.LogoutRequest]) (*connect.Response[v1.LogoutResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agrofie.v1.AuthService.Logout is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) WhoAmI(context.Context, *connect.Request[v1.WhoAmIRequest]) (*connect.Response[v1.WhoAmIResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agrofie.v1.AuthService.WhoAmI is not implemented"))
 }
 
 // BookingServiceClient is a client for the agrofie.v1.BookingService service.

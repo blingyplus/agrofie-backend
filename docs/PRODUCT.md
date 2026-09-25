@@ -48,9 +48,9 @@ Phase two — organizers publishing events, talent claiming or pitching for them
 
 ## Scaffold vs later
 
-| Now (scaffold) | Later (MVP+) | After launch (v2) |
+| Now | Later (MVP+) | After launch (v2) |
 | --- | --- | --- |
-| Schema, seeds, health, role shells | Auth, booking FSM, Paystack MoMo | Event listings, talent-side discovery |
-| Lookup CMS stubs | Full admin CMS | Claim vs request/pitch, multi-slot events |
+| Schema, seeds, health, role shells, **Kratos auth** | Booking FSM, Paystack MoMo | Event listings, talent-side discovery |
+| Lookup CMS stubs (admin-gated) | Full admin CMS | Claim vs request/pitch, multi-slot events |
 | Fake payment provider | Live Paystack charge + transfer | Same hold/release on event-originated bookings |
-| Compose locally | DigitalOcean Kubernetes (DOKS) | Two-way entertainment marketplace |
+| Compose locally (incl. Kratos + MailHog) | DigitalOcean Kubernetes (DOKS) | Two-way entertainment marketplace |

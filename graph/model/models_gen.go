@@ -9,6 +9,11 @@ import (
 	"strconv"
 )
 
+type AuthPayload struct {
+	SessionToken string `json:"sessionToken"`
+	User         *User  `json:"user"`
+}
+
 type Country struct {
 	ID       string `json:"id"`
 	Code     string `json:"code"`
@@ -33,6 +38,11 @@ type Health struct {
 	Payments string `json:"payments"`
 }
 
+type LoginInput struct {
+	Identifier string `json:"identifier"`
+	Password   string `json:"password"`
+}
+
 type Lookup struct {
 	ID        string `json:"id"`
 	Code      string `json:"code"`
@@ -45,6 +55,22 @@ type Mutation struct {
 }
 
 type Query struct {
+}
+
+type RegisterInput struct {
+	Email       string  `json:"email"`
+	Phone       *string `json:"phone,omitempty"`
+	Password    string  `json:"password"`
+	DisplayName string  `json:"displayName"`
+	RoleCode    string  `json:"roleCode"`
+}
+
+type User struct {
+	ID          string   `json:"id"`
+	Email       string   `json:"email"`
+	Phone       *string  `json:"phone,omitempty"`
+	DisplayName string   `json:"displayName"`
+	RoleCodes   []string `json:"roleCodes"`
 }
 
 type LookupTable string

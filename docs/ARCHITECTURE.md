@@ -6,19 +6,29 @@
 
 ```
 Expo client  --GraphQL (gqlgen)-->  gateway  --ConnectRPC-->  auth | booking | payments
-                                         |                         |
-                                      sqlc/pgx                  Redis 8
-                                         |
-                                      Postgres 17
+                                         |                    |
+                                      sqlc/pgx              Redis 8
+                                         |                    |
+                                      Postgres 17 <------- Ory Kratos
+                                         |                    |
+                                      (public)           MailHog (dev SMTP)
 ```
 
 | Binary | Port | Responsibility |
 | --- | --- | --- |
-| `cmd/gateway` | 8080 | Public GraphQL (gqlgen), CORS, Connect health probe |
-| `cmd/auth` | 8081 | Identity (Connect + `/healthz`) |
+| `cmd/gateway` | 8080 | Public GraphQL (gqlgen), CORS, Bearer → WhoAmI, Connect health probe |
+| `cmd/auth` | 8081 | Identity adapter over Kratos (Connect Register/Login/Logout/WhoAmI) |
 | `cmd/booking` | 8082 | Talent/bookings (Connect + `/healthz`) |
 | `cmd/payments` | 8083 | Escrow adapter stub (Connect + `/healthz`) |
 | `cmd/migrate` | — | golang-migrate runner |
+| `cmd/seed-admin` | — | Local admin via Kratos + `users`/`user_roles` (env credentials) |
+
+### Identity
+
+- **Ory Kratos** owns credentials, password hashing, and opaque session tokens.
+- Marketplace **`users` / `profiles` / `user_roles`** remain the source of truth for product FKs (`kratos_identity_id` links the two).
+- Expo talks **only** to the GraphQL gateway — never to Kratos directly.
+- Roles (`talent` / `organizer` / `admin`) stay in the `roles` lookup. Public register allows talent/organizer only.
 
 ### Package layout (hardened)
 
@@ -26,11 +36,13 @@ Expo client  --GraphQL (gqlgen)-->  gateway  --ConnectRPC-->  auth | booking | p
 | --- | --- |
 | `internal/domain` | Shared immutable codes (roles, booking statuses) |
 | `internal/db` | sqlc-generated typed SQL |
+| `internal/auth` | Kratos client + marketplace user provisioning |
 | `internal/lookup` | Application service for admin-controlled taxonomies |
 | `internal/payments` | Payment provider port + fake adapter |
 | `internal/httpsvc` | HTTP/Connect adapters for auth/booking/payments |
 | `internal/gateway/probe` | Connect client that probes downstream health |
-| `graph/` | gqlgen schema, generated exec, resolvers |
+| `graph/` | gqlgen schema, generated exec, resolvers, auth directives |
+| `graph/gqlauth` | Bearer middleware + principal context |
 
 Generate: `make sqlc`, `make gqlgen`, `make proto`.
 

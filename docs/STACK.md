@@ -7,11 +7,11 @@
 | Expo SDK 57 + Expo Router | Single codebase iOS/Android/web |
 | TypeScript | Spec mandate |
 | NativeWind + Tailwind 3 | Shared styling without CSS-in-JS sprawl |
-| urql + graphql 16 | Lean GraphQL client (low bandwidth) |
+| urql + `@urql/exchange-auth` + graphql 16 | Lean GraphQL client + Bearer session |
 | graphql-codegen | Types from `agrofie-backend/graph/schema.graphqls` |
-| zustand | UI session only |
+| zustand | Client session (token + roles) after hydrate |
 | zod + react-hook-form | Forms |
-| expo-secure-store / image / calendar / localization | Platform primitives |
+| expo-secure-store / image / calendar / localization | Token storage + platform primitives |
 | i18next | `en` now, Twi later |
 
 Install native modules with:
@@ -31,11 +31,13 @@ npm run codegen
 | Package / tool | Why |
 | --- | --- |
 | Go 1.26 | Spec concurrency choice |
+| Ory Kratos | Identity: passwords, sessions, recovery (Compose service) |
+| MailHog | Local SMTP for Kratos courier |
 | pgx/v5 | Postgres driver |
 | golang-migrate | SQL migrations |
 | sqlc (`make sqlc`) | Typed queries from SQL |
 | Buf + Connect (`make proto`) | Internal RPC contracts |
-| gqlgen config present | Evolve hand-rolled GraphQL dispatcher → generated resolvers |
+| gqlgen | Generated GraphQL resolvers + `@authenticated` / `@hasRole` |
 | slog | Structured logs |
 | govulncheck | Vulnerability scanning |
 
@@ -47,4 +49,4 @@ npm run codegen
 
 ## Explicitly rejected
 
-Vuexy / Next 13 Material UI template, MongoDB, raw Stripe (Ghana MoMo → Paystack), hand-rolled JWT from legacy Agermax.
+Vuexy / Next 13 Material UI template, MongoDB, raw Stripe (Ghana MoMo → Paystack), hand-rolled JWT from legacy Agermax, SuperTokens/Clerk for this slice (Kratos chosen).

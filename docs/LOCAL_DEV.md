@@ -14,6 +14,8 @@ cp .env.example .env
 docker compose up --build
 ```
 
+Compose brings up Postgres, Redis, MailHog, Kratos (migrate + serve), auth, booking, payments, gateway.
+
 Smoke checks:
 
 ```bash
@@ -24,17 +26,37 @@ curl http://localhost:8083/healthz
 curl -s http://localhost:8080/graphql -H "Content-Type: application/json" -d "{\"query\":\"{ health { status auth booking payments } }\"}"
 ```
 
-Playground: http://localhost:8080/playground
+Auth smoke (register talent):
 
-Without Docker (Postgres+Redis already running):
+```bash
+curl -s http://localhost:8080/graphql -H "Content-Type: application/json" -d "{\"query\":\"mutation { register(input: { email: \\\"talent@example.com\\\", password: \\\"password12\\\", displayName: \\\"Test Talent\\\", roleCode: \\\"talent\\\" }) { sessionToken user { id roleCodes } } }\"}"
+```
+
+Seed a local admin (after Compose is up):
+
+```bash
+# From agrofie-backend with .env loaded (ADMIN_EMAIL / ADMIN_PASSWORD)
+go run ./cmd/seed-admin
+```
+
+| URL | What |
+| --- | --- |
+| http://localhost:8080/playground | GraphQL playground |
+| http://localhost:8080/graphql | Gateway GraphQL |
+| http://localhost:4433 | Kratos public (internal — clients use gateway) |
+| http://localhost:8025 | MailHog UI |
+
+Without Docker (Postgres+Redis+Kratos already running):
 
 ```bash
 make migrate
-make run-auth      # :8081
+make run-auth      # :8081  (needs KRATOS_* env)
 make run-booking   # :8082
 make run-payments  # :8083
 make run-gateway   # :8080
 ```
+
+Fresh DB after schema changes: `docker compose down -v` then `up --build` (Postgres init + Kratos schema).
 
 ## Client
 

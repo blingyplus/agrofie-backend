@@ -10,6 +10,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/blingyplus/agrofie-backend/graph"
+	"github.com/blingyplus/agrofie-backend/graph/gqlauth"
 	"github.com/blingyplus/agrofie-backend/internal/config"
 	"github.com/blingyplus/agrofie-backend/internal/db"
 	"github.com/blingyplus/agrofie-backend/internal/gateway/probe"
@@ -32,12 +33,21 @@ func main() {
 
 	lookups := lookup.NewService(db.New(pool))
 	prober := probe.NewConnectProber(cfg.AuthURL, cfg.BookingURL, cfg.PaymentsURL)
-	resolver := &graph.Resolver{Lookups: lookups, Prober: prober}
-	gql := handler.NewDefaultServer(graph.NewExecutableSchema(graph.Config{Resolvers: resolver}))
+	authClient := graph.NewAuthClient(cfg.AuthURL)
+	resolver := &graph.Resolver{
+		Lookups:    lookups,
+		Prober:     prober,
+		AuthClient: authClient,
+	}
+
+	schemaCfg := graph.Config{Resolvers: resolver}
+	schemaCfg.Directives.Authenticated = graph.Authenticated
+	schemaCfg.Directives.HasRole = graph.HasRole
+	gql := handler.NewDefaultServer(graph.NewExecutableSchema(schemaCfg))
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", health.Handler(cfg.ServiceName))
-	mux.Handle("/graphql", gql)
+	mux.Handle("/graphql", gqlauth.Middleware(authClient)(gql))
 	mux.Handle("/playground", playground.Handler("Agrofie GraphQL", "/graphql"))
 
 	slog.Info("gateway listening", "addr", cfg.Addr())

@@ -1,10 +1,14 @@
-# GraphQL schema for Agrofie gateway (scaffold).
+# GraphQL schema for Agrofie gateway.
 # Lookups are admin-controlled; clients must not hardcode genres/regions.
 
 scalar Time
 
+directive @authenticated on FIELD_DEFINITION
+directive @hasRole(code: String!) on FIELD_DEFINITION
+
 type Query {
   health: Health!
+  me: User! @authenticated
   countries(activeOnly: Boolean = true): [Country!]!
   geoPlaces(countryCode: String = "GH", parentCode: String, activeOnly: Boolean = true): [GeoPlace!]!
   genres(activeOnly: Boolean = true): [Lookup!]!
@@ -16,9 +20,39 @@ type Query {
 }
 
 type Mutation {
+  register(input: RegisterInput!): AuthPayload!
+  login(input: LoginInput!): AuthPayload!
+  logout: Boolean! @authenticated
+
   """Rename a lookup display name. Never changes immutable code."""
-  updateLookupName(table: LookupTable!, code: String!, name: String!): Lookup!
-  setLookupActive(table: LookupTable!, code: String!, isActive: Boolean!): Lookup!
+  updateLookupName(table: LookupTable!, code: String!, name: String!): Lookup! @hasRole(code: "admin")
+  setLookupActive(table: LookupTable!, code: String!, isActive: Boolean!): Lookup! @hasRole(code: "admin")
+}
+
+input RegisterInput {
+  email: String!
+  phone: String
+  password: String!
+  displayName: String!
+  roleCode: String!
+}
+
+input LoginInput {
+  identifier: String!
+  password: String!
+}
+
+type AuthPayload {
+  sessionToken: String!
+  user: User!
+}
+
+type User {
+  id: ID!
+  email: String!
+  phone: String
+  displayName: String!
+  roleCodes: [String!]!
 }
 
 enum LookupTable {

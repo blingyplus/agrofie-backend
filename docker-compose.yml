@@ -25,6 +25,12 @@ services:
       timeout: 3s
       retries: 10
 
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
   migrate:
     build:
       context: .
@@ -38,6 +44,36 @@ services:
     command: ["-direction", "up"]
     restart: "no"
 
+  kratos-migrate:
+    image: oryd/kratos:v1.3.1
+    environment:
+      DSN: postgres://agrofie:agrofie@postgres:5432/agrofie?sslmode=disable&search_path=kratos
+    volumes:
+      - ./deploy/kratos:/etc/config/kratos:ro
+    command: migrate sql -e --yes -c /etc/config/kratos/kratos.yml
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
+
+  kratos:
+    image: oryd/kratos:v1.3.1
+    restart: unless-stopped
+    environment:
+      DSN: postgres://agrofie:agrofie@postgres:5432/agrofie?sslmode=disable&search_path=kratos
+      LOG_LEVEL: info
+    ports:
+      - "4433:4433"
+      - "4434:4434"
+    volumes:
+      - ./deploy/kratos:/etc/config/kratos:ro
+    command: serve -c /etc/config/kratos/kratos.yml --dev --watch-courier
+    depends_on:
+      kratos-migrate:
+        condition: service_completed_successfully
+      mailhog:
+        condition: service_started
+
   auth:
     build:
       context: .
@@ -47,6 +83,8 @@ services:
       HTTP_PORT: "8081"
       DATABASE_URL: postgres://agrofie:agrofie@postgres:5432/agrofie?sslmode=disable
       REDIS_URL: redis://redis:6379/0
+      KRATOS_ADMIN_URL: http://kratos:4434
+      KRATOS_PUBLIC_URL: http://kratos:4433
     command: ["auth"]
     ports:
       - "8081:8081"
@@ -55,6 +93,10 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
+      kratos:
+        condition: service_started
+      mailhog:
+        condition: service_started
 
   booking:
     build:

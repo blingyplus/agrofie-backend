@@ -7,6 +7,7 @@ sql:
       - "db/migrations/000002_identity.up.sql"
       - "db/migrations/000003_talent.up.sql"
       - "db/migrations/000004_bookings.up.sql"
+      - "db/migrations/000006_identity_kratos.up.sql"
     gen:
       go:
         package: "db"

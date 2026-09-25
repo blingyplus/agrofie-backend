@@ -347,13 +347,14 @@ type TalentTypesMap struct {
 }
 
 type User struct {
-	ID           pgtype.UUID        `json:"id"`
-	Email        *string            `json:"email"`
-	Phone        *string            `json:"phone"`
-	PasswordHash *string            `json:"password_hash"`
-	UserStatusID pgtype.UUID        `json:"user_status_id"`
-	CreatedAt    pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+	ID               pgtype.UUID        `json:"id"`
+	Email            *string            `json:"email"`
+	Phone            *string            `json:"phone"`
+	PasswordHash     *string            `json:"password_hash"`
+	UserStatusID     pgtype.UUID        `json:"user_status_id"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+	KratosIdentityID pgtype.UUID        `json:"kratos_identity_id"`
 }
 
 type UserRole struct {
