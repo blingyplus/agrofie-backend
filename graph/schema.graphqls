@@ -17,6 +17,10 @@ type Query {
   languages(activeOnly: Boolean = true): [Lookup!]!
   roles(activeOnly: Boolean = true): [Lookup!]!
   bookingStatuses(activeOnly: Boolean = true): [Lookup!]!
+
+  """Searchable, active talent, newest first. Never exposes contact details."""
+  searchTalent(filter: TalentFilter, first: Int = 20, after: String): TalentPage!
+  talent(id: ID!): TalentProfile
 }
 
 type Mutation {
@@ -96,4 +100,55 @@ type GeoPlace {
   placeLevel: String!
   parentCode: String
   isActive: Boolean!
+}
+
+input TalentFilter {
+  genreCodes: [String!]
+  typeCodes: [String!]
+  languageCodes: [String!]
+  """A geo place code; matches that place and everything beneath it."""
+  placeCode: String
+}
+
+type Tag {
+  code: String!
+  name: String!
+}
+
+type Rate {
+  """Decimal string, e.g. "150.00"."""
+  amount: String!
+  currencyCode: String!
+  rateUnitCode: String!
+  eventTypeCode: String
+}
+
+type TalentCard {
+  id: ID!
+  displayName: String!
+  headline: String
+  homePlaceName: String
+  """Cheapest current rate, if the talent has published one."""
+  fromRate: Rate
+  genres: [Tag!]!
+  types: [Tag!]!
+}
+
+type TalentProfile {
+  id: ID!
+  displayName: String!
+  headline: String
+  homePlaceName: String
+  bio: String
+  genres: [Tag!]!
+  types: [Tag!]!
+  languages: [Tag!]!
+  serviceAreas: [Tag!]!
+  rates: [Rate!]!
+}
+
+type TalentPage {
+  items: [TalentCard!]!
+  """Pass as `after` for the next page; null when there are no more results."""
+  nextCursor: String
 }

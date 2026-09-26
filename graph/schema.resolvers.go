@@ -7,12 +7,14 @@ package graph
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"connectrpc.com/connect"
 	agrofierv1 "github.com/blingyplus/agrofie-backend/gen/agrofie/v1"
 	"github.com/blingyplus/agrofie-backend/graph/gqlauth"
 	"github.com/blingyplus/agrofie-backend/graph/model"
+	"github.com/blingyplus/agrofie-backend/internal/discovery"
 	"github.com/blingyplus/agrofie-backend/internal/lookup"
 )
 
@@ -185,6 +187,27 @@ func (r *queryResolver) Roles(ctx context.Context, activeOnly *bool) ([]*model.L
 // BookingStatuses is the resolver for the bookingStatuses field.
 func (r *queryResolver) BookingStatuses(ctx context.Context, activeOnly *bool) ([]*model.Lookup, error) {
 	return listLookups(ctx, boolOr(activeOnly, true), r.Lookups.BookingStatuses)
+}
+
+// SearchTalent is the resolver for the searchTalent field.
+func (r *queryResolver) SearchTalent(ctx context.Context, filter *model.TalentFilter, first *int, after *string) (*model.TalentPage, error) {
+	page, err := r.Discovery.Search(ctx, toDiscoveryFilter(filter), intOr(first, 0), stringOr(after, ""))
+	if err != nil {
+		return nil, mapDiscoveryErr(err)
+	}
+	return toTalentPage(page), nil
+}
+
+// Talent is the resolver for the talent field.
+func (r *queryResolver) Talent(ctx context.Context, id string) (*model.TalentProfile, error) {
+	p, err := r.Discovery.Get(ctx, id)
+	if errors.Is(err, discovery.ErrNotFound) {
+		return nil, nil // nullable: hidden, suspended and unknown talent look identical
+	}
+	if err != nil {
+		return nil, mapDiscoveryErr(err)
+	}
+	return toTalentProfile(p), nil
 }
 
 // Mutation returns MutationResolver implementation.

@@ -57,12 +57,63 @@ type Mutation struct {
 type Query struct {
 }
 
+type Rate struct {
+	// Decimal string, e.g. "150.00".
+	Amount        string  `json:"amount"`
+	CurrencyCode  string  `json:"currencyCode"`
+	RateUnitCode  string  `json:"rateUnitCode"`
+	EventTypeCode *string `json:"eventTypeCode,omitempty"`
+}
+
 type RegisterInput struct {
 	Email       string  `json:"email"`
 	Phone       *string `json:"phone,omitempty"`
 	Password    string  `json:"password"`
 	DisplayName string  `json:"displayName"`
 	RoleCode    string  `json:"roleCode"`
+}
+
+type Tag struct {
+	Code string `json:"code"`
+	Name string `json:"name"`
+}
+
+type TalentCard struct {
+	ID            string  `json:"id"`
+	DisplayName   string  `json:"displayName"`
+	Headline      *string `json:"headline,omitempty"`
+	HomePlaceName *string `json:"homePlaceName,omitempty"`
+	// Cheapest current rate, if the talent has published one.
+	FromRate *Rate  `json:"fromRate,omitempty"`
+	Genres   []*Tag `json:"genres"`
+	Types    []*Tag `json:"types"`
+}
+
+type TalentFilter struct {
+	GenreCodes    []string `json:"genreCodes,omitempty"`
+	TypeCodes     []string `json:"typeCodes,omitempty"`
+	LanguageCodes []string `json:"languageCodes,omitempty"`
+	// A geo place code; matches that place and everything beneath it.
+	PlaceCode *string `json:"placeCode,omitempty"`
+}
+
+type TalentPage struct {
+	Items []*TalentCard `json:"items"`
+	// Pass as `after` for the next page; null when there are no more results.
+	NextCursor *string `json:"nextCursor,omitempty"`
+}
+
+type TalentProfile struct {
+	ID            string  `json:"id"`
+	DisplayName   string  `json:"displayName"`
+	Headline      *string `json:"headline,omitempty"`
+	HomePlaceName *string `json:"homePlaceName,omitempty"`
+	Bio           *string `json:"bio,omitempty"`
+	Genres        []*Tag  `json:"genres"`
+	Types         []*Tag  `json:"types"`
+	Languages     []*Tag  `json:"languages"`
+	ServiceAreas  []*Tag  `json:"serviceAreas"`
+	Rates         []*Rate `json:"rates"`
 }
 
 type User struct {

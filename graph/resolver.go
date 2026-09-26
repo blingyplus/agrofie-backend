@@ -6,12 +6,14 @@ import (
 	"time"
 
 	"github.com/blingyplus/agrofie-backend/gen/agrofie/v1/agrofierv1connect"
+	"github.com/blingyplus/agrofie-backend/internal/discovery"
 	"github.com/blingyplus/agrofie-backend/internal/lookup"
 )
 
 // Resolver is the dependency root for GraphQL resolvers.
 type Resolver struct {
 	Lookups    *lookup.Service
+	Discovery  *discovery.Service
 	Prober     HealthProber
 	AuthClient agrofierv1connect.AuthServiceClient
 }

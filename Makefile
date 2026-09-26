@@ -1,4 +1,4 @@
-.PHONY: up down migrate proto sqlc gqlgen test vuln tidy seed-admin
+.PHONY: up down migrate proto sqlc gqlgen test vuln tidy seed-admin seed-talent
 
 DATABASE_URL ?= postgres://agrofie:agrofie@localhost:5432/agrofie?sslmode=disable
 
@@ -34,6 +34,9 @@ vuln:
 
 seed-admin:
 	go run ./cmd/seed-admin
+
+seed-talent:
+	go run ./cmd/seed-talent
 
 run-gateway:
 	go run ./cmd/gateway

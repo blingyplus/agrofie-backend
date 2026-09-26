@@ -8,7 +8,9 @@ import (
 	"connectrpc.com/connect"
 	agrofierv1 "github.com/blingyplus/agrofie-backend/gen/agrofie/v1"
 	"github.com/blingyplus/agrofie-backend/graph/model"
+	"github.com/blingyplus/agrofie-backend/internal/discovery"
 	"github.com/blingyplus/agrofie-backend/internal/lookup"
+	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
 // Resolver helpers live here, not in schema.resolvers.go: gqlgen owns that file
@@ -77,4 +79,101 @@ func mapConnectErr(err error) error {
 		return fmt.Errorf("%s", connectErr.Message())
 	}
 	return err
+}
+
+func intOr(v *int, fallback int) int {
+	if v == nil {
+		return fallback
+	}
+	return *v
+}
+
+func stringOr(v *string, fallback string) string {
+	if v == nil {
+		return fallback
+	}
+	return *v
+}
+
+func toDiscoveryFilter(f *model.TalentFilter) discovery.Filter {
+	if f == nil {
+		return discovery.Filter{}
+	}
+	return discovery.Filter{
+		GenreCodes:    f.GenreCodes,
+		TypeCodes:     f.TypeCodes,
+		LanguageCodes: f.LanguageCodes,
+		PlaceCode:     stringOr(f.PlaceCode, ""),
+	}
+}
+
+func mapDiscoveryErr(err error) error {
+	if errors.Is(err, discovery.ErrInvalidCursor) {
+		return &gqlerror.Error{Message: "invalid cursor", Extensions: map[string]any{"code": "BAD_USER_INPUT"}}
+	}
+	return err
+}
+
+func toTags(in []discovery.Tag) []*model.Tag {
+	out := make([]*model.Tag, 0, len(in))
+	for _, t := range in {
+		out = append(out, &model.Tag{Code: t.Code, Name: t.Name})
+	}
+	return out
+}
+
+func toRate(r discovery.Rate) *model.Rate {
+	return &model.Rate{
+		Amount:        r.Amount,
+		CurrencyCode:  r.CurrencyCode,
+		RateUnitCode:  r.RateUnitCode,
+		EventTypeCode: r.EventTypeCode,
+	}
+}
+
+func toTalentCard(c discovery.Card) *model.TalentCard {
+	card := &model.TalentCard{
+		ID:            c.ID,
+		DisplayName:   c.DisplayName,
+		Headline:      c.Headline,
+		HomePlaceName: c.HomePlaceName,
+		Genres:        toTags(c.Genres),
+		Types:         toTags(c.Types),
+	}
+	if c.FromRate != nil {
+		card.FromRate = toRate(*c.FromRate)
+	}
+	return card
+}
+
+func toTalentPage(p discovery.Page) *model.TalentPage {
+	items := make([]*model.TalentCard, 0, len(p.Items))
+	for _, c := range p.Items {
+		items = append(items, toTalentCard(c))
+	}
+	page := &model.TalentPage{Items: items}
+	if p.NextCursor != "" {
+		next := p.NextCursor
+		page.NextCursor = &next
+	}
+	return page
+}
+
+func toTalentProfile(p *discovery.Profile) *model.TalentProfile {
+	rates := make([]*model.Rate, 0, len(p.Rates))
+	for _, r := range p.Rates {
+		rates = append(rates, toRate(r))
+	}
+	return &model.TalentProfile{
+		ID:            p.ID,
+		DisplayName:   p.DisplayName,
+		Headline:      p.Headline,
+		HomePlaceName: p.HomePlaceName,
+		Bio:           p.Bio,
+		Genres:        toTags(p.Genres),
+		Types:         toTags(p.Types),
+		Languages:     toTags(p.Languages),
+		ServiceAreas:  toTags(p.ServiceAreas),
+		Rates:         rates,
+	}
 }

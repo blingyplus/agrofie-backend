@@ -13,6 +13,7 @@ import (
 	"github.com/blingyplus/agrofie-backend/graph/gqlauth"
 	"github.com/blingyplus/agrofie-backend/internal/config"
 	"github.com/blingyplus/agrofie-backend/internal/db"
+	"github.com/blingyplus/agrofie-backend/internal/discovery"
 	"github.com/blingyplus/agrofie-backend/internal/gateway/probe"
 	"github.com/blingyplus/agrofie-backend/internal/health"
 	"github.com/blingyplus/agrofie-backend/internal/lookup"
@@ -32,10 +33,12 @@ func main() {
 	defer pool.Close()
 
 	lookups := lookup.NewService(db.New(pool))
+	discoverySvc := discovery.NewService(db.New(pool))
 	prober := probe.NewConnectProber(cfg.AuthURL, cfg.BookingURL, cfg.PaymentsURL)
 	authClient := graph.NewAuthClient(cfg.AuthURL)
 	resolver := &graph.Resolver{
 		Lookups:    lookups,
+		Discovery:  discoverySvc,
 		Prober:     prober,
 		AuthClient: authClient,
 	}
