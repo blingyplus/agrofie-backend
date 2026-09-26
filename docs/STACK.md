@@ -39,6 +39,7 @@ npm run codegen
 | Buf + Connect (`make proto`) | Internal RPC contracts |
 | gqlgen | Generated GraphQL resolvers + `@authenticated` / `@hasRole` |
 | slog | Structured logs |
+| Paystack (subaccounts + split, test mode first) | Payments in GHS: card, mobile money, bank transfer |
 | govulncheck | Vulnerability scanning |
 
 ## Vulnerability policy

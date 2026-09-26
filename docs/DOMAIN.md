@@ -10,9 +10,11 @@ Stored in `roles` lookup: `talent`, `organizer`, `admin`. Users may hold multipl
 
 1. `inquiry` — organizer requested
 2. `agreed` — both sides accepted; quote snapshotted
-3. `paid` — funds held (`escrow_ledger` hold posted)
-4. `completed` — event done; release triggered
+3. `paid` — payment confirmed by a **verified Paystack webhook** (or Verify Transaction). Never set from client input.
+4. `completed` — organizer confirmed the event happened
 5. `cancelled` — with `cancellation_reasons`
+
+Talent contact details unlock at `agreed`. Talent must have a verified payout account before they can be booked.
 
 Append-only history in `booking_status_events`.
 
@@ -21,7 +23,7 @@ Append-only history in `booking_status_events`.
 - Talent searchable only if verification allows and `is_searchable`.
 - Rates are versioned (`talent_rates`); bookings copy amount into `quoted_amount` + `currency_code`.
 - Taxonomy renames update lookup `name` only; FKs keep working via `id` / `code`.
-- Escrow ledger is append-only; never mutate posted amounts.
+- Payment records are append-only and keyed by Paystack reference; never mutate posted amounts. Agrofie never holds funds (see `PRODUCT.md`).
 
 ## Discovery filters
 

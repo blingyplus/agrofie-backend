@@ -16,7 +16,7 @@ Rule: if a **name, type, status, or category can change** or needs **admin contr
 | `media_types` | avatar, photo, audio, video |
 | `verification_types`, `verification_statuses` | KYC pipeline |
 | `booking_statuses` | inquiry → … → cancelled |
-| `ledger_entry_types`, `ledger_statuses` | hold / release / refund / commission |
+| `ledger_entry_types`, `ledger_statuses` | **Legacy** (from the original hold/release scaffold). Unused; replaced by the payments tables below. |
 | `dispute_reasons`, `dispute_statuses`, `cancellation_reasons` | Ops |
 
 ## Identity vs profile
@@ -47,7 +47,10 @@ Kratos tables live in Postgres schema `kratos` (same database, `search_path=krat
 | `bookings` | FKs + venue_text + snapshotted quote |
 | `booking_status_events` | Append-only status history |
 | `contracts` | Terms document per booking |
-| `escrow_ledger` | Append-only financial events |
+| `escrow_ledger` | **Legacy**, unused. Do not write to it. |
+| `payout_accounts` | *(planned)* talent's Paystack subaccount code, type (bank / mobile money), verified flag |
+| `payments` | *(planned)* one row per Paystack transaction: booking, reference, amount, commission, status |
+| `payment_events` | *(planned)* raw verified webhook events, unique by event id, for idempotency and audit |
 | `reviews`, `disputes` | Post-event |
 
 ## Seed (migration `000005_seed`)

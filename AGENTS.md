@@ -1,6 +1,6 @@
 # Agrofie — agent entrypoint
 
-**End goal:** a Ghanaian talent marketplace (spec spelling *Agorofie*) connecting verified musicians/performers with event organizers. Discovery → booking → contract → **application-level fund hold** → completion → review. Admin mediates verification and disputes.
+**End goal:** a Ghanaian talent marketplace (spec spelling *Agorofie*) connecting verified musicians/performers with event organizers. Discovery → booking → contract (`agreed`) → payment through **Paystack split** (`paid`) → completion → review. **Agrofie never holds client funds.** Admin mediates verification and disputes.
 
 **Scaffold + auth:** structure, lookups, health, role shells, and **Ory Kratos–backed auth** (register/login/session/`me`). Not full MVP booking/payments yet.
 
@@ -24,7 +24,9 @@
 
 - Do not reuse the old Agermax Vuexy/Mongo/Stripe stack.
 - Do not use Postgres ENUMs for statuses/categories.
-- Do not treat Paystack Split as escrow (Paystack GH lists escrow as ineligible). Use platform hold + `escrow_ledger` + Transfer.
+- Money flows through Paystack subaccounts (split). Do not hold client funds, and do not delay settlement to hold a talent's money (that is escrow).
+- Never trust the client for payment status. Verify `x-paystack-signature` (HMAC-SHA512) on webhooks, process idempotently, amounts in pesewas. Test mode / fake provider only until launch review.
+- Do not write to `escrow_ledger` / `ledger_*` (legacy). Do not reveal talent contact details before a booking is `agreed`.
 - Do not hardcode Accra/Highlife lists in the client — load from GraphQL lookups.
 - Do not hand-roll JWT/session crypto — use Kratos.
 - Do not commit secrets; use `.env.example` only.
@@ -50,4 +52,4 @@ npm run web
 
 ## Out of scope for now
 
-Kubernetes/DOKS, live Paystack keys, SMS OTP, Ghana Card KYC, media CDN pipeline, real booking state machines, client talking to Kratos directly.
+Kubernetes/DOKS, live Paystack keys (test mode only), SMS OTP, Ghana Card KYC, media CDN pipeline, real booking state machines, client talking to Kratos directly.

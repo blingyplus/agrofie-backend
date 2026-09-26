@@ -40,7 +40,7 @@ Organizers hunting talent is only half the market.
 
 Talent still waits to be found. Open work lives in WhatsApp groups, posters, and phone calls. There is no shared place to see what is on, pick up a slot nearby, or pitch for a larger show. An organizer who needs ten similar acts — or ten weekend slots at the same venue — has no way to publish capacity and let the market fill it.
 
-Trust does not travel with those informal gigs. No verification gate, no contract snapshot, no fund hold, no review. The people who already struggle with discovery and payment in v1 still struggle when the work is posted the other way around.
+Trust does not travel with those informal gigs. No verification gate, no contract snapshot, no on-platform payment, no dispute path, no review. The people who already struggle with discovery and payment in v1 still struggle when the work is posted the other way around.
 
 ## Relationship to launch
 
@@ -49,18 +49,18 @@ Trust does not travel with those informal gigs. No verification gate, no contrac
 | Who publishes | Talent (profile, rates, calendar) | Organizers (events, slots, requirements) |
 | Who searches | Organizers | Talent (and organizers still search talent) |
 | How work starts | Organizer requests a booking | Talent claims a slot, or pitches; organizer may still invite |
-| How work closes | Contract → hold → complete → review | **The same close** |
+| How work closes | Contract → pay (Paystack split) → complete → review | **The same close** |
 
-v1 ships: verified directory, organizer-initiated booking, contract, application-level fund hold, completion, dual review. See [PRODUCT.md](./PRODUCT.md).
+v1 ships: verified directory, organizer-initiated booking, contract, payment through Paystack split, completion, dual review. See [PRODUCT.md](./PRODUCT.md).
 
-**v2 is out of scope for that launch.** It is not a second product and not a second payments system. It depends on verification, calendars, contracts, the escrow ledger, disputes, and reviews already working. We do not build event listings until that path is real.
+**v2 is out of scope for that launch.** It is not a second product and not a second payments system. It depends on verification, calendars, contracts, split payments, disputes, and reviews already working. We do not build event listings until that path is real.
 
 ## Objectives
 
 1. **Event discovery for talent** — open work visible by region, category, date, and budget band, including “from where I am.”
 2. **Two ways to take work** — instant claim when the organizer wants speed; request / pitch when they want to choose.
 3. **Capacity, not one-off posts** — one listing can offer many of the same instance (ten slots, ten acts, ten nights).
-4. **Same close as launch** — accepted work becomes a normal booking: terms, hold, completion, review.
+4. **Same close as launch** — accepted work becomes a normal booking: terms, payment, completion, review.
 5. **Industry gravity** — enough event types and matching modes that organizers and talent stay on the platform instead of going back to WhatsApp.
 
 ## Personas
@@ -81,7 +81,7 @@ Talent who match the listing — verified, right category, in range — see it. 
 
 The organizer is filling a seat, not running a casting. Eligible talent takes the slot from where they are. The organizer is notified. That instance is filled. If it was the last open slot, the listing is no longer open.
 
-Claiming is a real booking, not a handshake. Calendar conflicts still apply. The hold path starts so “I claimed it” means money and a contract, not a maybe.
+Claiming is a real booking, not a handshake. Calendar conflicts still apply. Payment starts immediately, so “I claimed it” means money and a contract, not a maybe.
 
 ### Request / pitch
 
@@ -101,7 +101,7 @@ When someone picks up a slot, the organizer is notified. Remaining count drops. 
 2. **Talent discover work** — feed and filters (geo tree, genre/type, date, budget). Push when a matching listing opens near them.
 3. **Talent takes work** — claim a slot, or submit a pitch/request.
 4. **Organizer is notified** — claim: slot gone, booking started. Request: new application to review. They can accept, decline, or shortlist.
-5. **Accepted work becomes a booking** — same contract, fund hold, completion, and review as an organizer-initiated booking.
+5. **Accepted work becomes a booking** — same contract, payment, completion, and review as an organizer-initiated booking.
 6. **Listing life** — open → filling (some slots taken) → filled, or cancelled. Cancelled listings do not leave hanging claims.
 
 Direct organizer-to-talent booking from v1 does not go away. An organizer can still find a specific act and book them. Listings are the other door.
@@ -112,7 +112,7 @@ Once work is accepted, it is a **booking**. There is no parallel “event job”
 
 - Calendar conflict check still runs.
 - Quoted amount and terms are snapshotted (fixed claim price, or accepted pitch).
-- Funds charged to the platform merchant and recorded in the hold ledger; release on completion.
+- Paid through Paystack split like any v1 booking: the talent's share settles to their subaccount, Agrofie's commission to Agrofie. No held funds.
 - Dual review after the event.
 - Disputes attach to the booking, with the listing as context.
 
@@ -128,14 +128,14 @@ Only verified, searchable talent take public listings. Organizer credentials sti
 
 - Mandatory verification for talent who appear in search **or** take public event work.
 - Claim-and-cancel and no-shows hit visibility the same way high cancellation does on inbound bookings.
-- Instant claim should not be free talk: eligibility plus a prompt hold so a claim is binding.
+- Instant claim should not be free talk: eligibility plus an immediate payment so a claim is binding.
 - Bait listings, fake venues, and budget bait-and-switch are admin takedown.
 - Multi-slot listings cannot assign more bookings than the published count.
 - Disputes still need evidence (chat, contract, listing snapshot).
 
 ## What we will not do yet
 
-Out of scope until launch booking and hold are real:
+Out of scope until launch booking and payment are real:
 
 - Event listing product, talent event feed, claim/pitch flows.
 - A separate payments or contract system for “event jobs.”
@@ -143,7 +143,7 @@ Out of scope until launch booking and hold are real:
 - Unverified walk-up claims.
 - Schema, API, or state-machine work for listings in the current scaffold.
 
-Those belong after v1 discovery → booking → hold → complete is in production use.
+Those belong after v1 discovery → booking → pay → complete is in production use.
 
 ## How this evolves
 
