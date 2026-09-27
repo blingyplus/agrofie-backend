@@ -67,3 +67,12 @@ RETURNING id, updated_at;
 -- name: GetPayoutAccountByTalentProfileID :one
 SELECT settlement_type, bank_name, account_number_last4, account_name, is_active, updated_at
 FROM payout_accounts WHERE talent_profile_id = $1 AND is_active;
+
+-- name: GetOwnTalentProfileBasics :one
+-- Unlike discovery's GetSearchableTalent, this has no is_searchable gate: a
+-- talent must be able to see and edit their own profile before verification.
+SELECT tp.id, tp.headline, tp.bio, pr.display_name, hp.name AS home_place_name
+FROM talent_profiles tp
+JOIN profiles pr ON pr.user_id = tp.user_id
+LEFT JOIN geo_places hp ON hp.id = tp.home_geo_place_id
+WHERE tp.user_id = $1;

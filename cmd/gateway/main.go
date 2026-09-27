@@ -17,6 +17,8 @@ import (
 	"github.com/blingyplus/agrofie-backend/internal/gateway/probe"
 	"github.com/blingyplus/agrofie-backend/internal/health"
 	"github.com/blingyplus/agrofie-backend/internal/lookup"
+	"github.com/blingyplus/agrofie-backend/internal/payments"
+	"github.com/blingyplus/agrofie-backend/internal/talentprofile"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -34,13 +36,23 @@ func main() {
 
 	lookups := lookup.NewService(db.New(pool))
 	discoverySvc := discovery.NewService(db.New(pool))
+
+	var paymentsProvider payments.Provider = payments.FakeProvider{}
+	if cfg.PaystackSecretKey != "" {
+		paymentsProvider = payments.NewPaystack(cfg.PaystackSecretKey)
+	} else {
+		slog.Warn("PAYSTACK_SECRET_KEY not set; using FakeProvider for payouts")
+	}
+	talentProfiles := talentprofile.NewService(pool, paymentsProvider, cfg.CommissionPercent)
+
 	prober := probe.NewConnectProber(cfg.AuthURL, cfg.BookingURL, cfg.PaymentsURL)
 	authClient := graph.NewAuthClient(cfg.AuthURL)
 	resolver := &graph.Resolver{
-		Lookups:    lookups,
-		Discovery:  discoverySvc,
-		Prober:     prober,
-		AuthClient: authClient,
+		Lookups:        lookups,
+		Discovery:      discoverySvc,
+		TalentProfiles: talentProfiles,
+		Prober:         prober,
+		AuthClient:     authClient,
 	}
 
 	schemaCfg := graph.Config{Resolvers: resolver}

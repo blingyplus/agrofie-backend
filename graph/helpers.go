@@ -10,6 +10,8 @@ import (
 	"github.com/blingyplus/agrofie-backend/graph/model"
 	"github.com/blingyplus/agrofie-backend/internal/discovery"
 	"github.com/blingyplus/agrofie-backend/internal/lookup"
+	"github.com/blingyplus/agrofie-backend/internal/payments"
+	"github.com/blingyplus/agrofie-backend/internal/talentprofile"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
@@ -175,5 +177,80 @@ func toTalentProfile(p *discovery.Profile) *model.TalentProfile {
 		Languages:     toTags(p.Languages),
 		ServiceAreas:  toTags(p.ServiceAreas),
 		Rates:         rates,
+	}
+}
+
+// ownProfile is shared by myTalentProfile, updateMyTalentProfile and
+// setMyRates: fetch the caller's profile fresh after any write, so what a
+// mutation returns always matches what a follow-up query would see.
+func (r *Resolver) ownProfile(ctx context.Context, userID string) (*model.TalentProfile, error) {
+	p, err := r.TalentProfiles.OwnProfile(ctx, userID)
+	if err != nil {
+		return nil, mapTalentProfileErr(err)
+	}
+	return toTalentProfile(p), nil
+}
+
+func mapTalentProfileErr(err error) error {
+	switch {
+	case errors.Is(err, talentprofile.ErrUnknownCode):
+		return &gqlerror.Error{Message: err.Error(), Extensions: map[string]any{"code": "BAD_USER_INPUT"}}
+	case errors.Is(err, talentprofile.ErrInvalidInput):
+		return &gqlerror.Error{Message: err.Error(), Extensions: map[string]any{"code": "BAD_USER_INPUT"}}
+	case errors.Is(err, talentprofile.ErrNotTalent):
+		return &gqlerror.Error{Message: "forbidden: no talent profile", Extensions: map[string]any{"code": "FORBIDDEN"}}
+	default:
+		return err
+	}
+}
+
+func toUpdateBasicsInput(in model.UpdateTalentProfileInput) talentprofile.UpdateBasicsInput {
+	return talentprofile.UpdateBasicsInput{
+		Headline:      in.Headline,
+		Bio:           in.Bio,
+		HomePlaceCode: in.HomePlaceCode,
+		GenreCodes:    in.GenreCodes,
+		TypeCodes:     in.TypeCodes,
+		LanguageCodes: in.LanguageCodes,
+		ServiceAreas:  in.ServiceAreaCodes,
+	}
+}
+
+func toRateInputs(in []*model.RateInput) []talentprofile.RateInput {
+	out := make([]talentprofile.RateInput, 0, len(in))
+	for _, r := range in {
+		out = append(out, talentprofile.RateInput{
+			Amount: r.Amount, CurrencyCode: r.CurrencyCode, RateUnitCode: r.RateUnitCode, EventTypeCode: r.EventTypeCode,
+		})
+	}
+	return out
+}
+
+func toDomainSettlementType(t model.SettlementType) payments.SettlementType {
+	if t == model.SettlementTypeMobileMoney {
+		return payments.SettlementMobileMoney
+	}
+	return payments.SettlementBank
+}
+
+func toConnectPayoutInput(in model.ConnectPayoutInput) talentprofile.ConnectPayoutInput {
+	return talentprofile.ConnectPayoutInput{
+		BusinessName:   in.BusinessName,
+		SettlementType: toDomainSettlementType(in.SettlementType),
+		BankCode:       in.BankCode,
+		AccountNumber:  in.AccountNumber,
+	}
+}
+
+func toModelPayoutAccount(a *talentprofile.PayoutAccount) *model.PayoutAccount {
+	st := model.SettlementTypeBank
+	if a.SettlementType == string(payments.SettlementMobileMoney) {
+		st = model.SettlementTypeMobileMoney
+	}
+	return &model.PayoutAccount{
+		SettlementType:     st,
+		BankName:           a.BankName,
+		AccountNumberLast4: a.AccountNumberLast4,
+		AccountName:        a.AccountName,
 	}
 }

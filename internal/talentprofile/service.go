@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"github.com/blingyplus/agrofie-backend/internal/db"
+	"github.com/blingyplus/agrofie-backend/internal/discovery"
 	"github.com/blingyplus/agrofie-backend/internal/payments"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -16,9 +17,10 @@ import (
 )
 
 var (
-	ErrNotTalent    = errors.New("caller has no talent profile")
-	ErrUnknownCode  = errors.New("unknown lookup code")
-	ErrInvalidInput = errors.New("invalid input")
+	ErrNotTalent       = errors.New("caller has no talent profile")
+	ErrUnknownCode     = errors.New("unknown lookup code")
+	ErrInvalidInput    = errors.New("invalid input")
+	ErrNoPayoutAccount = errors.New("no payout account connected")
 )
 
 // beginner is satisfied by both *pgxpool.Pool (a real transaction) and pgx.Tx
@@ -256,6 +258,98 @@ func (s *Service) ConnectPayout(ctx context.Context, userID string, in ConnectPa
 	}, nil
 }
 
+// OwnProfile returns the caller's full talent profile, including unpublished
+// changes: unlike discovery.Service.Get, there is no is_searchable gate, since
+// a talent must be able to see and edit their profile before verification.
+func (s *Service) OwnProfile(ctx context.Context, userID string) (*discovery.Profile, error) {
+	var out *discovery.Profile
+	err := s.withTx(ctx, func(q *db.Queries) error {
+		uid, err := uuid.Parse(userID)
+		if err != nil {
+			return fmt.Errorf("%w: invalid user id", ErrInvalidInput)
+		}
+		row, err := q.GetOwnTalentProfileBasics(ctx, pgtype.UUID{Bytes: uid, Valid: true})
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNotTalent
+		}
+		if err != nil {
+			return fmt.Errorf("get own profile: %w", err)
+		}
+
+		ids := []pgtype.UUID{row.ID}
+		p := &discovery.Profile{Card: discovery.Card{
+			ID: uuidString(row.ID), DisplayName: row.DisplayName, Headline: row.Headline, HomePlaceName: row.HomePlaceName,
+		}, Bio: row.Bio}
+
+		genres, err := q.ListGenresForTalent(ctx, ids)
+		if err != nil {
+			return fmt.Errorf("list genres: %w", err)
+		}
+		for _, g := range genres {
+			p.Genres = append(p.Genres, discovery.Tag{Code: g.Code, Name: g.Name})
+		}
+		types, err := q.ListTypesForTalent(ctx, ids)
+		if err != nil {
+			return fmt.Errorf("list types: %w", err)
+		}
+		for _, t := range types {
+			p.Types = append(p.Types, discovery.Tag{Code: t.Code, Name: t.Name})
+		}
+		langs, err := q.ListLanguagesForTalent(ctx, ids)
+		if err != nil {
+			return fmt.Errorf("list languages: %w", err)
+		}
+		for _, l := range langs {
+			p.Languages = append(p.Languages, discovery.Tag{Code: l.Code, Name: l.Name})
+		}
+		areas, err := q.ListServiceAreasForTalent(ctx, ids)
+		if err != nil {
+			return fmt.Errorf("list service areas: %w", err)
+		}
+		for _, a := range areas {
+			p.ServiceAreas = append(p.ServiceAreas, discovery.Tag{Code: a.Code, Name: a.Name})
+		}
+		rates, err := q.ListCurrentRatesForTalent(ctx, ids)
+		if err != nil {
+			return fmt.Errorf("list rates: %w", err)
+		}
+		for _, r := range rates {
+			p.Rates = append(p.Rates, discovery.Rate{Amount: r.Amount, CurrencyCode: r.CurrencyCode, RateUnitCode: r.RateUnitCode, EventTypeCode: r.EventTypeCode})
+		}
+
+		out = p
+		return nil
+	})
+	return out, err
+}
+
+// GetMyPayoutAccount returns the caller's active payout account, or
+// ErrNoPayoutAccount if none is connected yet.
+func (s *Service) GetMyPayoutAccount(ctx context.Context, userID string) (*PayoutAccount, error) {
+	var out *PayoutAccount
+	err := s.withTx(ctx, func(q *db.Queries) error {
+		profileID, err := profileIDForUser(ctx, q, userID)
+		if err != nil {
+			return err
+		}
+		row, err := q.GetPayoutAccountByTalentProfileID(ctx, profileID)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNoPayoutAccount
+		}
+		if err != nil {
+			return fmt.Errorf("get payout account: %w", err)
+		}
+		out = &PayoutAccount{
+			SettlementType:     row.SettlementType,
+			BankName:           row.BankName,
+			AccountNumberLast4: row.AccountNumberLast4,
+			AccountName:        row.AccountName,
+		}
+		return nil
+	})
+	return out, err
+}
+
 // ListSettlementBanks lists the banks or mobile money telcos a talent can
 // pick from when connecting a payout account.
 func (s *Service) ListSettlementBanks(ctx context.Context, t payments.SettlementType) ([]payments.Bank, error) {
@@ -282,6 +376,10 @@ func ptrString(s *string) string {
 		return ""
 	}
 	return *s
+}
+
+func uuidString(u pgtype.UUID) string {
+	return uuid.UUID(u.Bytes).String()
 }
 
 func mustNumeric(decimal string) pgtype.Numeric {

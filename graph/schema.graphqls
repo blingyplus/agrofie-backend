@@ -21,6 +21,15 @@ type Query {
   """Searchable, active talent, newest first. Never exposes contact details."""
   searchTalent(filter: TalentFilter, first: Int = 20, after: String): TalentPage!
   talent(id: ID!): TalentProfile
+
+  """The caller's own talent profile, including unpublished changes. Requires the talent role."""
+  myTalentProfile: TalentProfile @hasRole(code: "talent")
+
+  """Banks (BANK) or mobile money telcos (MOBILE_MONEY) a talent can settle payouts to."""
+  settlementBanks(type: SettlementType!): [SettlementBank!]! @hasRole(code: "talent")
+
+  """The caller's own payout account, if connected. Requires the talent role."""
+  myPayoutAccount: PayoutAccount @hasRole(code: "talent")
 }
 
 type Mutation {
@@ -31,6 +40,15 @@ type Mutation {
   """Rename a lookup display name. Never changes immutable code."""
   updateLookupName(table: LookupTable!, code: String!, name: String!): Lookup! @hasRole(code: "admin")
   setLookupActive(table: LookupTable!, code: String!, isActive: Boolean!): Lookup! @hasRole(code: "admin")
+
+  """Update the caller's own talent profile. A field left null is unchanged; an empty list clears that tag set."""
+  updateMyTalentProfile(input: UpdateTalentProfileInput!): TalentProfile! @hasRole(code: "talent")
+
+  """Replace all of the caller's current rates. Existing rates are closed, not deleted."""
+  setMyRates(rates: [RateInput!]!): TalentProfile! @hasRole(code: "talent")
+
+  """Connect (or replace) the caller's payout account via a Paystack subaccount. Test mode until launch review."""
+  connectMyPayoutAccount(input: ConnectPayoutInput!): PayoutAccount! @hasRole(code: "talent")
 }
 
 input RegisterInput {
@@ -151,4 +169,48 @@ type TalentPage {
   items: [TalentCard!]!
   """Pass as `after` for the next page; null when there are no more results."""
   nextCursor: String
+}
+
+input UpdateTalentProfileInput {
+  headline: String
+  bio: String
+  """A geo place code; matches that place and everything beneath it is NOT implied here — this is the talent's home base, an exact place."""
+  homePlaceCode: String
+  genreCodes: [String!]
+  typeCodes: [String!]
+  languageCodes: [String!]
+  serviceAreaCodes: [String!]
+}
+
+input RateInput {
+  """Decimal string, e.g. "150.00"."""
+  amount: String!
+  currencyCode: String!
+  rateUnitCode: String!
+  eventTypeCode: String
+}
+
+enum SettlementType {
+  BANK
+  MOBILE_MONEY
+}
+
+input ConnectPayoutInput {
+  businessName: String!
+  settlementType: SettlementType!
+  bankCode: String!
+  accountNumber: String!
+}
+
+type SettlementBank {
+  name: String!
+  code: String!
+}
+
+type PayoutAccount {
+  settlementType: SettlementType!
+  bankName: String!
+  """Last 4 digits only; the full account number is never returned or stored."""
+  accountNumberLast4: String!
+  accountName: String!
 }

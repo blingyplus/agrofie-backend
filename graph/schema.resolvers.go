@@ -16,6 +16,7 @@ import (
 	"github.com/blingyplus/agrofie-backend/graph/model"
 	"github.com/blingyplus/agrofie-backend/internal/discovery"
 	"github.com/blingyplus/agrofie-backend/internal/lookup"
+	"github.com/blingyplus/agrofie-backend/internal/talentprofile"
 )
 
 // Register is the resolver for the register field.
@@ -80,6 +81,34 @@ func (r *mutationResolver) SetLookupActive(ctx context.Context, table model.Look
 		return nil, err
 	}
 	return toLookup(item), nil
+}
+
+// UpdateMyTalentProfile is the resolver for the updateMyTalentProfile field.
+func (r *mutationResolver) UpdateMyTalentProfile(ctx context.Context, input model.UpdateTalentProfileInput) (*model.TalentProfile, error) {
+	p, _ := gqlauth.FromContext(ctx)
+	if err := r.TalentProfiles.UpdateBasics(ctx, p.UserID, toUpdateBasicsInput(input)); err != nil {
+		return nil, mapTalentProfileErr(err)
+	}
+	return r.ownProfile(ctx, p.UserID)
+}
+
+// SetMyRates is the resolver for the setMyRates field.
+func (r *mutationResolver) SetMyRates(ctx context.Context, rates []*model.RateInput) (*model.TalentProfile, error) {
+	p, _ := gqlauth.FromContext(ctx)
+	if err := r.TalentProfiles.SetRates(ctx, p.UserID, toRateInputs(rates)); err != nil {
+		return nil, mapTalentProfileErr(err)
+	}
+	return r.ownProfile(ctx, p.UserID)
+}
+
+// ConnectMyPayoutAccount is the resolver for the connectMyPayoutAccount field.
+func (r *mutationResolver) ConnectMyPayoutAccount(ctx context.Context, input model.ConnectPayoutInput) (*model.PayoutAccount, error) {
+	p, _ := gqlauth.FromContext(ctx)
+	out, err := r.TalentProfiles.ConnectPayout(ctx, p.UserID, toConnectPayoutInput(input))
+	if err != nil {
+		return nil, mapTalentProfileErr(err)
+	}
+	return toModelPayoutAccount(out), nil
 }
 
 // Health is the resolver for the health field.
@@ -208,6 +237,38 @@ func (r *queryResolver) Talent(ctx context.Context, id string) (*model.TalentPro
 		return nil, mapDiscoveryErr(err)
 	}
 	return toTalentProfile(p), nil
+}
+
+// MyTalentProfile is the resolver for the myTalentProfile field.
+func (r *queryResolver) MyTalentProfile(ctx context.Context) (*model.TalentProfile, error) {
+	p, _ := gqlauth.FromContext(ctx)
+	return r.ownProfile(ctx, p.UserID)
+}
+
+// SettlementBanks is the resolver for the settlementBanks field.
+func (r *queryResolver) SettlementBanks(ctx context.Context, typeArg model.SettlementType) ([]*model.SettlementBank, error) {
+	banks, err := r.TalentProfiles.ListSettlementBanks(ctx, toDomainSettlementType(typeArg))
+	if err != nil {
+		return nil, mapTalentProfileErr(err)
+	}
+	out := make([]*model.SettlementBank, 0, len(banks))
+	for _, b := range banks {
+		out = append(out, &model.SettlementBank{Name: b.Name, Code: b.Code})
+	}
+	return out, nil
+}
+
+// MyPayoutAccount is the resolver for the myPayoutAccount field.
+func (r *queryResolver) MyPayoutAccount(ctx context.Context) (*model.PayoutAccount, error) {
+	p, _ := gqlauth.FromContext(ctx)
+	out, err := r.TalentProfiles.GetMyPayoutAccount(ctx, p.UserID)
+	if errors.Is(err, talentprofile.ErrNoPayoutAccount) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, mapTalentProfileErr(err)
+	}
+	return toModelPayoutAccount(out), nil
 }
 
 // Mutation returns MutationResolver implementation.

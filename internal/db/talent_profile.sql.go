@@ -138,6 +138,37 @@ func (q *Queries) GeoPlaceIDByCode(ctx context.Context, code string) (pgtype.UUI
 	return id, err
 }
 
+const getOwnTalentProfileBasics = `-- name: GetOwnTalentProfileBasics :one
+SELECT tp.id, tp.headline, tp.bio, pr.display_name, hp.name AS home_place_name
+FROM talent_profiles tp
+JOIN profiles pr ON pr.user_id = tp.user_id
+LEFT JOIN geo_places hp ON hp.id = tp.home_geo_place_id
+WHERE tp.user_id = $1
+`
+
+type GetOwnTalentProfileBasicsRow struct {
+	ID            pgtype.UUID `json:"id"`
+	Headline      *string     `json:"headline"`
+	Bio           *string     `json:"bio"`
+	DisplayName   string      `json:"display_name"`
+	HomePlaceName *string     `json:"home_place_name"`
+}
+
+// Unlike discovery's GetSearchableTalent, this has no is_searchable gate: a
+// talent must be able to see and edit their own profile before verification.
+func (q *Queries) GetOwnTalentProfileBasics(ctx context.Context, userID pgtype.UUID) (GetOwnTalentProfileBasicsRow, error) {
+	row := q.db.QueryRow(ctx, getOwnTalentProfileBasics, userID)
+	var i GetOwnTalentProfileBasicsRow
+	err := row.Scan(
+		&i.ID,
+		&i.Headline,
+		&i.Bio,
+		&i.DisplayName,
+		&i.HomePlaceName,
+	)
+	return i, err
+}
+
 const getPayoutAccountByTalentProfileID = `-- name: GetPayoutAccountByTalentProfileID :one
 SELECT settlement_type, bank_name, account_number_last4, account_name, is_active, updated_at
 FROM payout_accounts WHERE talent_profile_id = $1 AND is_active

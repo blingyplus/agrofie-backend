@@ -14,6 +14,13 @@ type AuthPayload struct {
 	User         *User  `json:"user"`
 }
 
+type ConnectPayoutInput struct {
+	BusinessName   string         `json:"businessName"`
+	SettlementType SettlementType `json:"settlementType"`
+	BankCode       string         `json:"bankCode"`
+	AccountNumber  string         `json:"accountNumber"`
+}
+
 type Country struct {
 	ID       string `json:"id"`
 	Code     string `json:"code"`
@@ -54,10 +61,26 @@ type Lookup struct {
 type Mutation struct {
 }
 
+type PayoutAccount struct {
+	SettlementType SettlementType `json:"settlementType"`
+	BankName       string         `json:"bankName"`
+	// Last 4 digits only; the full account number is never returned or stored.
+	AccountNumberLast4 string `json:"accountNumberLast4"`
+	AccountName        string `json:"accountName"`
+}
+
 type Query struct {
 }
 
 type Rate struct {
+	// Decimal string, e.g. "150.00".
+	Amount        string  `json:"amount"`
+	CurrencyCode  string  `json:"currencyCode"`
+	RateUnitCode  string  `json:"rateUnitCode"`
+	EventTypeCode *string `json:"eventTypeCode,omitempty"`
+}
+
+type RateInput struct {
 	// Decimal string, e.g. "150.00".
 	Amount        string  `json:"amount"`
 	CurrencyCode  string  `json:"currencyCode"`
@@ -71,6 +94,11 @@ type RegisterInput struct {
 	Password    string  `json:"password"`
 	DisplayName string  `json:"displayName"`
 	RoleCode    string  `json:"roleCode"`
+}
+
+type SettlementBank struct {
+	Name string `json:"name"`
+	Code string `json:"code"`
 }
 
 type Tag struct {
@@ -114,6 +142,17 @@ type TalentProfile struct {
 	Languages     []*Tag  `json:"languages"`
 	ServiceAreas  []*Tag  `json:"serviceAreas"`
 	Rates         []*Rate `json:"rates"`
+}
+
+type UpdateTalentProfileInput struct {
+	Headline *string `json:"headline,omitempty"`
+	Bio      *string `json:"bio,omitempty"`
+	// A geo place code; matches that place and everything beneath it is NOT implied here — this is the talent's home base, an exact place.
+	HomePlaceCode    *string  `json:"homePlaceCode,omitempty"`
+	GenreCodes       []string `json:"genreCodes,omitempty"`
+	TypeCodes        []string `json:"typeCodes,omitempty"`
+	LanguageCodes    []string `json:"languageCodes,omitempty"`
+	ServiceAreaCodes []string `json:"serviceAreaCodes,omitempty"`
 }
 
 type User struct {
@@ -186,6 +225,61 @@ func (e *LookupTable) UnmarshalJSON(b []byte) error {
 }
 
 func (e LookupTable) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type SettlementType string
+
+const (
+	SettlementTypeBank        SettlementType = "BANK"
+	SettlementTypeMobileMoney SettlementType = "MOBILE_MONEY"
+)
+
+var AllSettlementType = []SettlementType{
+	SettlementTypeBank,
+	SettlementTypeMobileMoney,
+}
+
+func (e SettlementType) IsValid() bool {
+	switch e {
+	case SettlementTypeBank, SettlementTypeMobileMoney:
+		return true
+	}
+	return false
+}
+
+func (e SettlementType) String() string {
+	return string(e)
+}
+
+func (e *SettlementType) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = SettlementType(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid SettlementType", str)
+	}
+	return nil
+}
+
+func (e SettlementType) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *SettlementType) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e SettlementType) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

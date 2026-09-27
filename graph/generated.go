@@ -77,11 +77,21 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		Login            func(childComplexity int, input model.LoginInput) int
-		Logout           func(childComplexity int) int
-		Register         func(childComplexity int, input model.RegisterInput) int
-		SetLookupActive  func(childComplexity int, table model.LookupTable, code string, isActive bool) int
-		UpdateLookupName func(childComplexity int, table model.LookupTable, code string, name string) int
+		ConnectMyPayoutAccount func(childComplexity int, input model.ConnectPayoutInput) int
+		Login                  func(childComplexity int, input model.LoginInput) int
+		Logout                 func(childComplexity int) int
+		Register               func(childComplexity int, input model.RegisterInput) int
+		SetLookupActive        func(childComplexity int, table model.LookupTable, code string, isActive bool) int
+		SetMyRates             func(childComplexity int, rates []*model.RateInput) int
+		UpdateLookupName       func(childComplexity int, table model.LookupTable, code string, name string) int
+		UpdateMyTalentProfile  func(childComplexity int, input model.UpdateTalentProfileInput) int
+	}
+
+	PayoutAccount struct {
+		AccountName        func(childComplexity int) int
+		AccountNumberLast4 func(childComplexity int) int
+		BankName           func(childComplexity int) int
+		SettlementType     func(childComplexity int) int
 	}
 
 	Query struct {
@@ -93,8 +103,11 @@ type ComplexityRoot struct {
 		Health          func(childComplexity int) int
 		Languages       func(childComplexity int, activeOnly *bool) int
 		Me              func(childComplexity int) int
+		MyPayoutAccount func(childComplexity int) int
+		MyTalentProfile func(childComplexity int) int
 		Roles           func(childComplexity int, activeOnly *bool) int
 		SearchTalent    func(childComplexity int, filter *model.TalentFilter, first *int, after *string) int
+		SettlementBanks func(childComplexity int, typeArg model.SettlementType) int
 		Talent          func(childComplexity int, id string) int
 		TalentTypes     func(childComplexity int, activeOnly *bool) int
 	}
@@ -104,6 +117,11 @@ type ComplexityRoot struct {
 		CurrencyCode  func(childComplexity int) int
 		EventTypeCode func(childComplexity int) int
 		RateUnitCode  func(childComplexity int) int
+	}
+
+	SettlementBank struct {
+		Code func(childComplexity int) int
+		Name func(childComplexity int) int
 	}
 
 	Tag struct {
@@ -158,6 +176,9 @@ type MutationResolver interface {
 	Logout(ctx context.Context) (bool, error)
 	UpdateLookupName(ctx context.Context, table model.LookupTable, code string, name string) (*model.Lookup, error)
 	SetLookupActive(ctx context.Context, table model.LookupTable, code string, isActive bool) (*model.Lookup, error)
+	UpdateMyTalentProfile(ctx context.Context, input model.UpdateTalentProfileInput) (*model.TalentProfile, error)
+	SetMyRates(ctx context.Context, rates []*model.RateInput) (*model.TalentProfile, error)
+	ConnectMyPayoutAccount(ctx context.Context, input model.ConnectPayoutInput) (*model.PayoutAccount, error)
 }
 type QueryResolver interface {
 	Health(ctx context.Context) (*model.Health, error)
@@ -172,6 +193,9 @@ type QueryResolver interface {
 	BookingStatuses(ctx context.Context, activeOnly *bool) ([]*model.Lookup, error)
 	SearchTalent(ctx context.Context, filter *model.TalentFilter, first *int, after *string) (*model.TalentPage, error)
 	Talent(ctx context.Context, id string) (*model.TalentProfile, error)
+	MyTalentProfile(ctx context.Context) (*model.TalentProfile, error)
+	SettlementBanks(ctx context.Context, typeArg model.SettlementType) ([]*model.SettlementBank, error)
+	MyPayoutAccount(ctx context.Context) (*model.PayoutAccount, error)
 }
 
 // endregion ************************** generated!.gotpl **************************
@@ -329,6 +353,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Lookup.SortOrder(childComplexity), true
 
+	case "Mutation.connectMyPayoutAccount":
+		if e.ComplexityRoot.Mutation.ConnectMyPayoutAccount == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_connectMyPayoutAccount_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.ConnectMyPayoutAccount(childComplexity, args["input"].(model.ConnectPayoutInput)), true
 	case "Mutation.login":
 		if e.ComplexityRoot.Mutation.Login == nil {
 			break
@@ -368,6 +403,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.SetLookupActive(childComplexity, args["table"].(model.LookupTable), args["code"].(string), args["isActive"].(bool)), true
+	case "Mutation.setMyRates":
+		if e.ComplexityRoot.Mutation.SetMyRates == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setMyRates_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.SetMyRates(childComplexity, args["rates"].([]*model.RateInput)), true
 	case "Mutation.updateLookupName":
 		if e.ComplexityRoot.Mutation.UpdateLookupName == nil {
 			break
@@ -379,6 +425,42 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.UpdateLookupName(childComplexity, args["table"].(model.LookupTable), args["code"].(string), args["name"].(string)), true
+	case "Mutation.updateMyTalentProfile":
+		if e.ComplexityRoot.Mutation.UpdateMyTalentProfile == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateMyTalentProfile_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.UpdateMyTalentProfile(childComplexity, args["input"].(model.UpdateTalentProfileInput)), true
+
+	case "PayoutAccount.accountName":
+		if e.ComplexityRoot.PayoutAccount.AccountName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PayoutAccount.AccountName(childComplexity), true
+	case "PayoutAccount.accountNumberLast4":
+		if e.ComplexityRoot.PayoutAccount.AccountNumberLast4 == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PayoutAccount.AccountNumberLast4(childComplexity), true
+	case "PayoutAccount.bankName":
+		if e.ComplexityRoot.PayoutAccount.BankName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PayoutAccount.BankName(childComplexity), true
+	case "PayoutAccount.settlementType":
+		if e.ComplexityRoot.PayoutAccount.SettlementType == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PayoutAccount.SettlementType(childComplexity), true
 
 	case "Query.bookingStatuses":
 		if e.ComplexityRoot.Query.BookingStatuses == nil {
@@ -459,6 +541,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.Me(childComplexity), true
+	case "Query.myPayoutAccount":
+		if e.ComplexityRoot.Query.MyPayoutAccount == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.MyPayoutAccount(childComplexity), true
+	case "Query.myTalentProfile":
+		if e.ComplexityRoot.Query.MyTalentProfile == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.MyTalentProfile(childComplexity), true
 	case "Query.roles":
 		if e.ComplexityRoot.Query.Roles == nil {
 			break
@@ -481,6 +575,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.SearchTalent(childComplexity, args["filter"].(*model.TalentFilter), args["first"].(*int), args["after"].(*string)), true
+	case "Query.settlementBanks":
+		if e.ComplexityRoot.Query.SettlementBanks == nil {
+			break
+		}
+
+		args, err := ec.field_Query_settlementBanks_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.SettlementBanks(childComplexity, args["type"].(model.SettlementType)), true
 	case "Query.talent":
 		if e.ComplexityRoot.Query.Talent == nil {
 			break
@@ -528,6 +633,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Rate.RateUnitCode(childComplexity), true
+
+	case "SettlementBank.code":
+		if e.ComplexityRoot.SettlementBank.Code == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SettlementBank.Code(childComplexity), true
+	case "SettlementBank.name":
+		if e.ComplexityRoot.SettlementBank.Name == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SettlementBank.Name(childComplexity), true
 
 	case "Tag.code":
 		if e.ComplexityRoot.Tag.Code == nil {
@@ -698,9 +816,12 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	opCtx := graphql.GetOperationContext(ctx)
 	ec := newExecutionContext(opCtx, e, make(chan graphql.DeferredResult))
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
+		ec.unmarshalInputConnectPayoutInput,
 		ec.unmarshalInputLoginInput,
+		ec.unmarshalInputRateInput,
 		ec.unmarshalInputRegisterInput,
 		ec.unmarshalInputTalentFilter,
+		ec.unmarshalInputUpdateTalentProfileInput,
 	)
 	first := true
 
@@ -869,6 +990,20 @@ func (ec *executionContext) childFields_Lookup(ctx context.Context, field graphq
 	return nil, fmt.Errorf("no field named %q was found under type Lookup", field.Name)
 }
 
+func (ec *executionContext) childFields_PayoutAccount(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "settlementType":
+		return ec.fieldContext_PayoutAccount_settlementType(ctx, field)
+	case "bankName":
+		return ec.fieldContext_PayoutAccount_bankName(ctx, field)
+	case "accountNumberLast4":
+		return ec.fieldContext_PayoutAccount_accountNumberLast4(ctx, field)
+	case "accountName":
+		return ec.fieldContext_PayoutAccount_accountName(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type PayoutAccount", field.Name)
+}
+
 func (ec *executionContext) childFields_Rate(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "amount":
@@ -881,6 +1016,16 @@ func (ec *executionContext) childFields_Rate(ctx context.Context, field graphql.
 		return ec.fieldContext_Rate_eventTypeCode(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Rate", field.Name)
+}
+
+func (ec *executionContext) childFields_SettlementBank(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "name":
+		return ec.fieldContext_SettlementBank_name(ctx, field)
+	case "code":
+		return ec.fieldContext_SettlementBank_code(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type SettlementBank", field.Name)
 }
 
 func (ec *executionContext) childFields_Tag(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -1095,6 +1240,20 @@ func (ec *executionContext) dir_hasRole_args(ctx context.Context, rawArgs map[st
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_connectMyPayoutAccount_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
+		func(ctx context.Context, v any) (model.ConnectPayoutInput, error) {
+			return ec.unmarshalNConnectPayoutInput2githubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐConnectPayoutInput(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_login_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -1153,6 +1312,20 @@ func (ec *executionContext) field_Mutation_setLookupActive_args(ctx context.Cont
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_setMyRates_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "rates",
+		func(ctx context.Context, v any) ([]*model.RateInput, error) {
+			return ec.unmarshalNRateInput2ᚕᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐRateInputᚄ(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["rates"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_updateLookupName_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -1180,6 +1353,20 @@ func (ec *executionContext) field_Mutation_updateLookupName_args(ctx context.Con
 		return nil, err
 	}
 	args["name"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateMyTalentProfile_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
+		func(ctx context.Context, v any) (model.UpdateTalentProfileInput, error) {
+			return ec.unmarshalNUpdateTalentProfileInput2githubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐUpdateTalentProfileInput(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
 	return args, nil
 }
 
@@ -1338,6 +1525,20 @@ func (ec *executionContext) field_Query_searchTalent_args(ctx context.Context, r
 		return nil, err
 	}
 	args["after"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_settlementBanks_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "type",
+		func(ctx context.Context, v any) (model.SettlementType, error) {
+			return ec.unmarshalNSettlementType2githubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐSettlementType(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["type"] = arg0
 	return args, nil
 }
 
@@ -2192,6 +2393,284 @@ func (ec *executionContext) fieldContext_Mutation_setLookupActive(ctx context.Co
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_updateMyTalentProfile(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_updateMyTalentProfile(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().UpdateMyTalentProfile(ctx, fc.Args["input"].(model.UpdateTalentProfileInput))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				code, err := ec.unmarshalNString2string(ctx, "talent")
+				if err != nil {
+					var zeroVal *model.TalentProfile
+					return zeroVal, err
+				}
+				if ec.Directives.HasRole == nil {
+					var zeroVal *model.TalentProfile
+					return zeroVal, errors.New("directive hasRole is not implemented")
+				}
+				return ec.Directives.HasRole(ctx, nil, directive0, code)
+			}
+
+			next = directive1
+			return next
+		},
+		func(ctx context.Context, selections ast.SelectionSet, v *model.TalentProfile) graphql.Marshaler {
+			return ec.marshalNTalentProfile2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐTalentProfile(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_updateMyTalentProfile(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_TalentProfile(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateMyTalentProfile_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_setMyRates(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_setMyRates(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().SetMyRates(ctx, fc.Args["rates"].([]*model.RateInput))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				code, err := ec.unmarshalNString2string(ctx, "talent")
+				if err != nil {
+					var zeroVal *model.TalentProfile
+					return zeroVal, err
+				}
+				if ec.Directives.HasRole == nil {
+					var zeroVal *model.TalentProfile
+					return zeroVal, errors.New("directive hasRole is not implemented")
+				}
+				return ec.Directives.HasRole(ctx, nil, directive0, code)
+			}
+
+			next = directive1
+			return next
+		},
+		func(ctx context.Context, selections ast.SelectionSet, v *model.TalentProfile) graphql.Marshaler {
+			return ec.marshalNTalentProfile2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐTalentProfile(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_setMyRates(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_TalentProfile(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setMyRates_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_connectMyPayoutAccount(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_connectMyPayoutAccount(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().ConnectMyPayoutAccount(ctx, fc.Args["input"].(model.ConnectPayoutInput))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				code, err := ec.unmarshalNString2string(ctx, "talent")
+				if err != nil {
+					var zeroVal *model.PayoutAccount
+					return zeroVal, err
+				}
+				if ec.Directives.HasRole == nil {
+					var zeroVal *model.PayoutAccount
+					return zeroVal, errors.New("directive hasRole is not implemented")
+				}
+				return ec.Directives.HasRole(ctx, nil, directive0, code)
+			}
+
+			next = directive1
+			return next
+		},
+		func(ctx context.Context, selections ast.SelectionSet, v *model.PayoutAccount) graphql.Marshaler {
+			return ec.marshalNPayoutAccount2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐPayoutAccount(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_connectMyPayoutAccount(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_PayoutAccount(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_connectMyPayoutAccount_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PayoutAccount_settlementType(ctx context.Context, field graphql.CollectedField, obj *model.PayoutAccount) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PayoutAccount_settlementType(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.SettlementType, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.SettlementType) graphql.Marshaler {
+			return ec.marshalNSettlementType2githubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐSettlementType(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PayoutAccount_settlementType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PayoutAccount", field, false, false, errors.New("field of type SettlementType does not have child fields"))
+}
+
+func (ec *executionContext) _PayoutAccount_bankName(ctx context.Context, field graphql.CollectedField, obj *model.PayoutAccount) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PayoutAccount_bankName(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.BankName, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PayoutAccount_bankName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PayoutAccount", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _PayoutAccount_accountNumberLast4(ctx context.Context, field graphql.CollectedField, obj *model.PayoutAccount) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PayoutAccount_accountNumberLast4(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.AccountNumberLast4, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PayoutAccount_accountNumberLast4(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PayoutAccount", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _PayoutAccount_accountName(ctx context.Context, field graphql.CollectedField, obj *model.PayoutAccount) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PayoutAccount_accountName(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.AccountName, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PayoutAccount_accountName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PayoutAccount", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
 func (ec *executionContext) _Query_health(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -2709,6 +3188,168 @@ func (ec *executionContext) fieldContext_Query_talent(ctx context.Context, field
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_myTalentProfile(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_myTalentProfile(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().MyTalentProfile(ctx)
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				code, err := ec.unmarshalNString2string(ctx, "talent")
+				if err != nil {
+					var zeroVal *model.TalentProfile
+					return zeroVal, err
+				}
+				if ec.Directives.HasRole == nil {
+					var zeroVal *model.TalentProfile
+					return zeroVal, errors.New("directive hasRole is not implemented")
+				}
+				return ec.Directives.HasRole(ctx, nil, directive0, code)
+			}
+
+			next = directive1
+			return next
+		},
+		func(ctx context.Context, selections ast.SelectionSet, v *model.TalentProfile) graphql.Marshaler {
+			return ec.marshalOTalentProfile2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐTalentProfile(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Query_myTalentProfile(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_TalentProfile(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_settlementBanks(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_settlementBanks(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().SettlementBanks(ctx, fc.Args["type"].(model.SettlementType))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				code, err := ec.unmarshalNString2string(ctx, "talent")
+				if err != nil {
+					var zeroVal []*model.SettlementBank
+					return zeroVal, err
+				}
+				if ec.Directives.HasRole == nil {
+					var zeroVal []*model.SettlementBank
+					return zeroVal, errors.New("directive hasRole is not implemented")
+				}
+				return ec.Directives.HasRole(ctx, nil, directive0, code)
+			}
+
+			next = directive1
+			return next
+		},
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.SettlementBank) graphql.Marshaler {
+			return ec.marshalNSettlementBank2ᚕᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐSettlementBankᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_settlementBanks(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_SettlementBank(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_settlementBanks_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_myPayoutAccount(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_myPayoutAccount(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().MyPayoutAccount(ctx)
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				code, err := ec.unmarshalNString2string(ctx, "talent")
+				if err != nil {
+					var zeroVal *model.PayoutAccount
+					return zeroVal, err
+				}
+				if ec.Directives.HasRole == nil {
+					var zeroVal *model.PayoutAccount
+					return zeroVal, errors.New("directive hasRole is not implemented")
+				}
+				return ec.Directives.HasRole(ctx, nil, directive0, code)
+			}
+
+			next = directive1
+			return next
+		},
+		func(ctx context.Context, selections ast.SelectionSet, v *model.PayoutAccount) graphql.Marshaler {
+			return ec.marshalOPayoutAccount2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐPayoutAccount(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Query_myPayoutAccount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_PayoutAccount(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -2875,6 +3516,52 @@ func (ec *executionContext) _Rate_eventTypeCode(ctx context.Context, field graph
 }
 func (ec *executionContext) fieldContext_Rate_eventTypeCode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("Rate", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _SettlementBank_name(ctx context.Context, field graphql.CollectedField, obj *model.SettlementBank) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SettlementBank_name(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_SettlementBank_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SettlementBank", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _SettlementBank_code(ctx context.Context, field graphql.CollectedField, obj *model.SettlementBank) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SettlementBank_code(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Code, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_SettlementBank_code(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SettlementBank", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) _Tag_code(ctx context.Context, field graphql.CollectedField, obj *model.Tag) (ret graphql.Marshaler) {
@@ -4615,6 +5302,57 @@ func (ec *executionContext) fieldContext___Type_isOneOf(_ context.Context, field
 
 // region    **************************** input.gotpl *****************************
 
+func (ec *executionContext) unmarshalInputConnectPayoutInput(ctx context.Context, obj any) (model.ConnectPayoutInput, error) {
+	var it model.ConnectPayoutInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"businessName", "settlementType", "bankCode", "accountNumber"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "businessName":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("businessName"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BusinessName = data
+		case "settlementType":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("settlementType"))
+			data, err := ec.unmarshalNSettlementType2githubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐSettlementType(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SettlementType = data
+		case "bankCode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bankCode"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BankCode = data
+		case "accountNumber":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("accountNumber"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AccountNumber = data
+		}
+	}
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputLoginInput(ctx context.Context, obj any) (model.LoginInput, error) {
 	var it model.LoginInput
 	if obj == nil {
@@ -4647,6 +5385,57 @@ func (ec *executionContext) unmarshalInputLoginInput(ctx context.Context, obj an
 				return it, err
 			}
 			it.Password = data
+		}
+	}
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputRateInput(ctx context.Context, obj any) (model.RateInput, error) {
+	var it model.RateInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"amount", "currencyCode", "rateUnitCode", "eventTypeCode"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "amount":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("amount"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Amount = data
+		case "currencyCode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCode"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCode = data
+		case "rateUnitCode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("rateUnitCode"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RateUnitCode = data
+		case "eventTypeCode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("eventTypeCode"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EventTypeCode = data
 		}
 	}
 	return it, nil
@@ -4756,6 +5545,78 @@ func (ec *executionContext) unmarshalInputTalentFilter(ctx context.Context, obj 
 				return it, err
 			}
 			it.PlaceCode = data
+		}
+	}
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputUpdateTalentProfileInput(ctx context.Context, obj any) (model.UpdateTalentProfileInput, error) {
+	var it model.UpdateTalentProfileInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"headline", "bio", "homePlaceCode", "genreCodes", "typeCodes", "languageCodes", "serviceAreaCodes"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "headline":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("headline"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Headline = data
+		case "bio":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bio"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Bio = data
+		case "homePlaceCode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("homePlaceCode"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HomePlaceCode = data
+		case "genreCodes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("genreCodes"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.GenreCodes = data
+		case "typeCodes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("typeCodes"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TypeCodes = data
+		case "languageCodes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("languageCodes"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.LanguageCodes = data
+		case "serviceAreaCodes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serviceAreaCodes"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ServiceAreaCodes = data
 		}
 	}
 	return it, nil
@@ -5099,6 +5960,80 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "updateMyTalentProfile":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateMyTalentProfile(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "setMyRates":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setMyRates(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "connectMyPayoutAccount":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_connectMyPayoutAccount(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var payoutAccountImplementors = []string{"PayoutAccount"}
+
+func (ec *executionContext) _PayoutAccount(ctx context.Context, sel ast.SelectionSet, obj *model.PayoutAccount) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, payoutAccountImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PayoutAccount")
+		case "settlementType":
+			out.Values[i] = ec._PayoutAccount_settlementType(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "bankName":
+			out.Values[i] = ec._PayoutAccount_bankName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "accountNumberLast4":
+			out.Values[i] = ec._PayoutAccount_accountNumberLast4(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "accountName":
+			out.Values[i] = ec._PayoutAccount_accountName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -5404,6 +6339,72 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "myTalentProfile":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_myTalentProfile(ctx, field)
+				if res == graphql.RequiredNull {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "settlementBanks":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_settlementBanks(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "myPayoutAccount":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_myPayoutAccount(ctx, field)
+				if res == graphql.RequiredNull {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "__type":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Query___type(ctx, field)
@@ -5469,6 +6470,49 @@ func (ec *executionContext) _Rate(ctx context.Context, sel ast.SelectionSet, obj
 		case "eventTypeCode":
 			out.Values[i] = ec._Rate_eventTypeCode(ctx, field, obj)
 			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var settlementBankImplementors = []string{"SettlementBank"}
+
+func (ec *executionContext) _SettlementBank(ctx context.Context, sel ast.SelectionSet, obj *model.SettlementBank) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, settlementBankImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SettlementBank")
+		case "name":
+			out.Values[i] = ec._SettlementBank_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "code":
+			out.Values[i] = ec._SettlementBank_code(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		default:
@@ -6205,6 +7249,11 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	return res
 }
 
+func (ec *executionContext) unmarshalNConnectPayoutInput2githubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐConnectPayoutInput(ctx context.Context, v any) (model.ConnectPayoutInput, error) {
+	res, err := ec.unmarshalInputConnectPayoutInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNCountry2ᚕᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐCountryᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Country) graphql.Marshaler {
 	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
 		fc := graphql.GetFieldContext(ctx)
@@ -6340,6 +7389,16 @@ func (ec *executionContext) marshalNLookupTable2githubᚗcomᚋblingyplusᚋagro
 	return v
 }
 
+func (ec *executionContext) marshalNPayoutAccount2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐPayoutAccount(ctx context.Context, sel ast.SelectionSet, v *model.PayoutAccount) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PayoutAccount(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNRate2ᚕᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐRateᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Rate) graphql.Marshaler {
 	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
 		fc := graphql.GetFieldContext(ctx)
@@ -6366,9 +7425,64 @@ func (ec *executionContext) marshalNRate2ᚖgithubᚗcomᚋblingyplusᚋagrofie�
 	return ec._Rate(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNRateInput2ᚕᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐRateInputᚄ(ctx context.Context, v any) ([]*model.RateInput, error) {
+	vSlice := graphql.CoerceList(v)
+	var err error
+	res := make([]*model.RateInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNRateInput2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐRateInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalNRateInput2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐRateInput(ctx context.Context, v any) (*model.RateInput, error) {
+	res, err := ec.unmarshalInputRateInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNRegisterInput2githubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐRegisterInput(ctx context.Context, v any) (model.RegisterInput, error) {
 	res, err := ec.unmarshalInputRegisterInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNSettlementBank2ᚕᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐSettlementBankᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.SettlementBank) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNSettlementBank2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐSettlementBank(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNSettlementBank2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐSettlementBank(ctx context.Context, sel ast.SelectionSet, v *model.SettlementBank) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._SettlementBank(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNSettlementType2githubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐSettlementType(ctx context.Context, v any) (model.SettlementType, error) {
+	var res model.SettlementType
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNSettlementType2githubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐSettlementType(ctx context.Context, sel ast.SelectionSet, v model.SettlementType) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) unmarshalNString2string(ctx context.Context, v any) (string, error) {
@@ -6476,6 +7590,21 @@ func (ec *executionContext) marshalNTalentPage2ᚖgithubᚗcomᚋblingyplusᚋag
 		return graphql.Null
 	}
 	return ec._TalentPage(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNTalentProfile2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐTalentProfile(ctx context.Context, sel ast.SelectionSet, v *model.TalentProfile) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._TalentProfile(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNUpdateTalentProfileInput2githubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐUpdateTalentProfileInput(ctx context.Context, v any) (model.UpdateTalentProfileInput, error) {
+	res, err := ec.unmarshalInputUpdateTalentProfileInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNUser2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐUser(ctx context.Context, sel ast.SelectionSet, v *model.User) graphql.Marshaler {
@@ -6674,6 +7803,13 @@ func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.Sele
 	_ = ctx
 	res := graphql.MarshalInt(*v)
 	return res
+}
+
+func (ec *executionContext) marshalOPayoutAccount2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐPayoutAccount(ctx context.Context, sel ast.SelectionSet, v *model.PayoutAccount) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._PayoutAccount(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalORate2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐRate(ctx context.Context, sel ast.SelectionSet, v *model.Rate) graphql.Marshaler {
