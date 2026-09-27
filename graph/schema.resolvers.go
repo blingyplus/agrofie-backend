@@ -218,6 +218,11 @@ func (r *queryResolver) BookingStatuses(ctx context.Context, activeOnly *bool) (
 	return listLookups(ctx, boolOr(activeOnly, true), r.Lookups.BookingStatuses)
 }
 
+// RateUnits is the resolver for the rateUnits field.
+func (r *queryResolver) RateUnits(ctx context.Context, activeOnly *bool) ([]*model.Lookup, error) {
+	panic(fmt.Errorf("not implemented: RateUnits - rateUnits"))
+}
+
 // SearchTalent is the resolver for the searchTalent field.
 func (r *queryResolver) SearchTalent(ctx context.Context, filter *model.TalentFilter, first *int, after *string) (*model.TalentPage, error) {
 	page, err := r.Discovery.Search(ctx, toDiscoveryFilter(filter), intOr(first, 0), stringOr(after, ""))

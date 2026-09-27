@@ -105,6 +105,7 @@ type ComplexityRoot struct {
 		Me              func(childComplexity int) int
 		MyPayoutAccount func(childComplexity int) int
 		MyTalentProfile func(childComplexity int) int
+		RateUnits       func(childComplexity int, activeOnly *bool) int
 		Roles           func(childComplexity int, activeOnly *bool) int
 		SearchTalent    func(childComplexity int, filter *model.TalentFilter, first *int, after *string) int
 		SettlementBanks func(childComplexity int, typeArg model.SettlementType) int
@@ -191,6 +192,7 @@ type QueryResolver interface {
 	Languages(ctx context.Context, activeOnly *bool) ([]*model.Lookup, error)
 	Roles(ctx context.Context, activeOnly *bool) ([]*model.Lookup, error)
 	BookingStatuses(ctx context.Context, activeOnly *bool) ([]*model.Lookup, error)
+	RateUnits(ctx context.Context, activeOnly *bool) ([]*model.Lookup, error)
 	SearchTalent(ctx context.Context, filter *model.TalentFilter, first *int, after *string) (*model.TalentPage, error)
 	Talent(ctx context.Context, id string) (*model.TalentProfile, error)
 	MyTalentProfile(ctx context.Context) (*model.TalentProfile, error)
@@ -553,6 +555,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.MyTalentProfile(childComplexity), true
+	case "Query.rateUnits":
+		if e.ComplexityRoot.Query.RateUnits == nil {
+			break
+		}
+
+		args, err := ec.field_Query_rateUnits_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.RateUnits(childComplexity, args["activeOnly"].(*bool)), true
 	case "Query.roles":
 		if e.ComplexityRoot.Query.Roles == nil {
 			break
@@ -1471,6 +1484,20 @@ func (ec *executionContext) field_Query_geoPlaces_args(ctx context.Context, rawA
 }
 
 func (ec *executionContext) field_Query_languages_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "activeOnly",
+		func(ctx context.Context, v any) (*bool, error) {
+			return ec.unmarshalOBoolean2ᚖbool(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["activeOnly"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_rateUnits_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "activeOnly",
@@ -3094,6 +3121,50 @@ func (ec *executionContext) fieldContext_Query_bookingStatuses(ctx context.Conte
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_bookingStatuses_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_rateUnits(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_rateUnits(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().RateUnits(ctx, fc.Args["activeOnly"].(*bool))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.Lookup) graphql.Marshaler {
+			return ec.marshalNLookup2ᚕᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐLookupᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_rateUnits(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Lookup(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_rateUnits_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -6283,6 +6354,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_bookingStatuses(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "rateUnits":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_rateUnits(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}

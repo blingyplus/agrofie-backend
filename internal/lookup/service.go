@@ -108,6 +108,16 @@ func (s *Service) Languages(ctx context.Context, activeOnly bool) ([]Item, error
 	}), nil
 }
 
+func (s *Service) RateUnits(ctx context.Context, activeOnly bool) ([]Item, error) {
+	rows, err := s.q.ListRateUnits(ctx, activeOnly)
+	if err != nil {
+		return nil, err
+	}
+	return itemsFrom(rows, func(r db.ListRateUnitsRow) Item {
+		return Item{ID: idString(r.ID), Code: r.Code, Name: r.Name, SortOrder: r.SortOrder, IsActive: r.IsActive}
+	}), nil
+}
+
 func (s *Service) Roles(ctx context.Context, activeOnly bool) ([]Item, error) {
 	rows, err := s.q.ListRoles(ctx, activeOnly)
 	if err != nil {

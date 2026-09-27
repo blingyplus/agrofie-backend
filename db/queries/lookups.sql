@@ -156,3 +156,9 @@ SET is_active = sqlc.arg(is_active), updated_at = now()
 WHERE code = sqlc.arg(code)
 RETURNING id, code, name, sort_order, is_active;
 
+
+-- name: ListRateUnits :many
+SELECT id, code, name, sort_order, is_active
+FROM rate_units
+WHERE (sqlc.arg(active_only)::bool = false OR is_active = true)
+ORDER BY sort_order, name;

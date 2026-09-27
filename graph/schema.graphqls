@@ -17,6 +17,7 @@ type Query {
   languages(activeOnly: Boolean = true): [Lookup!]!
   roles(activeOnly: Boolean = true): [Lookup!]!
   bookingStatuses(activeOnly: Boolean = true): [Lookup!]!
+  rateUnits(activeOnly: Boolean = true): [Lookup!]!
 
   """Searchable, active talent, newest first. Never exposes contact details."""
   searchTalent(filter: TalentFilter, first: Int = 20, after: String): TalentPage!

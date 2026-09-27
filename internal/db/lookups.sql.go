@@ -281,6 +281,47 @@ func (q *Queries) ListLanguages(ctx context.Context, activeOnly bool) ([]ListLan
 	return items, nil
 }
 
+const listRateUnits = `-- name: ListRateUnits :many
+SELECT id, code, name, sort_order, is_active
+FROM rate_units
+WHERE ($1::bool = false OR is_active = true)
+ORDER BY sort_order, name
+`
+
+type ListRateUnitsRow struct {
+	ID        pgtype.UUID `json:"id"`
+	Code      string      `json:"code"`
+	Name      string      `json:"name"`
+	SortOrder int32       `json:"sort_order"`
+	IsActive  bool        `json:"is_active"`
+}
+
+func (q *Queries) ListRateUnits(ctx context.Context, activeOnly bool) ([]ListRateUnitsRow, error) {
+	rows, err := q.db.Query(ctx, listRateUnits, activeOnly)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListRateUnitsRow{}
+	for rows.Next() {
+		var i ListRateUnitsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Code,
+			&i.Name,
+			&i.SortOrder,
+			&i.IsActive,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRoles = `-- name: ListRoles :many
 SELECT id, code, name, sort_order, is_active
 FROM roles
