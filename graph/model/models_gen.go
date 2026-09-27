@@ -9,9 +9,33 @@ import (
 	"strconv"
 )
 
+// Dates and times are ISO 8601 strings (e.g. "2026-11-01T00:00:00Z").
+type AddAvailabilityBlockInput struct {
+	StartsAt    string  `json:"startsAt"`
+	EndsAt      string  `json:"endsAt"`
+	IsAvailable bool    `json:"isAvailable"`
+	Note        *string `json:"note,omitempty"`
+}
+
 type AuthPayload struct {
 	SessionToken string `json:"sessionToken"`
 	User         *User  `json:"user"`
+}
+
+type AvailabilityBlock struct {
+	ID          string  `json:"id"`
+	StartsAt    string  `json:"startsAt"`
+	EndsAt      string  `json:"endsAt"`
+	IsAvailable bool    `json:"isAvailable"`
+	Note        *string `json:"note,omitempty"`
+}
+
+// Public-safe: no note.
+type AvailabilityWindow struct {
+	ID          string `json:"id"`
+	StartsAt    string `json:"startsAt"`
+	EndsAt      string `json:"endsAt"`
+	IsAvailable bool   `json:"isAvailable"`
 }
 
 type ConnectPayoutInput struct {

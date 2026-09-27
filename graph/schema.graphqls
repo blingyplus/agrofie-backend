@@ -38,6 +38,12 @@ type Query {
 
   """The caller's own payout account, if connected. Requires the talent role."""
   myPayoutAccount: PayoutAccount @hasRole(code: "talent")
+
+  """The caller's own published availability, including blackout blocks and notes, in [from, to)."""
+  myAvailability(from: String!, to: String!): [AvailabilityBlock!]! @hasRole(code: "talent")
+
+  """A talent's public availability windows in [from, to). No notes."""
+  talentAvailability(talentId: ID!, from: String!, to: String!): [AvailabilityWindow!]!
 }
 
 type Mutation {
@@ -66,6 +72,12 @@ type Mutation {
 
   """Reject a pending verification. Requires the admin role."""
   rejectVerification(id: ID!, reviewNotes: String): Verification! @hasRole(code: "admin")
+
+  """Publish a window as available, or carve out a blackout, on the caller's own profile."""
+  addMyAvailabilityBlock(input: AddAvailabilityBlockInput!): AvailabilityBlock! @hasRole(code: "talent")
+
+  """Remove one of the caller's own availability blocks."""
+  removeMyAvailabilityBlock(id: ID!): Boolean! @hasRole(code: "talent")
 }
 
 input RegisterInput {
@@ -258,4 +270,28 @@ type PendingVerification {
   typeName: String!
   evidenceRef: String
   notes: String
+}
+
+"""Dates and times are ISO 8601 strings (e.g. "2026-11-01T00:00:00Z")."""
+input AddAvailabilityBlockInput {
+  startsAt: String!
+  endsAt: String!
+  isAvailable: Boolean!
+  note: String
+}
+
+type AvailabilityBlock {
+  id: ID!
+  startsAt: String!
+  endsAt: String!
+  isAvailable: Boolean!
+  note: String
+}
+
+"""Public-safe: no note."""
+type AvailabilityWindow {
+  id: ID!
+  startsAt: String!
+  endsAt: String!
+  isAvailable: Boolean!
 }

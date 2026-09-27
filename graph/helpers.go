@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"connectrpc.com/connect"
 	agrofierv1 "github.com/blingyplus/agrofie-backend/gen/agrofie/v1"
 	"github.com/blingyplus/agrofie-backend/graph/model"
+	"github.com/blingyplus/agrofie-backend/internal/availability"
 	"github.com/blingyplus/agrofie-backend/internal/discovery"
 	"github.com/blingyplus/agrofie-backend/internal/lookup"
 	"github.com/blingyplus/agrofie-backend/internal/payments"
@@ -274,5 +276,46 @@ func toModelVerification(v *verification.Verification) *model.Verification {
 		ID: v.ID, TypeCode: v.TypeCode, TypeName: v.TypeName,
 		StatusCode: v.StatusCode, StatusName: v.StatusName,
 		EvidenceRef: v.EvidenceRef, Notes: v.Notes, ReviewNotes: v.ReviewNotes,
+	}
+}
+
+func mapAvailabilityErr(err error) error {
+	switch {
+	case errors.Is(err, availability.ErrInvalidRange), errors.Is(err, availability.ErrInvalidInput):
+		return &gqlerror.Error{Message: err.Error(), Extensions: map[string]any{"code": "BAD_USER_INPUT"}}
+	case errors.Is(err, availability.ErrNotFound):
+		return &gqlerror.Error{Message: "availability block not found", Extensions: map[string]any{"code": "NOT_FOUND"}}
+	case errors.Is(err, availability.ErrNotTalent):
+		return &gqlerror.Error{Message: "forbidden: no talent profile", Extensions: map[string]any{"code": "FORBIDDEN"}}
+	default:
+		return err
+	}
+}
+
+// parseRange parses the ISO 8601 `from`/`to` strings GraphQL clients send.
+func parseRange(from, to string) (time.Time, time.Time, error) {
+	f, err := time.Parse(time.RFC3339, from)
+	if err != nil {
+		return time.Time{}, time.Time{}, fmt.Errorf("%w: invalid `from` date", availability.ErrInvalidInput)
+	}
+	t, err := time.Parse(time.RFC3339, to)
+	if err != nil {
+		return time.Time{}, time.Time{}, fmt.Errorf("%w: invalid `to` date", availability.ErrInvalidInput)
+	}
+	return f, t, nil
+}
+
+func toAddBlockInput(in model.AddAvailabilityBlockInput) (availability.AddBlockInput, error) {
+	starts, ends, err := parseRange(in.StartsAt, in.EndsAt)
+	if err != nil {
+		return availability.AddBlockInput{}, err
+	}
+	return availability.AddBlockInput{StartsAt: starts, EndsAt: ends, IsAvailable: in.IsAvailable, Note: in.Note}, nil
+}
+
+func toModelAvailabilityBlock(b *availability.Block) *model.AvailabilityBlock {
+	return &model.AvailabilityBlock{
+		ID: b.ID, StartsAt: b.StartsAt.Format(time.RFC3339), EndsAt: b.EndsAt.Format(time.RFC3339),
+		IsAvailable: b.IsAvailable, Note: b.Note,
 	}
 }

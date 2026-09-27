@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/blingyplus/agrofie-backend/gen/agrofie/v1/agrofierv1connect"
+	"github.com/blingyplus/agrofie-backend/internal/availability"
 	"github.com/blingyplus/agrofie-backend/internal/discovery"
 	"github.com/blingyplus/agrofie-backend/internal/lookup"
 	"github.com/blingyplus/agrofie-backend/internal/talentprofile"
@@ -18,6 +19,7 @@ type Resolver struct {
 	Discovery      *discovery.Service
 	TalentProfiles *talentprofile.Service
 	Verifications  *verification.Service
+	Availability   *availability.Service
 	Prober         HealthProber
 	AuthClient     agrofierv1connect.AuthServiceClient
 }

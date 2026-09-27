@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"connectrpc.com/connect"
 	agrofierv1 "github.com/blingyplus/agrofie-backend/gen/agrofie/v1"
@@ -142,6 +143,29 @@ func (r *mutationResolver) RejectVerification(ctx context.Context, id string, re
 		return nil, mapVerificationErr(err)
 	}
 	return toModelVerification(v), nil
+}
+
+// AddMyAvailabilityBlock is the resolver for the addMyAvailabilityBlock field.
+func (r *mutationResolver) AddMyAvailabilityBlock(ctx context.Context, input model.AddAvailabilityBlockInput) (*model.AvailabilityBlock, error) {
+	p, _ := gqlauth.FromContext(ctx)
+	in, err := toAddBlockInput(input)
+	if err != nil {
+		return nil, mapAvailabilityErr(err)
+	}
+	block, err := r.Availability.AddBlock(ctx, p.UserID, in)
+	if err != nil {
+		return nil, mapAvailabilityErr(err)
+	}
+	return toModelAvailabilityBlock(block), nil
+}
+
+// RemoveMyAvailabilityBlock is the resolver for the removeMyAvailabilityBlock field.
+func (r *mutationResolver) RemoveMyAvailabilityBlock(ctx context.Context, id string) (bool, error) {
+	p, _ := gqlauth.FromContext(ctx)
+	if err := r.Availability.RemoveBlock(ctx, p.UserID, id); err != nil {
+		return false, mapAvailabilityErr(err)
+	}
+	return true, nil
 }
 
 // Health is the resolver for the health field.
@@ -343,6 +367,44 @@ func (r *queryResolver) MyPayoutAccount(ctx context.Context) (*model.PayoutAccou
 		return nil, mapTalentProfileErr(err)
 	}
 	return toModelPayoutAccount(out), nil
+}
+
+// MyAvailability is the resolver for the myAvailability field.
+func (r *queryResolver) MyAvailability(ctx context.Context, from string, to string) ([]*model.AvailabilityBlock, error) {
+	p, _ := gqlauth.FromContext(ctx)
+	fromT, toT, err := parseRange(from, to)
+	if err != nil {
+		return nil, mapAvailabilityErr(err)
+	}
+	blocks, err := r.Availability.ListMine(ctx, p.UserID, fromT, toT)
+	if err != nil {
+		return nil, mapAvailabilityErr(err)
+	}
+	out := make([]*model.AvailabilityBlock, 0, len(blocks))
+	for _, b := range blocks {
+		b := b
+		out = append(out, toModelAvailabilityBlock(&b))
+	}
+	return out, nil
+}
+
+// TalentAvailability is the resolver for the talentAvailability field.
+func (r *queryResolver) TalentAvailability(ctx context.Context, talentID string, from string, to string) ([]*model.AvailabilityWindow, error) {
+	fromT, toT, err := parseRange(from, to)
+	if err != nil {
+		return nil, mapAvailabilityErr(err)
+	}
+	windows, err := r.Availability.ListForTalent(ctx, talentID, fromT, toT)
+	if err != nil {
+		return nil, mapAvailabilityErr(err)
+	}
+	out := make([]*model.AvailabilityWindow, 0, len(windows))
+	for _, w := range windows {
+		out = append(out, &model.AvailabilityWindow{
+			ID: w.ID, StartsAt: w.StartsAt.Format(time.RFC3339), EndsAt: w.EndsAt.Format(time.RFC3339), IsAvailable: w.IsAvailable,
+		})
+	}
+	return out, nil
 }
 
 // Mutation returns MutationResolver implementation.

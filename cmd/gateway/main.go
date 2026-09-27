@@ -11,6 +11,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/blingyplus/agrofie-backend/graph"
 	"github.com/blingyplus/agrofie-backend/graph/gqlauth"
+	"github.com/blingyplus/agrofie-backend/internal/availability"
 	"github.com/blingyplus/agrofie-backend/internal/config"
 	"github.com/blingyplus/agrofie-backend/internal/db"
 	"github.com/blingyplus/agrofie-backend/internal/discovery"
@@ -46,6 +47,7 @@ func main() {
 	}
 	talentProfiles := talentprofile.NewService(pool, paymentsProvider, cfg.CommissionPercent)
 	verifications := verification.NewService(pool)
+	availabilitySvc := availability.NewService(pool)
 
 	prober := probe.NewConnectProber(cfg.AuthURL, cfg.BookingURL, cfg.PaymentsURL)
 	authClient := graph.NewAuthClient(cfg.AuthURL)
@@ -54,6 +56,7 @@ func main() {
 		Discovery:      discoverySvc,
 		TalentProfiles: talentProfiles,
 		Verifications:  verifications,
+		Availability:   availabilitySvc,
 		Prober:         prober,
 		AuthClient:     authClient,
 	}

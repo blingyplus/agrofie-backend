@@ -44,6 +44,21 @@ type ComplexityRoot struct {
 		User         func(childComplexity int) int
 	}
 
+	AvailabilityBlock struct {
+		EndsAt      func(childComplexity int) int
+		ID          func(childComplexity int) int
+		IsAvailable func(childComplexity int) int
+		Note        func(childComplexity int) int
+		StartsAt    func(childComplexity int) int
+	}
+
+	AvailabilityWindow struct {
+		EndsAt      func(childComplexity int) int
+		ID          func(childComplexity int) int
+		IsAvailable func(childComplexity int) int
+		StartsAt    func(childComplexity int) int
+	}
+
 	Country struct {
 		Code     func(childComplexity int) int
 		ID       func(childComplexity int) int
@@ -77,17 +92,19 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		ApproveVerification    func(childComplexity int, id string, reviewNotes *string) int
-		ConnectMyPayoutAccount func(childComplexity int, input model.ConnectPayoutInput) int
-		Login                  func(childComplexity int, input model.LoginInput) int
-		Logout                 func(childComplexity int) int
-		Register               func(childComplexity int, input model.RegisterInput) int
-		RejectVerification     func(childComplexity int, id string, reviewNotes *string) int
-		SetLookupActive        func(childComplexity int, table model.LookupTable, code string, isActive bool) int
-		SetMyRates             func(childComplexity int, rates []*model.RateInput) int
-		SubmitVerification     func(childComplexity int, input model.SubmitVerificationInput) int
-		UpdateLookupName       func(childComplexity int, table model.LookupTable, code string, name string) int
-		UpdateMyTalentProfile  func(childComplexity int, input model.UpdateTalentProfileInput) int
+		AddMyAvailabilityBlock    func(childComplexity int, input model.AddAvailabilityBlockInput) int
+		ApproveVerification       func(childComplexity int, id string, reviewNotes *string) int
+		ConnectMyPayoutAccount    func(childComplexity int, input model.ConnectPayoutInput) int
+		Login                     func(childComplexity int, input model.LoginInput) int
+		Logout                    func(childComplexity int) int
+		Register                  func(childComplexity int, input model.RegisterInput) int
+		RejectVerification        func(childComplexity int, id string, reviewNotes *string) int
+		RemoveMyAvailabilityBlock func(childComplexity int, id string) int
+		SetLookupActive           func(childComplexity int, table model.LookupTable, code string, isActive bool) int
+		SetMyRates                func(childComplexity int, rates []*model.RateInput) int
+		SubmitVerification        func(childComplexity int, input model.SubmitVerificationInput) int
+		UpdateLookupName          func(childComplexity int, table model.LookupTable, code string, name string) int
+		UpdateMyTalentProfile     func(childComplexity int, input model.UpdateTalentProfileInput) int
 	}
 
 	PayoutAccount struct {
@@ -116,6 +133,7 @@ type ComplexityRoot struct {
 		Health               func(childComplexity int) int
 		Languages            func(childComplexity int, activeOnly *bool) int
 		Me                   func(childComplexity int) int
+		MyAvailability       func(childComplexity int, from string, to string) int
 		MyPayoutAccount      func(childComplexity int) int
 		MyTalentProfile      func(childComplexity int) int
 		MyVerifications      func(childComplexity int) int
@@ -125,6 +143,7 @@ type ComplexityRoot struct {
 		SearchTalent         func(childComplexity int, filter *model.TalentFilter, first *int, after *string) int
 		SettlementBanks      func(childComplexity int, typeArg model.SettlementType) int
 		Talent               func(childComplexity int, id string) int
+		TalentAvailability   func(childComplexity int, talentID string, from string, to string) int
 		TalentTypes          func(childComplexity int, activeOnly *bool) int
 		VerificationTypes    func(childComplexity int, activeOnly *bool) int
 	}
@@ -210,6 +229,8 @@ type MutationResolver interface {
 	SubmitVerification(ctx context.Context, input model.SubmitVerificationInput) (*model.Verification, error)
 	ApproveVerification(ctx context.Context, id string, reviewNotes *string) (*model.Verification, error)
 	RejectVerification(ctx context.Context, id string, reviewNotes *string) (*model.Verification, error)
+	AddMyAvailabilityBlock(ctx context.Context, input model.AddAvailabilityBlockInput) (*model.AvailabilityBlock, error)
+	RemoveMyAvailabilityBlock(ctx context.Context, id string) (bool, error)
 }
 type QueryResolver interface {
 	Health(ctx context.Context) (*model.Health, error)
@@ -231,6 +252,8 @@ type QueryResolver interface {
 	MyTalentProfile(ctx context.Context) (*model.TalentProfile, error)
 	SettlementBanks(ctx context.Context, typeArg model.SettlementType) ([]*model.SettlementBank, error)
 	MyPayoutAccount(ctx context.Context) (*model.PayoutAccount, error)
+	MyAvailability(ctx context.Context, from string, to string) ([]*model.AvailabilityBlock, error)
+	TalentAvailability(ctx context.Context, talentID string, from string, to string) ([]*model.AvailabilityWindow, error)
 }
 
 // endregion ************************** generated!.gotpl **************************
@@ -263,6 +286,62 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.AuthPayload.User(childComplexity), true
+
+	case "AvailabilityBlock.endsAt":
+		if e.ComplexityRoot.AvailabilityBlock.EndsAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AvailabilityBlock.EndsAt(childComplexity), true
+	case "AvailabilityBlock.id":
+		if e.ComplexityRoot.AvailabilityBlock.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AvailabilityBlock.ID(childComplexity), true
+	case "AvailabilityBlock.isAvailable":
+		if e.ComplexityRoot.AvailabilityBlock.IsAvailable == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AvailabilityBlock.IsAvailable(childComplexity), true
+	case "AvailabilityBlock.note":
+		if e.ComplexityRoot.AvailabilityBlock.Note == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AvailabilityBlock.Note(childComplexity), true
+	case "AvailabilityBlock.startsAt":
+		if e.ComplexityRoot.AvailabilityBlock.StartsAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AvailabilityBlock.StartsAt(childComplexity), true
+
+	case "AvailabilityWindow.endsAt":
+		if e.ComplexityRoot.AvailabilityWindow.EndsAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AvailabilityWindow.EndsAt(childComplexity), true
+	case "AvailabilityWindow.id":
+		if e.ComplexityRoot.AvailabilityWindow.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AvailabilityWindow.ID(childComplexity), true
+	case "AvailabilityWindow.isAvailable":
+		if e.ComplexityRoot.AvailabilityWindow.IsAvailable == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AvailabilityWindow.IsAvailable(childComplexity), true
+	case "AvailabilityWindow.startsAt":
+		if e.ComplexityRoot.AvailabilityWindow.StartsAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AvailabilityWindow.StartsAt(childComplexity), true
 
 	case "Country.code":
 		if e.ComplexityRoot.Country.Code == nil {
@@ -388,6 +467,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Lookup.SortOrder(childComplexity), true
 
+	case "Mutation.addMyAvailabilityBlock":
+		if e.ComplexityRoot.Mutation.AddMyAvailabilityBlock == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_addMyAvailabilityBlock_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.AddMyAvailabilityBlock(childComplexity, args["input"].(model.AddAvailabilityBlockInput)), true
 	case "Mutation.approveVerification":
 		if e.ComplexityRoot.Mutation.ApproveVerification == nil {
 			break
@@ -449,6 +539,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.RejectVerification(childComplexity, args["id"].(string), args["reviewNotes"].(*string)), true
+	case "Mutation.removeMyAvailabilityBlock":
+		if e.ComplexityRoot.Mutation.RemoveMyAvailabilityBlock == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_removeMyAvailabilityBlock_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.RemoveMyAvailabilityBlock(childComplexity, args["id"].(string)), true
 	case "Mutation.setLookupActive":
 		if e.ComplexityRoot.Mutation.SetLookupActive == nil {
 			break
@@ -652,6 +753,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.Me(childComplexity), true
+	case "Query.myAvailability":
+		if e.ComplexityRoot.Query.MyAvailability == nil {
+			break
+		}
+
+		args, err := ec.field_Query_myAvailability_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.MyAvailability(childComplexity, args["from"].(string), args["to"].(string)), true
 	case "Query.myPayoutAccount":
 		if e.ComplexityRoot.Query.MyPayoutAccount == nil {
 			break
@@ -731,6 +843,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.Talent(childComplexity, args["id"].(string)), true
+	case "Query.talentAvailability":
+		if e.ComplexityRoot.Query.TalentAvailability == nil {
+			break
+		}
+
+		args, err := ec.field_Query_talentAvailability_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.TalentAvailability(childComplexity, args["talentId"].(string), args["from"].(string), args["to"].(string)), true
 	case "Query.talentTypes":
 		if e.ComplexityRoot.Query.TalentTypes == nil {
 			break
@@ -1010,6 +1133,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	opCtx := graphql.GetOperationContext(ctx)
 	ec := newExecutionContext(opCtx, e, make(chan graphql.DeferredResult))
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
+		ec.unmarshalInputAddAvailabilityBlockInput,
 		ec.unmarshalInputConnectPayoutInput,
 		ec.unmarshalInputLoginInput,
 		ec.unmarshalInputRateInput,
@@ -1119,6 +1243,36 @@ func (ec *executionContext) childFields_AuthPayload(ctx context.Context, field g
 		return ec.fieldContext_AuthPayload_user(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type AuthPayload", field.Name)
+}
+
+func (ec *executionContext) childFields_AvailabilityBlock(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "id":
+		return ec.fieldContext_AvailabilityBlock_id(ctx, field)
+	case "startsAt":
+		return ec.fieldContext_AvailabilityBlock_startsAt(ctx, field)
+	case "endsAt":
+		return ec.fieldContext_AvailabilityBlock_endsAt(ctx, field)
+	case "isAvailable":
+		return ec.fieldContext_AvailabilityBlock_isAvailable(ctx, field)
+	case "note":
+		return ec.fieldContext_AvailabilityBlock_note(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type AvailabilityBlock", field.Name)
+}
+
+func (ec *executionContext) childFields_AvailabilityWindow(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "id":
+		return ec.fieldContext_AvailabilityWindow_id(ctx, field)
+	case "startsAt":
+		return ec.fieldContext_AvailabilityWindow_startsAt(ctx, field)
+	case "endsAt":
+		return ec.fieldContext_AvailabilityWindow_endsAt(ctx, field)
+	case "isAvailable":
+		return ec.fieldContext_AvailabilityWindow_isAvailable(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type AvailabilityWindow", field.Name)
 }
 
 func (ec *executionContext) childFields_Country(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -1477,6 +1631,20 @@ func (ec *executionContext) dir_hasRole_args(ctx context.Context, rawArgs map[st
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_addMyAvailabilityBlock_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
+		func(ctx context.Context, v any) (model.AddAvailabilityBlockInput, error) {
+			return ec.unmarshalNAddAvailabilityBlockInput2githubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐAddAvailabilityBlockInput(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_approveVerification_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -1560,6 +1728,20 @@ func (ec *executionContext) field_Mutation_rejectVerification_args(ctx context.C
 		return nil, err
 	}
 	args["reviewNotes"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_removeMyAvailabilityBlock_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
 	return args, nil
 }
 
@@ -1779,6 +1961,28 @@ func (ec *executionContext) field_Query_languages_args(ctx context.Context, rawA
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_myAvailability_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "from",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["from"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "to",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["to"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_rateUnits_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -1848,6 +2052,36 @@ func (ec *executionContext) field_Query_settlementBanks_args(ctx context.Context
 		return nil, err
 	}
 	args["type"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_talentAvailability_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "talentId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["talentId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "from",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["from"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "to",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["to"] = arg2
 	return args, nil
 }
 
@@ -2006,6 +2240,213 @@ func (ec *executionContext) fieldContext_AuthPayload_user(_ context.Context, fie
 		},
 	}
 	return fc, nil
+}
+
+func (ec *executionContext) _AvailabilityBlock_id(ctx context.Context, field graphql.CollectedField, obj *model.AvailabilityBlock) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AvailabilityBlock_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AvailabilityBlock_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AvailabilityBlock", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _AvailabilityBlock_startsAt(ctx context.Context, field graphql.CollectedField, obj *model.AvailabilityBlock) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AvailabilityBlock_startsAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.StartsAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AvailabilityBlock_startsAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AvailabilityBlock", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _AvailabilityBlock_endsAt(ctx context.Context, field graphql.CollectedField, obj *model.AvailabilityBlock) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AvailabilityBlock_endsAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.EndsAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AvailabilityBlock_endsAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AvailabilityBlock", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _AvailabilityBlock_isAvailable(ctx context.Context, field graphql.CollectedField, obj *model.AvailabilityBlock) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AvailabilityBlock_isAvailable(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.IsAvailable, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AvailabilityBlock_isAvailable(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AvailabilityBlock", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _AvailabilityBlock_note(ctx context.Context, field graphql.CollectedField, obj *model.AvailabilityBlock) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AvailabilityBlock_note(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Note, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_AvailabilityBlock_note(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AvailabilityBlock", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _AvailabilityWindow_id(ctx context.Context, field graphql.CollectedField, obj *model.AvailabilityWindow) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AvailabilityWindow_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AvailabilityWindow_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AvailabilityWindow", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _AvailabilityWindow_startsAt(ctx context.Context, field graphql.CollectedField, obj *model.AvailabilityWindow) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AvailabilityWindow_startsAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.StartsAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AvailabilityWindow_startsAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AvailabilityWindow", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _AvailabilityWindow_endsAt(ctx context.Context, field graphql.CollectedField, obj *model.AvailabilityWindow) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AvailabilityWindow_endsAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.EndsAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AvailabilityWindow_endsAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AvailabilityWindow", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _AvailabilityWindow_isAvailable(ctx context.Context, field graphql.CollectedField, obj *model.AvailabilityWindow) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AvailabilityWindow_isAvailable(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.IsAvailable, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AvailabilityWindow_isAvailable(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AvailabilityWindow", field, false, false, errors.New("field of type Boolean does not have child fields"))
 }
 
 func (ec *executionContext) _Country_id(ctx context.Context, field graphql.CollectedField, obj *model.Country) (ret graphql.Marshaler) {
@@ -3082,6 +3523,130 @@ func (ec *executionContext) fieldContext_Mutation_rejectVerification(ctx context
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_rejectVerification_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_addMyAvailabilityBlock(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_addMyAvailabilityBlock(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().AddMyAvailabilityBlock(ctx, fc.Args["input"].(model.AddAvailabilityBlockInput))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				code, err := ec.unmarshalNString2string(ctx, "talent")
+				if err != nil {
+					var zeroVal *model.AvailabilityBlock
+					return zeroVal, err
+				}
+				if ec.Directives.HasRole == nil {
+					var zeroVal *model.AvailabilityBlock
+					return zeroVal, errors.New("directive hasRole is not implemented")
+				}
+				return ec.Directives.HasRole(ctx, nil, directive0, code)
+			}
+
+			next = directive1
+			return next
+		},
+		func(ctx context.Context, selections ast.SelectionSet, v *model.AvailabilityBlock) graphql.Marshaler {
+			return ec.marshalNAvailabilityBlock2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐAvailabilityBlock(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_addMyAvailabilityBlock(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_AvailabilityBlock(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_addMyAvailabilityBlock_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_removeMyAvailabilityBlock(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_removeMyAvailabilityBlock(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().RemoveMyAvailabilityBlock(ctx, fc.Args["id"].(string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				code, err := ec.unmarshalNString2string(ctx, "talent")
+				if err != nil {
+					var zeroVal bool
+					return zeroVal, err
+				}
+				if ec.Directives.HasRole == nil {
+					var zeroVal bool
+					return zeroVal, errors.New("directive hasRole is not implemented")
+				}
+				return ec.Directives.HasRole(ctx, nil, directive0, code)
+			}
+
+			next = directive1
+			return next
+		},
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_removeMyAvailabilityBlock(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_removeMyAvailabilityBlock_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -4204,6 +4769,112 @@ func (ec *executionContext) fieldContext_Query_myPayoutAccount(_ context.Context
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return ec.childFields_PayoutAccount(ctx, field)
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_myAvailability(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_myAvailability(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().MyAvailability(ctx, fc.Args["from"].(string), fc.Args["to"].(string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				code, err := ec.unmarshalNString2string(ctx, "talent")
+				if err != nil {
+					var zeroVal []*model.AvailabilityBlock
+					return zeroVal, err
+				}
+				if ec.Directives.HasRole == nil {
+					var zeroVal []*model.AvailabilityBlock
+					return zeroVal, errors.New("directive hasRole is not implemented")
+				}
+				return ec.Directives.HasRole(ctx, nil, directive0, code)
+			}
+
+			next = directive1
+			return next
+		},
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.AvailabilityBlock) graphql.Marshaler {
+			return ec.marshalNAvailabilityBlock2ᚕᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐAvailabilityBlockᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_myAvailability(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_AvailabilityBlock(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_myAvailability_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_talentAvailability(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_talentAvailability(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().TalentAvailability(ctx, fc.Args["talentId"].(string), fc.Args["from"].(string), fc.Args["to"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.AvailabilityWindow) graphql.Marshaler {
+			return ec.marshalNAvailabilityWindow2ᚕᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐAvailabilityWindowᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_talentAvailability(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_AvailabilityWindow(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_talentAvailability_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -6344,6 +7015,57 @@ func (ec *executionContext) fieldContext___Type_isOneOf(_ context.Context, field
 
 // region    **************************** input.gotpl *****************************
 
+func (ec *executionContext) unmarshalInputAddAvailabilityBlockInput(ctx context.Context, obj any) (model.AddAvailabilityBlockInput, error) {
+	var it model.AddAvailabilityBlockInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"startsAt", "endsAt", "isAvailable", "note"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "startsAt":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("startsAt"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StartsAt = data
+		case "endsAt":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("endsAt"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EndsAt = data
+		case "isAvailable":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("isAvailable"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IsAvailable = data
+		case "note":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("note"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Note = data
+		}
+	}
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputConnectPayoutInput(ctx context.Context, obj any) (model.ConnectPayoutInput, error) {
 	var it model.ConnectPayoutInput
 	if obj == nil {
@@ -6759,6 +7481,117 @@ func (ec *executionContext) _AuthPayload(ctx context.Context, sel ast.SelectionS
 	return out
 }
 
+var availabilityBlockImplementors = []string{"AvailabilityBlock"}
+
+func (ec *executionContext) _AvailabilityBlock(ctx context.Context, sel ast.SelectionSet, obj *model.AvailabilityBlock) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, availabilityBlockImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AvailabilityBlock")
+		case "id":
+			out.Values[i] = ec._AvailabilityBlock_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "startsAt":
+			out.Values[i] = ec._AvailabilityBlock_startsAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "endsAt":
+			out.Values[i] = ec._AvailabilityBlock_endsAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "isAvailable":
+			out.Values[i] = ec._AvailabilityBlock_isAvailable(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "note":
+			out.Values[i] = ec._AvailabilityBlock_note(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var availabilityWindowImplementors = []string{"AvailabilityWindow"}
+
+func (ec *executionContext) _AvailabilityWindow(ctx context.Context, sel ast.SelectionSet, obj *model.AvailabilityWindow) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, availabilityWindowImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AvailabilityWindow")
+		case "id":
+			out.Values[i] = ec._AvailabilityWindow_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "startsAt":
+			out.Values[i] = ec._AvailabilityWindow_startsAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "endsAt":
+			out.Values[i] = ec._AvailabilityWindow_endsAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "isAvailable":
+			out.Values[i] = ec._AvailabilityWindow_isAvailable(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
 var countryImplementors = []string{"Country"}
 
 func (ec *executionContext) _Country(ctx context.Context, sel ast.SelectionSet, obj *model.Country) graphql.Marshaler {
@@ -7084,6 +7917,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "rejectVerification":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_rejectVerification(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "addMyAvailabilityBlock":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_addMyAvailabilityBlock(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "removeMyAvailabilityBlock":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_removeMyAvailabilityBlock(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -7657,6 +8504,50 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				}()
 				res = ec._Query_myPayoutAccount(ctx, field)
 				if res == graphql.RequiredNull {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "myAvailability":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_myAvailability(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "talentAvailability":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_talentAvailability(ctx, field)
+				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
 				return res
@@ -8559,6 +9450,11 @@ func (ec *executionContext) ___Type(ctx context.Context, sel ast.SelectionSet, o
 
 // region    ***************************** type.gotpl *****************************
 
+func (ec *executionContext) unmarshalNAddAvailabilityBlockInput2githubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐAddAvailabilityBlockInput(ctx context.Context, v any) (model.AddAvailabilityBlockInput, error) {
+	res, err := ec.unmarshalInputAddAvailabilityBlockInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNAuthPayload2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐAuthPayload(ctx context.Context, sel ast.SelectionSet, v *model.AuthPayload) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -8567,6 +9463,58 @@ func (ec *executionContext) marshalNAuthPayload2ᚖgithubᚗcomᚋblingyplusᚋa
 		return graphql.Null
 	}
 	return ec._AuthPayload(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNAvailabilityBlock2ᚕᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐAvailabilityBlockᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.AvailabilityBlock) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNAvailabilityBlock2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐAvailabilityBlock(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNAvailabilityBlock2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐAvailabilityBlock(ctx context.Context, sel ast.SelectionSet, v *model.AvailabilityBlock) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AvailabilityBlock(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNAvailabilityWindow2ᚕᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐAvailabilityWindowᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.AvailabilityWindow) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNAvailabilityWindow2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐAvailabilityWindow(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNAvailabilityWindow2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐAvailabilityWindow(ctx context.Context, sel ast.SelectionSet, v *model.AvailabilityWindow) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AvailabilityWindow(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNBoolean2bool(ctx context.Context, v any) (bool, error) {
