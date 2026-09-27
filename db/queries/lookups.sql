@@ -157,6 +157,12 @@ WHERE code = sqlc.arg(code)
 RETURNING id, code, name, sort_order, is_active;
 
 
+-- name: ListVerificationTypes :many
+SELECT id, code, name, sort_order, is_active
+FROM verification_types
+WHERE (sqlc.arg(active_only)::bool = false OR is_active = true)
+ORDER BY sort_order, name;
+
 -- name: ListRateUnits :many
 SELECT id, code, name, sort_order, is_active
 FROM rate_units

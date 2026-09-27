@@ -18,6 +18,13 @@ type Query {
   roles(activeOnly: Boolean = true): [Lookup!]!
   bookingStatuses(activeOnly: Boolean = true): [Lookup!]!
   rateUnits(activeOnly: Boolean = true): [Lookup!]!
+  verificationTypes(activeOnly: Boolean = true): [Lookup!]!
+
+  """The caller's own verification history, newest first. Requires the talent role."""
+  myVerifications: [Verification!]! @hasRole(code: "talent")
+
+  """Verifications awaiting review, oldest first. Requires the admin role."""
+  pendingVerifications: [PendingVerification!]! @hasRole(code: "admin")
 
   """Searchable, active talent, newest first. Never exposes contact details."""
   searchTalent(filter: TalentFilter, first: Int = 20, after: String): TalentPage!
@@ -50,6 +57,15 @@ type Mutation {
 
   """Connect (or replace) the caller's payout account via a Paystack subaccount. Test mode until launch review."""
   connectMyPayoutAccount(input: ConnectPayoutInput!): PayoutAccount! @hasRole(code: "talent")
+
+  """Submit evidence for review. Approving an identity verification is what makes a talent searchable."""
+  submitVerification(input: SubmitVerificationInput!): Verification! @hasRole(code: "talent")
+
+  """Approve a pending verification. Requires the admin role."""
+  approveVerification(id: ID!, reviewNotes: String): Verification! @hasRole(code: "admin")
+
+  """Reject a pending verification. Requires the admin role."""
+  rejectVerification(id: ID!, reviewNotes: String): Verification! @hasRole(code: "admin")
 }
 
 input RegisterInput {
@@ -214,4 +230,32 @@ type PayoutAccount {
   """Last 4 digits only; the full account number is never returned or stored."""
   accountNumberLast4: String!
   accountName: String!
+}
+
+input SubmitVerificationInput {
+  typeCode: String!
+  evidenceRef: String
+  notes: String
+}
+
+type Verification {
+  id: ID!
+  typeCode: String!
+  typeName: String!
+  statusCode: String!
+  statusName: String!
+  evidenceRef: String
+  notes: String
+  reviewNotes: String
+}
+
+"""One item in the admin review queue."""
+type PendingVerification {
+  id: ID!
+  talentUserId: ID!
+  talentDisplayName: String!
+  typeCode: String!
+  typeName: String!
+  evidenceRef: String
+  notes: String
 }

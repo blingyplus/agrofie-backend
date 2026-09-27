@@ -69,6 +69,17 @@ type PayoutAccount struct {
 	AccountName        string `json:"accountName"`
 }
 
+// One item in the admin review queue.
+type PendingVerification struct {
+	ID                string  `json:"id"`
+	TalentUserID      string  `json:"talentUserId"`
+	TalentDisplayName string  `json:"talentDisplayName"`
+	TypeCode          string  `json:"typeCode"`
+	TypeName          string  `json:"typeName"`
+	EvidenceRef       *string `json:"evidenceRef,omitempty"`
+	Notes             *string `json:"notes,omitempty"`
+}
+
 type Query struct {
 }
 
@@ -99,6 +110,12 @@ type RegisterInput struct {
 type SettlementBank struct {
 	Name string `json:"name"`
 	Code string `json:"code"`
+}
+
+type SubmitVerificationInput struct {
+	TypeCode    string  `json:"typeCode"`
+	EvidenceRef *string `json:"evidenceRef,omitempty"`
+	Notes       *string `json:"notes,omitempty"`
 }
 
 type Tag struct {
@@ -161,6 +178,17 @@ type User struct {
 	Phone       *string  `json:"phone,omitempty"`
 	DisplayName string   `json:"displayName"`
 	RoleCodes   []string `json:"roleCodes"`
+}
+
+type Verification struct {
+	ID          string  `json:"id"`
+	TypeCode    string  `json:"typeCode"`
+	TypeName    string  `json:"typeName"`
+	StatusCode  string  `json:"statusCode"`
+	StatusName  string  `json:"statusName"`
+	EvidenceRef *string `json:"evidenceRef,omitempty"`
+	Notes       *string `json:"notes,omitempty"`
+	ReviewNotes *string `json:"reviewNotes,omitempty"`
 }
 
 type LookupTable string

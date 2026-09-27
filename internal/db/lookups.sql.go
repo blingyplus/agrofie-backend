@@ -404,6 +404,47 @@ func (q *Queries) ListTalentTypes(ctx context.Context, activeOnly bool) ([]ListT
 	return items, nil
 }
 
+const listVerificationTypes = `-- name: ListVerificationTypes :many
+SELECT id, code, name, sort_order, is_active
+FROM verification_types
+WHERE ($1::bool = false OR is_active = true)
+ORDER BY sort_order, name
+`
+
+type ListVerificationTypesRow struct {
+	ID        pgtype.UUID `json:"id"`
+	Code      string      `json:"code"`
+	Name      string      `json:"name"`
+	SortOrder int32       `json:"sort_order"`
+	IsActive  bool        `json:"is_active"`
+}
+
+func (q *Queries) ListVerificationTypes(ctx context.Context, activeOnly bool) ([]ListVerificationTypesRow, error) {
+	rows, err := q.db.Query(ctx, listVerificationTypes, activeOnly)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListVerificationTypesRow{}
+	for rows.Next() {
+		var i ListVerificationTypesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Code,
+			&i.Name,
+			&i.SortOrder,
+			&i.IsActive,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const setBookingStatusActive = `-- name: SetBookingStatusActive :one
 UPDATE booking_statuses
 SET is_active = $1, updated_at = now()

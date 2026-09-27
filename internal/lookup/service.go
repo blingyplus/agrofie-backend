@@ -118,6 +118,16 @@ func (s *Service) RateUnits(ctx context.Context, activeOnly bool) ([]Item, error
 	}), nil
 }
 
+func (s *Service) VerificationTypes(ctx context.Context, activeOnly bool) ([]Item, error) {
+	rows, err := s.q.ListVerificationTypes(ctx, activeOnly)
+	if err != nil {
+		return nil, err
+	}
+	return itemsFrom(rows, func(r db.ListVerificationTypesRow) Item {
+		return Item{ID: idString(r.ID), Code: r.Code, Name: r.Name, SortOrder: r.SortOrder, IsActive: r.IsActive}
+	}), nil
+}
+
 func (s *Service) Roles(ctx context.Context, activeOnly bool) ([]Item, error) {
 	rows, err := s.q.ListRoles(ctx, activeOnly)
 	if err != nil {

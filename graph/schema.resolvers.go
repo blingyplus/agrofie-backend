@@ -17,6 +17,7 @@ import (
 	"github.com/blingyplus/agrofie-backend/internal/discovery"
 	"github.com/blingyplus/agrofie-backend/internal/lookup"
 	"github.com/blingyplus/agrofie-backend/internal/talentprofile"
+	"github.com/blingyplus/agrofie-backend/internal/verification"
 )
 
 // Register is the resolver for the register field.
@@ -109,6 +110,38 @@ func (r *mutationResolver) ConnectMyPayoutAccount(ctx context.Context, input mod
 		return nil, mapTalentProfileErr(err)
 	}
 	return toModelPayoutAccount(out), nil
+}
+
+// SubmitVerification is the resolver for the submitVerification field.
+func (r *mutationResolver) SubmitVerification(ctx context.Context, input model.SubmitVerificationInput) (*model.Verification, error) {
+	p, _ := gqlauth.FromContext(ctx)
+	v, err := r.Verifications.Submit(ctx, p.UserID, verification.SubmitInput{
+		TypeCode: input.TypeCode, EvidenceRef: input.EvidenceRef, Notes: input.Notes,
+	})
+	if err != nil {
+		return nil, mapVerificationErr(err)
+	}
+	return toModelVerification(v), nil
+}
+
+// ApproveVerification is the resolver for the approveVerification field.
+func (r *mutationResolver) ApproveVerification(ctx context.Context, id string, reviewNotes *string) (*model.Verification, error) {
+	p, _ := gqlauth.FromContext(ctx)
+	v, err := r.Verifications.Approve(ctx, p.UserID, id, reviewNotes)
+	if err != nil {
+		return nil, mapVerificationErr(err)
+	}
+	return toModelVerification(v), nil
+}
+
+// RejectVerification is the resolver for the rejectVerification field.
+func (r *mutationResolver) RejectVerification(ctx context.Context, id string, reviewNotes *string) (*model.Verification, error) {
+	p, _ := gqlauth.FromContext(ctx)
+	v, err := r.Verifications.Reject(ctx, p.UserID, id, reviewNotes)
+	if err != nil {
+		return nil, mapVerificationErr(err)
+	}
+	return toModelVerification(v), nil
 }
 
 // Health is the resolver for the health field.
@@ -221,6 +254,42 @@ func (r *queryResolver) BookingStatuses(ctx context.Context, activeOnly *bool) (
 // RateUnits is the resolver for the rateUnits field.
 func (r *queryResolver) RateUnits(ctx context.Context, activeOnly *bool) ([]*model.Lookup, error) {
 	return listLookups(ctx, boolOr(activeOnly, true), r.Lookups.RateUnits)
+}
+
+// VerificationTypes is the resolver for the verificationTypes field.
+func (r *queryResolver) VerificationTypes(ctx context.Context, activeOnly *bool) ([]*model.Lookup, error) {
+	return listLookups(ctx, boolOr(activeOnly, true), r.Lookups.VerificationTypes)
+}
+
+// MyVerifications is the resolver for the myVerifications field.
+func (r *queryResolver) MyVerifications(ctx context.Context) ([]*model.Verification, error) {
+	p, _ := gqlauth.FromContext(ctx)
+	rows, err := r.Verifications.ListMine(ctx, p.UserID)
+	if err != nil {
+		return nil, mapVerificationErr(err)
+	}
+	out := make([]*model.Verification, 0, len(rows))
+	for _, v := range rows {
+		v := v
+		out = append(out, toModelVerification(&v))
+	}
+	return out, nil
+}
+
+// PendingVerifications is the resolver for the pendingVerifications field.
+func (r *queryResolver) PendingVerifications(ctx context.Context) ([]*model.PendingVerification, error) {
+	rows, err := r.Verifications.ListPending(ctx)
+	if err != nil {
+		return nil, mapVerificationErr(err)
+	}
+	out := make([]*model.PendingVerification, 0, len(rows))
+	for _, item := range rows {
+		out = append(out, &model.PendingVerification{
+			ID: item.ID, TalentUserID: item.TalentUserID, TalentDisplayName: item.TalentDisplayName,
+			TypeCode: item.TypeCode, TypeName: item.TypeName, EvidenceRef: item.EvidenceRef, Notes: item.Notes,
+		})
+	}
+	return out, nil
 }
 
 // SearchTalent is the resolver for the searchTalent field.

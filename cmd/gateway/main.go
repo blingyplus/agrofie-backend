@@ -19,6 +19,7 @@ import (
 	"github.com/blingyplus/agrofie-backend/internal/lookup"
 	"github.com/blingyplus/agrofie-backend/internal/payments"
 	"github.com/blingyplus/agrofie-backend/internal/talentprofile"
+	"github.com/blingyplus/agrofie-backend/internal/verification"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -44,6 +45,7 @@ func main() {
 		slog.Warn("PAYSTACK_SECRET_KEY not set; using FakeProvider for payouts")
 	}
 	talentProfiles := talentprofile.NewService(pool, paymentsProvider, cfg.CommissionPercent)
+	verifications := verification.NewService(pool)
 
 	prober := probe.NewConnectProber(cfg.AuthURL, cfg.BookingURL, cfg.PaymentsURL)
 	authClient := graph.NewAuthClient(cfg.AuthURL)
@@ -51,6 +53,7 @@ func main() {
 		Lookups:        lookups,
 		Discovery:      discoverySvc,
 		TalentProfiles: talentProfiles,
+		Verifications:  verifications,
 		Prober:         prober,
 		AuthClient:     authClient,
 	}

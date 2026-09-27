@@ -77,12 +77,15 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
+		ApproveVerification    func(childComplexity int, id string, reviewNotes *string) int
 		ConnectMyPayoutAccount func(childComplexity int, input model.ConnectPayoutInput) int
 		Login                  func(childComplexity int, input model.LoginInput) int
 		Logout                 func(childComplexity int) int
 		Register               func(childComplexity int, input model.RegisterInput) int
+		RejectVerification     func(childComplexity int, id string, reviewNotes *string) int
 		SetLookupActive        func(childComplexity int, table model.LookupTable, code string, isActive bool) int
 		SetMyRates             func(childComplexity int, rates []*model.RateInput) int
+		SubmitVerification     func(childComplexity int, input model.SubmitVerificationInput) int
 		UpdateLookupName       func(childComplexity int, table model.LookupTable, code string, name string) int
 		UpdateMyTalentProfile  func(childComplexity int, input model.UpdateTalentProfileInput) int
 	}
@@ -94,23 +97,36 @@ type ComplexityRoot struct {
 		SettlementType     func(childComplexity int) int
 	}
 
+	PendingVerification struct {
+		EvidenceRef       func(childComplexity int) int
+		ID                func(childComplexity int) int
+		Notes             func(childComplexity int) int
+		TalentDisplayName func(childComplexity int) int
+		TalentUserID      func(childComplexity int) int
+		TypeCode          func(childComplexity int) int
+		TypeName          func(childComplexity int) int
+	}
+
 	Query struct {
-		BookingStatuses func(childComplexity int, activeOnly *bool) int
-		Countries       func(childComplexity int, activeOnly *bool) int
-		EventTypes      func(childComplexity int, activeOnly *bool) int
-		Genres          func(childComplexity int, activeOnly *bool) int
-		GeoPlaces       func(childComplexity int, countryCode *string, parentCode *string, activeOnly *bool) int
-		Health          func(childComplexity int) int
-		Languages       func(childComplexity int, activeOnly *bool) int
-		Me              func(childComplexity int) int
-		MyPayoutAccount func(childComplexity int) int
-		MyTalentProfile func(childComplexity int) int
-		RateUnits       func(childComplexity int, activeOnly *bool) int
-		Roles           func(childComplexity int, activeOnly *bool) int
-		SearchTalent    func(childComplexity int, filter *model.TalentFilter, first *int, after *string) int
-		SettlementBanks func(childComplexity int, typeArg model.SettlementType) int
-		Talent          func(childComplexity int, id string) int
-		TalentTypes     func(childComplexity int, activeOnly *bool) int
+		BookingStatuses      func(childComplexity int, activeOnly *bool) int
+		Countries            func(childComplexity int, activeOnly *bool) int
+		EventTypes           func(childComplexity int, activeOnly *bool) int
+		Genres               func(childComplexity int, activeOnly *bool) int
+		GeoPlaces            func(childComplexity int, countryCode *string, parentCode *string, activeOnly *bool) int
+		Health               func(childComplexity int) int
+		Languages            func(childComplexity int, activeOnly *bool) int
+		Me                   func(childComplexity int) int
+		MyPayoutAccount      func(childComplexity int) int
+		MyTalentProfile      func(childComplexity int) int
+		MyVerifications      func(childComplexity int) int
+		PendingVerifications func(childComplexity int) int
+		RateUnits            func(childComplexity int, activeOnly *bool) int
+		Roles                func(childComplexity int, activeOnly *bool) int
+		SearchTalent         func(childComplexity int, filter *model.TalentFilter, first *int, after *string) int
+		SettlementBanks      func(childComplexity int, typeArg model.SettlementType) int
+		Talent               func(childComplexity int, id string) int
+		TalentTypes          func(childComplexity int, activeOnly *bool) int
+		VerificationTypes    func(childComplexity int, activeOnly *bool) int
 	}
 
 	Rate struct {
@@ -165,6 +181,17 @@ type ComplexityRoot struct {
 		Phone       func(childComplexity int) int
 		RoleCodes   func(childComplexity int) int
 	}
+
+	Verification struct {
+		EvidenceRef func(childComplexity int) int
+		ID          func(childComplexity int) int
+		Notes       func(childComplexity int) int
+		ReviewNotes func(childComplexity int) int
+		StatusCode  func(childComplexity int) int
+		StatusName  func(childComplexity int) int
+		TypeCode    func(childComplexity int) int
+		TypeName    func(childComplexity int) int
+	}
 }
 
 // endregion ***************************** api!.gotpl *****************************
@@ -180,6 +207,9 @@ type MutationResolver interface {
 	UpdateMyTalentProfile(ctx context.Context, input model.UpdateTalentProfileInput) (*model.TalentProfile, error)
 	SetMyRates(ctx context.Context, rates []*model.RateInput) (*model.TalentProfile, error)
 	ConnectMyPayoutAccount(ctx context.Context, input model.ConnectPayoutInput) (*model.PayoutAccount, error)
+	SubmitVerification(ctx context.Context, input model.SubmitVerificationInput) (*model.Verification, error)
+	ApproveVerification(ctx context.Context, id string, reviewNotes *string) (*model.Verification, error)
+	RejectVerification(ctx context.Context, id string, reviewNotes *string) (*model.Verification, error)
 }
 type QueryResolver interface {
 	Health(ctx context.Context) (*model.Health, error)
@@ -193,6 +223,9 @@ type QueryResolver interface {
 	Roles(ctx context.Context, activeOnly *bool) ([]*model.Lookup, error)
 	BookingStatuses(ctx context.Context, activeOnly *bool) ([]*model.Lookup, error)
 	RateUnits(ctx context.Context, activeOnly *bool) ([]*model.Lookup, error)
+	VerificationTypes(ctx context.Context, activeOnly *bool) ([]*model.Lookup, error)
+	MyVerifications(ctx context.Context) ([]*model.Verification, error)
+	PendingVerifications(ctx context.Context) ([]*model.PendingVerification, error)
 	SearchTalent(ctx context.Context, filter *model.TalentFilter, first *int, after *string) (*model.TalentPage, error)
 	Talent(ctx context.Context, id string) (*model.TalentProfile, error)
 	MyTalentProfile(ctx context.Context) (*model.TalentProfile, error)
@@ -355,6 +388,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Lookup.SortOrder(childComplexity), true
 
+	case "Mutation.approveVerification":
+		if e.ComplexityRoot.Mutation.ApproveVerification == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_approveVerification_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.ApproveVerification(childComplexity, args["id"].(string), args["reviewNotes"].(*string)), true
 	case "Mutation.connectMyPayoutAccount":
 		if e.ComplexityRoot.Mutation.ConnectMyPayoutAccount == nil {
 			break
@@ -394,6 +438,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.Register(childComplexity, args["input"].(model.RegisterInput)), true
+	case "Mutation.rejectVerification":
+		if e.ComplexityRoot.Mutation.RejectVerification == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_rejectVerification_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.RejectVerification(childComplexity, args["id"].(string), args["reviewNotes"].(*string)), true
 	case "Mutation.setLookupActive":
 		if e.ComplexityRoot.Mutation.SetLookupActive == nil {
 			break
@@ -416,6 +471,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.SetMyRates(childComplexity, args["rates"].([]*model.RateInput)), true
+	case "Mutation.submitVerification":
+		if e.ComplexityRoot.Mutation.SubmitVerification == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_submitVerification_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.SubmitVerification(childComplexity, args["input"].(model.SubmitVerificationInput)), true
 	case "Mutation.updateLookupName":
 		if e.ComplexityRoot.Mutation.UpdateLookupName == nil {
 			break
@@ -463,6 +529,49 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.PayoutAccount.SettlementType(childComplexity), true
+
+	case "PendingVerification.evidenceRef":
+		if e.ComplexityRoot.PendingVerification.EvidenceRef == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PendingVerification.EvidenceRef(childComplexity), true
+	case "PendingVerification.id":
+		if e.ComplexityRoot.PendingVerification.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PendingVerification.ID(childComplexity), true
+	case "PendingVerification.notes":
+		if e.ComplexityRoot.PendingVerification.Notes == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PendingVerification.Notes(childComplexity), true
+	case "PendingVerification.talentDisplayName":
+		if e.ComplexityRoot.PendingVerification.TalentDisplayName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PendingVerification.TalentDisplayName(childComplexity), true
+	case "PendingVerification.talentUserId":
+		if e.ComplexityRoot.PendingVerification.TalentUserID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PendingVerification.TalentUserID(childComplexity), true
+	case "PendingVerification.typeCode":
+		if e.ComplexityRoot.PendingVerification.TypeCode == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PendingVerification.TypeCode(childComplexity), true
+	case "PendingVerification.typeName":
+		if e.ComplexityRoot.PendingVerification.TypeName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PendingVerification.TypeName(childComplexity), true
 
 	case "Query.bookingStatuses":
 		if e.ComplexityRoot.Query.BookingStatuses == nil {
@@ -555,6 +664,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.MyTalentProfile(childComplexity), true
+	case "Query.myVerifications":
+		if e.ComplexityRoot.Query.MyVerifications == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.MyVerifications(childComplexity), true
+	case "Query.pendingVerifications":
+		if e.ComplexityRoot.Query.PendingVerifications == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.PendingVerifications(childComplexity), true
 	case "Query.rateUnits":
 		if e.ComplexityRoot.Query.RateUnits == nil {
 			break
@@ -621,6 +742,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.TalentTypes(childComplexity, args["activeOnly"].(*bool)), true
+	case "Query.verificationTypes":
+		if e.ComplexityRoot.Query.VerificationTypes == nil {
+			break
+		}
+
+		args, err := ec.field_Query_verificationTypes_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.VerificationTypes(childComplexity, args["activeOnly"].(*bool)), true
 
 	case "Rate.amount":
 		if e.ComplexityRoot.Rate.Amount == nil {
@@ -821,6 +953,55 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.User.RoleCodes(childComplexity), true
 
+	case "Verification.evidenceRef":
+		if e.ComplexityRoot.Verification.EvidenceRef == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Verification.EvidenceRef(childComplexity), true
+	case "Verification.id":
+		if e.ComplexityRoot.Verification.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Verification.ID(childComplexity), true
+	case "Verification.notes":
+		if e.ComplexityRoot.Verification.Notes == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Verification.Notes(childComplexity), true
+	case "Verification.reviewNotes":
+		if e.ComplexityRoot.Verification.ReviewNotes == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Verification.ReviewNotes(childComplexity), true
+	case "Verification.statusCode":
+		if e.ComplexityRoot.Verification.StatusCode == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Verification.StatusCode(childComplexity), true
+	case "Verification.statusName":
+		if e.ComplexityRoot.Verification.StatusName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Verification.StatusName(childComplexity), true
+	case "Verification.typeCode":
+		if e.ComplexityRoot.Verification.TypeCode == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Verification.TypeCode(childComplexity), true
+	case "Verification.typeName":
+		if e.ComplexityRoot.Verification.TypeName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Verification.TypeName(childComplexity), true
+
 	}
 	return 0, false
 }
@@ -833,6 +1014,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputLoginInput,
 		ec.unmarshalInputRateInput,
 		ec.unmarshalInputRegisterInput,
+		ec.unmarshalInputSubmitVerificationInput,
 		ec.unmarshalInputTalentFilter,
 		ec.unmarshalInputUpdateTalentProfileInput,
 	)
@@ -1017,6 +1199,26 @@ func (ec *executionContext) childFields_PayoutAccount(ctx context.Context, field
 	return nil, fmt.Errorf("no field named %q was found under type PayoutAccount", field.Name)
 }
 
+func (ec *executionContext) childFields_PendingVerification(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "id":
+		return ec.fieldContext_PendingVerification_id(ctx, field)
+	case "talentUserId":
+		return ec.fieldContext_PendingVerification_talentUserId(ctx, field)
+	case "talentDisplayName":
+		return ec.fieldContext_PendingVerification_talentDisplayName(ctx, field)
+	case "typeCode":
+		return ec.fieldContext_PendingVerification_typeCode(ctx, field)
+	case "typeName":
+		return ec.fieldContext_PendingVerification_typeName(ctx, field)
+	case "evidenceRef":
+		return ec.fieldContext_PendingVerification_evidenceRef(ctx, field)
+	case "notes":
+		return ec.fieldContext_PendingVerification_notes(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type PendingVerification", field.Name)
+}
+
 func (ec *executionContext) childFields_Rate(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "amount":
@@ -1121,6 +1323,28 @@ func (ec *executionContext) childFields_User(ctx context.Context, field graphql.
 		return ec.fieldContext_User_roleCodes(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+}
+
+func (ec *executionContext) childFields_Verification(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "id":
+		return ec.fieldContext_Verification_id(ctx, field)
+	case "typeCode":
+		return ec.fieldContext_Verification_typeCode(ctx, field)
+	case "typeName":
+		return ec.fieldContext_Verification_typeName(ctx, field)
+	case "statusCode":
+		return ec.fieldContext_Verification_statusCode(ctx, field)
+	case "statusName":
+		return ec.fieldContext_Verification_statusName(ctx, field)
+	case "evidenceRef":
+		return ec.fieldContext_Verification_evidenceRef(ctx, field)
+	case "notes":
+		return ec.fieldContext_Verification_notes(ctx, field)
+	case "reviewNotes":
+		return ec.fieldContext_Verification_reviewNotes(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type Verification", field.Name)
 }
 
 func (ec *executionContext) childFields___Directive(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -1253,6 +1477,28 @@ func (ec *executionContext) dir_hasRole_args(ctx context.Context, rawArgs map[st
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_approveVerification_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "reviewNotes",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["reviewNotes"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_connectMyPayoutAccount_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -1292,6 +1538,28 @@ func (ec *executionContext) field_Mutation_register_args(ctx context.Context, ra
 		return nil, err
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_rejectVerification_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "reviewNotes",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["reviewNotes"] = arg1
 	return args, nil
 }
 
@@ -1336,6 +1604,20 @@ func (ec *executionContext) field_Mutation_setMyRates_args(ctx context.Context, 
 		return nil, err
 	}
 	args["rates"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_submitVerification_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
+		func(ctx context.Context, v any) (model.SubmitVerificationInput, error) {
+			return ec.unmarshalNSubmitVerificationInput2githubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐSubmitVerificationInput(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
 	return args, nil
 }
 
@@ -1594,6 +1876,20 @@ func (ec *executionContext) field_Query_talent_args(ctx context.Context, rawArgs
 		return nil, err
 	}
 	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_verificationTypes_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "activeOnly",
+		func(ctx context.Context, v any) (*bool, error) {
+			return ec.unmarshalOBoolean2ᚖbool(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["activeOnly"] = arg0
 	return args, nil
 }
 
@@ -2606,6 +2902,192 @@ func (ec *executionContext) fieldContext_Mutation_connectMyPayoutAccount(ctx con
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_submitVerification(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_submitVerification(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().SubmitVerification(ctx, fc.Args["input"].(model.SubmitVerificationInput))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				code, err := ec.unmarshalNString2string(ctx, "talent")
+				if err != nil {
+					var zeroVal *model.Verification
+					return zeroVal, err
+				}
+				if ec.Directives.HasRole == nil {
+					var zeroVal *model.Verification
+					return zeroVal, errors.New("directive hasRole is not implemented")
+				}
+				return ec.Directives.HasRole(ctx, nil, directive0, code)
+			}
+
+			next = directive1
+			return next
+		},
+		func(ctx context.Context, selections ast.SelectionSet, v *model.Verification) graphql.Marshaler {
+			return ec.marshalNVerification2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐVerification(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_submitVerification(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Verification(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_submitVerification_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_approveVerification(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_approveVerification(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().ApproveVerification(ctx, fc.Args["id"].(string), fc.Args["reviewNotes"].(*string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				code, err := ec.unmarshalNString2string(ctx, "admin")
+				if err != nil {
+					var zeroVal *model.Verification
+					return zeroVal, err
+				}
+				if ec.Directives.HasRole == nil {
+					var zeroVal *model.Verification
+					return zeroVal, errors.New("directive hasRole is not implemented")
+				}
+				return ec.Directives.HasRole(ctx, nil, directive0, code)
+			}
+
+			next = directive1
+			return next
+		},
+		func(ctx context.Context, selections ast.SelectionSet, v *model.Verification) graphql.Marshaler {
+			return ec.marshalNVerification2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐVerification(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_approveVerification(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Verification(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_approveVerification_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_rejectVerification(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_rejectVerification(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().RejectVerification(ctx, fc.Args["id"].(string), fc.Args["reviewNotes"].(*string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				code, err := ec.unmarshalNString2string(ctx, "admin")
+				if err != nil {
+					var zeroVal *model.Verification
+					return zeroVal, err
+				}
+				if ec.Directives.HasRole == nil {
+					var zeroVal *model.Verification
+					return zeroVal, errors.New("directive hasRole is not implemented")
+				}
+				return ec.Directives.HasRole(ctx, nil, directive0, code)
+			}
+
+			next = directive1
+			return next
+		},
+		func(ctx context.Context, selections ast.SelectionSet, v *model.Verification) graphql.Marshaler {
+			return ec.marshalNVerification2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐVerification(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_rejectVerification(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Verification(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_rejectVerification_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PayoutAccount_settlementType(ctx context.Context, field graphql.CollectedField, obj *model.PayoutAccount) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -2696,6 +3178,167 @@ func (ec *executionContext) _PayoutAccount_accountName(ctx context.Context, fiel
 }
 func (ec *executionContext) fieldContext_PayoutAccount_accountName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("PayoutAccount", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _PendingVerification_id(ctx context.Context, field graphql.CollectedField, obj *model.PendingVerification) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PendingVerification_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PendingVerification_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PendingVerification", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _PendingVerification_talentUserId(ctx context.Context, field graphql.CollectedField, obj *model.PendingVerification) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PendingVerification_talentUserId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.TalentUserID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PendingVerification_talentUserId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PendingVerification", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _PendingVerification_talentDisplayName(ctx context.Context, field graphql.CollectedField, obj *model.PendingVerification) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PendingVerification_talentDisplayName(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.TalentDisplayName, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PendingVerification_talentDisplayName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PendingVerification", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _PendingVerification_typeCode(ctx context.Context, field graphql.CollectedField, obj *model.PendingVerification) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PendingVerification_typeCode(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.TypeCode, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PendingVerification_typeCode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PendingVerification", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _PendingVerification_typeName(ctx context.Context, field graphql.CollectedField, obj *model.PendingVerification) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PendingVerification_typeName(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.TypeName, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PendingVerification_typeName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PendingVerification", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _PendingVerification_evidenceRef(ctx context.Context, field graphql.CollectedField, obj *model.PendingVerification) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PendingVerification_evidenceRef(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.EvidenceRef, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_PendingVerification_evidenceRef(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PendingVerification", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _PendingVerification_notes(ctx context.Context, field graphql.CollectedField, obj *model.PendingVerification) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PendingVerification_notes(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Notes, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_PendingVerification_notes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PendingVerification", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) _Query_health(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -3167,6 +3810,150 @@ func (ec *executionContext) fieldContext_Query_rateUnits(ctx context.Context, fi
 	if fc.Args, err = ec.field_Query_rateUnits_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_verificationTypes(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_verificationTypes(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().VerificationTypes(ctx, fc.Args["activeOnly"].(*bool))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.Lookup) graphql.Marshaler {
+			return ec.marshalNLookup2ᚕᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐLookupᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_verificationTypes(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Lookup(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_verificationTypes_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_myVerifications(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_myVerifications(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().MyVerifications(ctx)
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				code, err := ec.unmarshalNString2string(ctx, "talent")
+				if err != nil {
+					var zeroVal []*model.Verification
+					return zeroVal, err
+				}
+				if ec.Directives.HasRole == nil {
+					var zeroVal []*model.Verification
+					return zeroVal, errors.New("directive hasRole is not implemented")
+				}
+				return ec.Directives.HasRole(ctx, nil, directive0, code)
+			}
+
+			next = directive1
+			return next
+		},
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.Verification) graphql.Marshaler {
+			return ec.marshalNVerification2ᚕᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐVerificationᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_myVerifications(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Verification(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_pendingVerifications(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_pendingVerifications(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().PendingVerifications(ctx)
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				code, err := ec.unmarshalNString2string(ctx, "admin")
+				if err != nil {
+					var zeroVal []*model.PendingVerification
+					return zeroVal, err
+				}
+				if ec.Directives.HasRole == nil {
+					var zeroVal []*model.PendingVerification
+					return zeroVal, errors.New("directive hasRole is not implemented")
+				}
+				return ec.Directives.HasRole(ctx, nil, directive0, code)
+			}
+
+			next = directive1
+			return next
+		},
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.PendingVerification) graphql.Marshaler {
+			return ec.marshalNPendingVerification2ᚕᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐPendingVerificationᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_pendingVerifications(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_PendingVerification(ctx, field)
+		},
 	}
 	return fc, nil
 }
@@ -4312,6 +5099,190 @@ func (ec *executionContext) _User_roleCodes(ctx context.Context, field graphql.C
 }
 func (ec *executionContext) fieldContext_User_roleCodes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("User", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Verification_id(ctx context.Context, field graphql.CollectedField, obj *model.Verification) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Verification_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Verification_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Verification", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _Verification_typeCode(ctx context.Context, field graphql.CollectedField, obj *model.Verification) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Verification_typeCode(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.TypeCode, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Verification_typeCode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Verification", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Verification_typeName(ctx context.Context, field graphql.CollectedField, obj *model.Verification) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Verification_typeName(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.TypeName, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Verification_typeName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Verification", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Verification_statusCode(ctx context.Context, field graphql.CollectedField, obj *model.Verification) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Verification_statusCode(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.StatusCode, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Verification_statusCode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Verification", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Verification_statusName(ctx context.Context, field graphql.CollectedField, obj *model.Verification) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Verification_statusName(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.StatusName, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Verification_statusName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Verification", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Verification_evidenceRef(ctx context.Context, field graphql.CollectedField, obj *model.Verification) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Verification_evidenceRef(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.EvidenceRef, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Verification_evidenceRef(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Verification", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Verification_notes(ctx context.Context, field graphql.CollectedField, obj *model.Verification) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Verification_notes(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Notes, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Verification_notes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Verification", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Verification_reviewNotes(ctx context.Context, field graphql.CollectedField, obj *model.Verification) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Verification_reviewNotes(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ReviewNotes, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Verification_reviewNotes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Verification", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) ___Directive_name(ctx context.Context, field graphql.CollectedField, obj *introspection.Directive) (ret graphql.Marshaler) {
@@ -5570,6 +6541,50 @@ func (ec *executionContext) unmarshalInputRegisterInput(ctx context.Context, obj
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputSubmitVerificationInput(ctx context.Context, obj any) (model.SubmitVerificationInput, error) {
+	var it model.SubmitVerificationInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"typeCode", "evidenceRef", "notes"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "typeCode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("typeCode"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TypeCode = data
+		case "evidenceRef":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("evidenceRef"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EvidenceRef = data
+		case "notes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("notes"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Notes = data
+		}
+	}
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputTalentFilter(ctx context.Context, obj any) (model.TalentFilter, error) {
 	var it model.TalentFilter
 	if obj == nil {
@@ -6052,6 +7067,27 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "submitVerification":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_submitVerification(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "approveVerification":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_approveVerification(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "rejectVerification":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_rejectVerification(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -6103,6 +7139,74 @@ func (ec *executionContext) _PayoutAccount(ctx context.Context, sel ast.Selectio
 		case "accountName":
 			out.Values[i] = ec._PayoutAccount_accountName(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var pendingVerificationImplementors = []string{"PendingVerification"}
+
+func (ec *executionContext) _PendingVerification(ctx context.Context, sel ast.SelectionSet, obj *model.PendingVerification) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, pendingVerificationImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PendingVerification")
+		case "id":
+			out.Values[i] = ec._PendingVerification_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "talentUserId":
+			out.Values[i] = ec._PendingVerification_talentUserId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "talentDisplayName":
+			out.Values[i] = ec._PendingVerification_talentDisplayName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "typeCode":
+			out.Values[i] = ec._PendingVerification_typeCode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "typeName":
+			out.Values[i] = ec._PendingVerification_typeName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "evidenceRef":
+			out.Values[i] = ec._PendingVerification_evidenceRef(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "notes":
+			out.Values[i] = ec._PendingVerification_notes(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
 		default:
@@ -6376,6 +7480,72 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_rateUnits(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "verificationTypes":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_verificationTypes(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "myVerifications":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_myVerifications(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "pendingVerifications":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_pendingVerifications(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -6901,6 +8071,79 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 		case "roleCodes":
 			out.Values[i] = ec._User_roleCodes(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var verificationImplementors = []string{"Verification"}
+
+func (ec *executionContext) _Verification(ctx context.Context, sel ast.SelectionSet, obj *model.Verification) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, verificationImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Verification")
+		case "id":
+			out.Values[i] = ec._Verification_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "typeCode":
+			out.Values[i] = ec._Verification_typeCode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "typeName":
+			out.Values[i] = ec._Verification_typeName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "statusCode":
+			out.Values[i] = ec._Verification_statusCode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "statusName":
+			out.Values[i] = ec._Verification_statusName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "evidenceRef":
+			out.Values[i] = ec._Verification_evidenceRef(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "notes":
+			out.Values[i] = ec._Verification_notes(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "reviewNotes":
+			out.Values[i] = ec._Verification_reviewNotes(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
 		default:
@@ -7492,6 +8735,32 @@ func (ec *executionContext) marshalNPayoutAccount2ᚖgithubᚗcomᚋblingyplus�
 	return ec._PayoutAccount(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNPendingVerification2ᚕᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐPendingVerificationᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.PendingVerification) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNPendingVerification2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐPendingVerification(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNPendingVerification2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐPendingVerification(ctx context.Context, sel ast.SelectionSet, v *model.PendingVerification) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PendingVerification(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNRate2ᚕᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐRateᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Rate) graphql.Marshaler {
 	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
 		fc := graphql.GetFieldContext(ctx)
@@ -7623,6 +8892,11 @@ func (ec *executionContext) marshalNString2ᚕstringᚄ(ctx context.Context, sel
 	return ret
 }
 
+func (ec *executionContext) unmarshalNSubmitVerificationInput2githubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐSubmitVerificationInput(ctx context.Context, v any) (model.SubmitVerificationInput, error) {
+	res, err := ec.unmarshalInputSubmitVerificationInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNTag2ᚕᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐTagᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Tag) graphql.Marshaler {
 	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
 		fc := graphql.GetFieldContext(ctx)
@@ -7708,6 +8982,32 @@ func (ec *executionContext) marshalNUser2ᚖgithubᚗcomᚋblingyplusᚋagrofie�
 		return graphql.Null
 	}
 	return ec._User(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNVerification2ᚕᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐVerificationᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Verification) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNVerification2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐVerification(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNVerification2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐVerification(ctx context.Context, sel ast.SelectionSet, v *model.Verification) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._Verification(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalN__Directive2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐDirective(ctx context.Context, sel ast.SelectionSet, v introspection.Directive) graphql.Marshaler {

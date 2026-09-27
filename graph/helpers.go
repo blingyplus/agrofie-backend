@@ -12,6 +12,7 @@ import (
 	"github.com/blingyplus/agrofie-backend/internal/lookup"
 	"github.com/blingyplus/agrofie-backend/internal/payments"
 	"github.com/blingyplus/agrofie-backend/internal/talentprofile"
+	"github.com/blingyplus/agrofie-backend/internal/verification"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
@@ -252,5 +253,26 @@ func toModelPayoutAccount(a *talentprofile.PayoutAccount) *model.PayoutAccount {
 		BankName:           a.BankName,
 		AccountNumberLast4: a.AccountNumberLast4,
 		AccountName:        a.AccountName,
+	}
+}
+
+func mapVerificationErr(err error) error {
+	switch {
+	case errors.Is(err, verification.ErrUnknownCode):
+		return &gqlerror.Error{Message: err.Error(), Extensions: map[string]any{"code": "BAD_USER_INPUT"}}
+	case errors.Is(err, verification.ErrNotFound):
+		return &gqlerror.Error{Message: "verification not found", Extensions: map[string]any{"code": "NOT_FOUND"}}
+	case errors.Is(err, verification.ErrNotPending):
+		return &gqlerror.Error{Message: "already reviewed", Extensions: map[string]any{"code": "BAD_USER_INPUT"}}
+	default:
+		return err
+	}
+}
+
+func toModelVerification(v *verification.Verification) *model.Verification {
+	return &model.Verification{
+		ID: v.ID, TypeCode: v.TypeCode, TypeName: v.TypeName,
+		StatusCode: v.StatusCode, StatusName: v.StatusName,
+		EvidenceRef: v.EvidenceRef, Notes: v.Notes, ReviewNotes: v.ReviewNotes,
 	}
 }
