@@ -399,6 +399,7 @@ type Verification struct {
 	ReviewedBy           pgtype.UUID        `json:"reviewed_by"`
 	CreatedAt            pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
+	ReviewNotes          *string            `json:"review_notes"`
 }
 
 type VerificationStatus struct {
