@@ -220,7 +220,7 @@ func (r *queryResolver) BookingStatuses(ctx context.Context, activeOnly *bool) (
 
 // RateUnits is the resolver for the rateUnits field.
 func (r *queryResolver) RateUnits(ctx context.Context, activeOnly *bool) ([]*model.Lookup, error) {
-	panic(fmt.Errorf("not implemented: RateUnits - rateUnits"))
+	return listLookups(ctx, boolOr(activeOnly, true), r.Lookups.RateUnits)
 }
 
 // SearchTalent is the resolver for the searchTalent field.
