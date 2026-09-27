@@ -9,6 +9,7 @@ sql:
       - "db/migrations/000004_bookings.up.sql"
       - "db/migrations/000006_identity_kratos.up.sql"
       - "db/migrations/000007_discovery_indexes.up.sql"
+      - "db/migrations/000008_payout_accounts.up.sql"
     gen:
       go:
         package: "db"

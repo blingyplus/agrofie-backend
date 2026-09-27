@@ -242,6 +242,21 @@ type OrganizerProfile struct {
 	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
 }
 
+type PayoutAccount struct {
+	ID                     pgtype.UUID        `json:"id"`
+	TalentProfileID        pgtype.UUID        `json:"talent_profile_id"`
+	SettlementType         string             `json:"settlement_type"`
+	BankCode               string             `json:"bank_code"`
+	BankName               string             `json:"bank_name"`
+	AccountNumberLast4     string             `json:"account_number_last4"`
+	AccountName            string             `json:"account_name"`
+	Provider               string             `json:"provider"`
+	ProviderSubaccountCode string             `json:"provider_subaccount_code"`
+	IsActive               bool               `json:"is_active"`
+	CreatedAt              pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt              pgtype.Timestamptz `json:"updated_at"`
+}
+
 type Profile struct {
 	ID            pgtype.UUID        `json:"id"`
 	UserID        pgtype.UUID        `json:"user_id"`
