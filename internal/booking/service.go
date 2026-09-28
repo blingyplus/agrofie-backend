@@ -26,6 +26,7 @@ var (
 	ErrForbidden         = errors.New("not allowed")
 	ErrNotPending        = errors.New("booking is not awaiting this action")
 	ErrNotFound          = errors.New("booking not found")
+	ErrEventNotYetOver   = errors.New("the event hasn't happened yet")
 )
 
 type beginner interface {
@@ -265,6 +266,34 @@ func (s *Service) CancelBooking(ctx context.Context, organizerUserID, bookingID 
 		}
 		return nil
 	}, nil, organizerUserID, &reason)
+}
+
+// CompleteBooking moves a paid booking to completed. Either party to the
+// booking may confirm it, and only once the event window has actually
+// passed — completion is what unlocks reviews, so it shouldn't be
+// backdated to before the event happened.
+func (s *Service) CompleteBooking(ctx context.Context, callerUserID, bookingID string) (*Booking, error) {
+	return s.transition(ctx, bookingID, "completed", func(q *db.Queries, b db.GetBookingForTransitionRow) error {
+		if uuidString(b.OrganizerUserID) != callerUserID {
+			myProfileID, err := profileIDForUser(ctx, q, callerUserID)
+			if err != nil {
+				if errors.Is(err, errNotTalent) {
+					return ErrForbidden
+				}
+				return err
+			}
+			if uuidString(myProfileID) != uuidString(b.TalentProfileID) {
+				return ErrForbidden
+			}
+		}
+		if b.StatusCode != "paid" {
+			return ErrNotPending
+		}
+		if !time.Now().After(b.EndsAt.Time) {
+			return ErrEventNotYetOver
+		}
+		return nil
+	}, nil, callerUserID)
 }
 
 // MarkPaid moves an agreed booking to paid. It is driven by the payments

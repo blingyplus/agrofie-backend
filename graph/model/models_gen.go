@@ -54,6 +54,8 @@ type BookingDetail struct {
 	TermsText *string `json:"termsText,omitempty"`
 	// The most recent payment attempt for this booking, if any.
 	Payment *Payment `json:"payment,omitempty"`
+	// Every review left on this booking (0, 1, or 2 — one per side).
+	Reviews []*Review `json:"reviews"`
 }
 
 type Checkout struct {
@@ -196,9 +198,30 @@ type RequestBookingInput struct {
 	Note         *string `json:"note,omitempty"`
 }
 
+type Review struct {
+	ID                string  `json:"id"`
+	Rating            int     `json:"rating"`
+	Body              *string `json:"body,omitempty"`
+	CreatedAt         string  `json:"createdAt"`
+	AuthorUserID      string  `json:"authorUserId"`
+	AuthorDisplayName string  `json:"authorDisplayName"`
+}
+
+type ReviewSummary struct {
+	ReviewCount   int     `json:"reviewCount"`
+	AverageRating float64 `json:"averageRating"`
+}
+
 type SettlementBank struct {
 	Name string `json:"name"`
 	Code string `json:"code"`
+}
+
+type SubmitReviewInput struct {
+	BookingID string `json:"bookingId"`
+	// 1-5.
+	Rating int     `json:"rating"`
+	Body   *string `json:"body,omitempty"`
 }
 
 type SubmitVerificationInput struct {

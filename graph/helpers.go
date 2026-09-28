@@ -16,6 +16,7 @@ import (
 	"github.com/blingyplus/agrofie-backend/internal/discovery"
 	"github.com/blingyplus/agrofie-backend/internal/lookup"
 	"github.com/blingyplus/agrofie-backend/internal/payments"
+	"github.com/blingyplus/agrofie-backend/internal/review"
 	"github.com/blingyplus/agrofie-backend/internal/talentprofile"
 	"github.com/blingyplus/agrofie-backend/internal/verification"
 	"github.com/vektah/gqlparser/v2/gqlerror"
@@ -404,6 +405,60 @@ func toModelPayment(p *checkout.PaymentStatus) *model.Payment {
 		AmountPesewas: int(p.AmountPesewas), CommissionPesewas: int(p.CommissionPesewas),
 		CurrencyCode: p.CurrencyCode, CheckoutURL: p.CheckoutURL,
 	}
+}
+
+func mapReviewErr(err error) error {
+	switch {
+	case errors.Is(err, review.ErrInvalidInput), errors.Is(err, review.ErrNotCompleted), errors.Is(err, review.ErrAlreadyReviewed):
+		return &gqlerror.Error{Message: err.Error(), Extensions: map[string]any{"code": "BAD_USER_INPUT"}}
+	case errors.Is(err, review.ErrNotFound):
+		return &gqlerror.Error{Message: "booking not found", Extensions: map[string]any{"code": "NOT_FOUND"}}
+	case errors.Is(err, review.ErrForbidden):
+		return &gqlerror.Error{Message: "forbidden", Extensions: map[string]any{"code": "FORBIDDEN"}}
+	default:
+		return err
+	}
+}
+
+func toModelReview(r *review.Review) *model.Review {
+	return &model.Review{
+		ID: r.ID, Rating: r.Rating, Body: r.Body, CreatedAt: r.CreatedAt.Format(time.RFC3339),
+		AuthorUserID: r.AuthorUserID, AuthorDisplayName: r.AuthorDisplayName,
+	}
+}
+
+func toModelReviews(rs []review.Review) []*model.Review {
+	out := make([]*model.Review, 0, len(rs))
+	for i := range rs {
+		out = append(out, toModelReview(&rs[i]))
+	}
+	return out
+}
+
+func toModelReviewSummary(s *review.Summary) *model.ReviewSummary {
+	return &model.ReviewSummary{ReviewCount: s.ReviewCount, AverageRating: s.AverageRating}
+}
+
+// bookingDetail assembles the full BookingDetail — the booking itself, its
+// latest payment (if any), and its reviews (if any) — the same shape
+// whether reached via the booking query or a mutation's response.
+func (r *Resolver) bookingDetail(ctx context.Context, callerUserID, bookingID string) (*model.BookingDetail, error) {
+	detail, err := r.Bookings.GetDetail(ctx, callerUserID, bookingID)
+	if err != nil {
+		return nil, mapBookingErr(err)
+	}
+	out := toModelBookingDetail(detail)
+	if payment, err := r.Checkout.LatestPayment(ctx, callerUserID, bookingID); err == nil {
+		out.Payment = toModelPayment(payment)
+	} else if !errors.Is(err, checkout.ErrNoPayment) {
+		return nil, mapCheckoutErr(err)
+	}
+	reviews, err := r.Reviews.ListForBooking(ctx, callerUserID, bookingID)
+	if err != nil {
+		return nil, mapReviewErr(err)
+	}
+	out.Reviews = toModelReviews(reviews)
+	return out, nil
 }
 
 // organizerBookingByID/talentBookingByID re-fetch through the list queries

@@ -53,6 +53,9 @@ type Query {
 
   """Full detail, including the contract once agreed. Only the organizer or talent involved can see it."""
   booking(id: ID!): BookingDetail @authenticated
+
+  """A talent's public aggregate rating. Never review authorship at this level."""
+  talentReviewSummary(talentId: ID!): ReviewSummary!
 }
 
 type Mutation {
@@ -105,6 +108,12 @@ type Mutation {
 
   """Reconciliation fallback: ask Paystack directly for the latest payment's status, and apply the same effect a webhook would if it succeeded."""
   verifyPayment(bookingId: ID!): Payment! @hasRole(code: "organizer")
+
+  """Confirm a paid booking as completed, once the event window has passed. Either party may confirm it."""
+  completeBooking(id: ID!): BookingDetail! @authenticated
+
+  """Leave the caller's one review of the other party on a completed booking."""
+  submitReview(input: SubmitReviewInput!): Review! @authenticated
 }
 
 input RegisterInput {
@@ -380,6 +389,29 @@ type BookingDetail {
   termsText: String
   """The most recent payment attempt for this booking, if any."""
   payment: Payment
+  """Every review left on this booking (0, 1, or 2 — one per side)."""
+  reviews: [Review!]!
+}
+
+input SubmitReviewInput {
+  bookingId: ID!
+  """1-5."""
+  rating: Int!
+  body: String
+}
+
+type Review {
+  id: ID!
+  rating: Int!
+  body: String
+  createdAt: String!
+  authorUserId: ID!
+  authorDisplayName: String!
+}
+
+type ReviewSummary {
+  reviewCount: Int!
+  averageRating: Float!
 }
 
 """One Paystack split-checkout attempt for a booking. Amounts are

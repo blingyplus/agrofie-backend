@@ -15,7 +15,6 @@ import (
 	agrofierv1 "github.com/blingyplus/agrofie-backend/gen/agrofie/v1"
 	"github.com/blingyplus/agrofie-backend/graph/gqlauth"
 	"github.com/blingyplus/agrofie-backend/graph/model"
-	"github.com/blingyplus/agrofie-backend/internal/checkout"
 	"github.com/blingyplus/agrofie-backend/internal/discovery"
 	"github.com/blingyplus/agrofie-backend/internal/lookup"
 	"github.com/blingyplus/agrofie-backend/internal/talentprofile"
@@ -228,6 +227,26 @@ func (r *mutationResolver) VerifyPayment(ctx context.Context, bookingID string) 
 		return nil, mapCheckoutErr(err)
 	}
 	return toModelPayment(out), nil
+}
+
+// CompleteBooking is the resolver for the completeBooking field.
+func (r *mutationResolver) CompleteBooking(ctx context.Context, id string) (*model.BookingDetail, error) {
+	p, _ := gqlauth.FromContext(ctx)
+	if _, err := r.Bookings.CompleteBooking(ctx, p.UserID, id); err != nil {
+		return nil, mapBookingErr(err)
+	}
+	return r.bookingDetail(ctx, p.UserID, id)
+}
+
+// SubmitReview is the resolver for the submitReview field.
+func (r *mutationResolver) SubmitReview(ctx context.Context, input model.SubmitReviewInput) (*model.Review, error) {
+	p, _ := gqlauth.FromContext(ctx)
+	out, err := r.Reviews.Submit(ctx, p.UserID, input.BookingID, int(input.Rating), input.Body)
+	if err != nil {
+		return nil, mapReviewErr(err)
+	}
+	out.AuthorDisplayName = p.DisplayName
+	return toModelReview(out), nil
 }
 
 // Health is the resolver for the health field.
@@ -502,17 +521,16 @@ func (r *queryResolver) MyBookingsAsTalent(ctx context.Context) ([]*model.Talent
 // Booking is the resolver for the booking field.
 func (r *queryResolver) Booking(ctx context.Context, id string) (*model.BookingDetail, error) {
 	p, _ := gqlauth.FromContext(ctx)
-	detail, err := r.Bookings.GetDetail(ctx, p.UserID, id)
+	return r.bookingDetail(ctx, p.UserID, id)
+}
+
+// TalentReviewSummary is the resolver for the talentReviewSummary field.
+func (r *queryResolver) TalentReviewSummary(ctx context.Context, talentID string) (*model.ReviewSummary, error) {
+	out, err := r.Reviews.TalentSummary(ctx, talentID)
 	if err != nil {
-		return nil, mapBookingErr(err)
+		return nil, mapReviewErr(err)
 	}
-	out := toModelBookingDetail(detail)
-	if payment, err := r.Checkout.LatestPayment(ctx, p.UserID, id); err == nil {
-		out.Payment = toModelPayment(payment)
-	} else if !errors.Is(err, checkout.ErrNoPayment) {
-		return nil, mapCheckoutErr(err)
-	}
-	return out, nil
+	return toModelReviewSummary(out), nil
 }
 
 // Mutation returns MutationResolver implementation.

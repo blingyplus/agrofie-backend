@@ -11,12 +11,16 @@ Stored in `roles` lookup: `talent`, `organizer`, `admin`. Users may hold multipl
 1. `inquiry` — organizer requested
 2. `agreed` — both sides accepted; quote snapshotted
 3. `paid` — payment confirmed by a **verified Paystack webhook** (or Verify Transaction). Never set from client input.
-4. `completed` — organizer confirmed the event happened
+4. `completed` — either party confirmed the event happened, once its `ends_at` has passed. (Not gated on payment release — Paystack has already settled both parties directly by the time a booking reaches `paid` — so requiring only the organizer would just be a single point of failure if they forget; either side unlocks reviews for both.)
 5. `cancelled` — with `cancellation_reasons`
 
 Talent contact details unlock at `agreed`. Talent must have a verified payout account before they can be booked.
 
 Append-only history in `booking_status_events`.
+
+## Reviews
+
+Unlocked only once a booking is `completed`. Each side may leave exactly one review of the other (`reviews` is unique on `(booking_id, author_user_id)`) — rating 1-5 + optional body. A talent's public aggregate rating counts only reviews the *organizer* left about them, never the talent's own review of the organizer.
 
 ## Invariants
 

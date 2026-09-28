@@ -11,6 +11,7 @@ import (
 	"github.com/blingyplus/agrofie-backend/internal/checkout"
 	"github.com/blingyplus/agrofie-backend/internal/discovery"
 	"github.com/blingyplus/agrofie-backend/internal/lookup"
+	"github.com/blingyplus/agrofie-backend/internal/review"
 	"github.com/blingyplus/agrofie-backend/internal/talentprofile"
 	"github.com/blingyplus/agrofie-backend/internal/verification"
 )
@@ -24,6 +25,7 @@ type Resolver struct {
 	Availability   *availability.Service
 	Bookings       *booking.Service
 	Checkout       *checkout.Service
+	Reviews        *review.Service
 	Prober         HealthProber
 	AuthClient     agrofierv1connect.AuthServiceClient
 }

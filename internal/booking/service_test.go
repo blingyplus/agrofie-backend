@@ -412,3 +412,77 @@ func TestGetDetailRejectsUninvolvedCaller(t *testing.T) {
 		t.Fatalf("talent should see own booking: %v", err)
 	}
 }
+
+func TestCompleteBookingRequiresPaidAndEventOver(t *testing.T) {
+	tx := newTx(t)
+	svc := newService(tx)
+	organizer := newUser(t, tx, "Organizer")
+	talentUser, profileID := newBookableTalent(t, tx, "Talent")
+	makeAvailable(t, tx, talentUser, day(0), day(30))
+	b, err := svc.RequestBooking(context.Background(), organizer, validInput(profileID))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.AcceptBooking(context.Background(), talentUser, b.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	// Not paid yet: rejected.
+	if _, err := svc.CompleteBooking(context.Background(), organizer, b.ID); !errors.Is(err, booking.ErrNotPending) {
+		t.Fatalf("got %v, want ErrNotPending", err)
+	}
+
+	if _, err := svc.MarkPaid(context.Background(), b.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	// Paid, but the event (day(10)-day(11), in December 2026) hasn't
+	// happened yet: rejected.
+	if _, err := svc.CompleteBooking(context.Background(), organizer, b.ID); !errors.Is(err, booking.ErrEventNotYetOver) {
+		t.Fatalf("got %v, want ErrEventNotYetOver", err)
+	}
+}
+
+func TestCompleteBookingAllowsEitherPartyOnceEventIsOver(t *testing.T) {
+	tx := newTx(t)
+	svc := newService(tx)
+	organizer := newUser(t, tx, "Organizer")
+	talentUser, profileID := newBookableTalent(t, tx, "Talent")
+	// A window safely in the past relative to "now", so CompleteBooking's
+	// event-over guard passes.
+	past := time.Date(2020, time.January, 1, 0, 0, 0, 0, time.UTC)
+	if _, err := availability.NewService(tx).AddBlock(context.Background(), talentUser, availability.AddBlockInput{
+		StartsAt: past, EndsAt: past.AddDate(0, 0, 5), IsAvailable: true,
+	}); err != nil {
+		t.Fatalf("add availability: %v", err)
+	}
+	b, err := svc.RequestBooking(context.Background(), organizer, booking.RequestInput{
+		TalentID: profileID, StartsAt: past.AddDate(0, 0, 1), EndsAt: past.AddDate(0, 0, 2), RateUnitCode: "per_event",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.AcceptBooking(context.Background(), talentUser, b.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.MarkPaid(context.Background(), b.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	stranger := newUser(t, tx, "Stranger")
+	if _, err := svc.CompleteBooking(context.Background(), stranger, b.ID); !errors.Is(err, booking.ErrForbidden) {
+		t.Fatalf("got %v, want ErrForbidden", err)
+	}
+
+	out, err := svc.CompleteBooking(context.Background(), talentUser, b.ID)
+	if err != nil {
+		t.Fatalf("CompleteBooking: %v", err)
+	}
+	if out.StatusCode != "completed" {
+		t.Fatalf("status = %q, want completed", out.StatusCode)
+	}
+
+	if _, err := svc.CompleteBooking(context.Background(), organizer, b.ID); !errors.Is(err, booking.ErrNotPending) {
+		t.Fatalf("re-completing: got %v, want ErrNotPending", err)
+	}
+}
