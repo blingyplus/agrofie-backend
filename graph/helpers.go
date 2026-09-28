@@ -12,6 +12,7 @@ import (
 	"github.com/blingyplus/agrofie-backend/graph/model"
 	"github.com/blingyplus/agrofie-backend/internal/availability"
 	"github.com/blingyplus/agrofie-backend/internal/booking"
+	"github.com/blingyplus/agrofie-backend/internal/checkout"
 	"github.com/blingyplus/agrofie-backend/internal/discovery"
 	"github.com/blingyplus/agrofie-backend/internal/lookup"
 	"github.com/blingyplus/agrofie-backend/internal/payments"
@@ -373,6 +374,35 @@ func toModelBookingDetail(b *booking.Detail) *model.BookingDetail {
 		QuotedAmount: b.QuotedAmount, CurrencyCode: b.CurrencyCode,
 		OrganizerDisplayName: b.OrganizerDisplayName, TalentDisplayName: b.TalentDisplayName,
 		EventTypeName: b.EventTypeName, TermsText: b.TermsText,
+	}
+}
+
+func mapCheckoutErr(err error) error {
+	switch {
+	case errors.Is(err, checkout.ErrInvalidInput), errors.Is(err, checkout.ErrNotAgreed),
+		errors.Is(err, checkout.ErrPayoutNotReady), errors.Is(err, checkout.ErrNoPayment):
+		return &gqlerror.Error{Message: err.Error(), Extensions: map[string]any{"code": "BAD_USER_INPUT"}}
+	case errors.Is(err, checkout.ErrNotFound):
+		return &gqlerror.Error{Message: "booking not found", Extensions: map[string]any{"code": "NOT_FOUND"}}
+	case errors.Is(err, checkout.ErrForbidden):
+		return &gqlerror.Error{Message: "forbidden", Extensions: map[string]any{"code": "FORBIDDEN"}}
+	default:
+		return err
+	}
+}
+
+func toModelCheckout(c *checkout.Checkout) *model.Checkout {
+	return &model.Checkout{
+		CheckoutURL: c.CheckoutURL, Reference: c.Reference,
+		AmountPesewas: int(c.AmountPesewas), CommissionPesewas: int(c.CommissionPesewas),
+	}
+}
+
+func toModelPayment(p *checkout.PaymentStatus) *model.Payment {
+	return &model.Payment{
+		Reference: p.Reference, StatusCode: p.StatusCode, StatusName: p.StatusName,
+		AmountPesewas: int(p.AmountPesewas), CommissionPesewas: int(p.CommissionPesewas),
+		CurrencyCode: p.CurrencyCode, CheckoutURL: p.CheckoutURL,
 	}
 }
 

@@ -26,7 +26,7 @@
 - Do not use Postgres ENUMs for statuses/categories.
 - Money flows through Paystack subaccounts (split). Do not hold client funds, and do not delay settlement to hold a talent's money (that is escrow).
 - Never trust the client for payment status. Verify `x-paystack-signature` (HMAC-SHA512) on webhooks, process idempotently, amounts in pesewas. Test mode / fake provider only until launch review.
-- Do not write to `escrow_ledger` / `ledger_*` (legacy). Do not reveal talent contact details before a booking is `agreed`.
+- `escrow_ledger` / `ledger_*` were dropped in migration `000010_payments`; use the `payments` / `payment_events` tables instead. Do not reveal talent contact details before a booking is `agreed`.
 - Do not hardcode Accra/Highlife lists in the client — load from GraphQL lookups.
 - Do not hand-roll JWT/session crypto — use Kratos.
 - Do not commit secrets; use `.env.example` only.

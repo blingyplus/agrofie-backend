@@ -99,6 +99,12 @@ type Mutation {
 
   """Withdraw the caller's own pending inquiry. Once agreed, cancelling goes through a dispute instead."""
   cancelBooking(id: ID!): OrganizerBooking! @hasRole(code: "organizer")
+
+  """Start a Paystack split checkout for an agreed booking the caller organized. The amount is never client-supplied; it is the booking's own snapshotted quote."""
+  initiateCheckout(bookingId: ID!): Checkout! @hasRole(code: "organizer")
+
+  """Reconciliation fallback: ask Paystack directly for the latest payment's status, and apply the same effect a webhook would if it succeeded."""
+  verifyPayment(bookingId: ID!): Payment! @hasRole(code: "organizer")
 }
 
 input RegisterInput {
@@ -372,4 +378,26 @@ type BookingDetail {
   eventTypeName: String
   """Only set once the booking has been accepted."""
   termsText: String
+  """The most recent payment attempt for this booking, if any."""
+  payment: Payment
+}
+
+"""One Paystack split-checkout attempt for a booking. Amounts are
+integer pesewas; commissionPesewas is what Agrofie keeps, the rest
+settles to the talent's own subaccount."""
+type Payment {
+  reference: ID!
+  statusCode: String!
+  statusName: String!
+  amountPesewas: Int!
+  commissionPesewas: Int!
+  currencyCode: String!
+  checkoutUrl: String
+}
+
+type Checkout {
+  checkoutUrl: String!
+  reference: ID!
+  amountPesewas: Int!
+  commissionPesewas: Int!
 }

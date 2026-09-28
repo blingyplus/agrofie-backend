@@ -1,7 +1,7 @@
-// Package booking is the inquiry -> agreed flow: an organizer requests a
-// slot, the talent accepts or declines. Payment (slice 6) is not part of
-// this package; a booking that reaches `agreed` is paid off-platform until
-// Paystack split checkout exists.
+// Package booking is the inquiry -> agreed -> paid flow: an organizer
+// requests a slot, the talent accepts or declines, and once agreed the
+// payments package (slice 6) drives the move to paid via MarkPaid after a
+// verified Paystack webhook or reconciliation check.
 package booking
 
 import (
@@ -267,6 +267,19 @@ func (s *Service) CancelBooking(ctx context.Context, organizerUserID, bookingID 
 	}, nil, organizerUserID, &reason)
 }
 
+// MarkPaid moves an agreed booking to paid. It is driven by the payments
+// package (a verified Paystack webhook or reconciliation check), never by
+// the client directly — so there is no user actor: booking_status_events
+// .actor_user_id is left null for this transition ("system").
+func (s *Service) MarkPaid(ctx context.Context, bookingID string) (*Booking, error) {
+	return s.transitionAny(ctx, bookingID, "paid", func(q *db.Queries, b db.GetBookingForTransitionRow) error {
+		if b.StatusCode != "agreed" {
+			return ErrNotPending
+		}
+		return nil
+	}, nil, pgtype.UUID{})
+}
+
 // transition runs the shared guard-then-write pattern every state change
 // uses: load the booking, let guard veto it, apply the DB transition
 // (checked against the expected prior status so a race loses cleanly), run
@@ -277,13 +290,24 @@ func (s *Service) transition(
 	after func(q *db.Queries, b db.GetBookingForTransitionRow) error,
 	actorUserID string, cancellationReason ...*string,
 ) (*Booking, error) {
-	bID, err := parseUUID(bookingID)
-	if err != nil {
-		return nil, ErrNotFound
-	}
 	actorUUID, err := parseUUID(actorUserID)
 	if err != nil {
 		return nil, fmt.Errorf("%w: invalid actor id", ErrInvalidInput)
+	}
+	return s.transitionAny(ctx, bookingID, newStatus, guard, after, actorUUID, cancellationReason...)
+}
+
+// transitionAny is transition with an already-resolved actor, which may be
+// invalid/null for a system-driven transition (see MarkPaid).
+func (s *Service) transitionAny(
+	ctx context.Context, bookingID, newStatus string,
+	guard func(q *db.Queries, b db.GetBookingForTransitionRow) error,
+	after func(q *db.Queries, b db.GetBookingForTransitionRow) error,
+	actorUUID pgtype.UUID, cancellationReason ...*string,
+) (*Booking, error) {
+	bID, err := parseUUID(bookingID)
+	if err != nil {
+		return nil, ErrNotFound
 	}
 
 	var out *Booking

@@ -3,6 +3,10 @@ package payments
 import (
 	"bytes"
 	"context"
+	"crypto/hmac"
+	"crypto/sha512"
+	"crypto/subtle"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -135,6 +139,63 @@ func (p *Paystack) CreateSubaccount(ctx context.Context, in SubaccountInput, com
 		AccountName:    res.Data.AccountName,
 		BankName:       res.Data.SettlementBank,
 	}, nil
+}
+
+type initializeBody struct {
+	Email             string `json:"email"`
+	Amount            int64  `json:"amount"`
+	Reference         string `json:"reference"`
+	Currency          string `json:"currency,omitempty"`
+	Subaccount        string `json:"subaccount,omitempty"`
+	TransactionCharge int64  `json:"transaction_charge,omitempty"`
+	Bearer            string `json:"bearer,omitempty"`
+}
+
+type initializeDTO struct {
+	AuthorizationURL string `json:"authorization_url"`
+	Reference        string `json:"reference"`
+}
+
+func (p *Paystack) InitializeCheckout(ctx context.Context, in CheckoutInput) (Checkout, error) {
+	var res paystackEnvelope[initializeDTO]
+	err := p.do(ctx, http.MethodPost, "/transaction/initialize", initializeBody{
+		Email:             in.PayerEmail,
+		Amount:            in.AmountPesewas,
+		Reference:         in.Reference,
+		Currency:          in.CurrencyCode,
+		Subaccount:        in.SubaccountCode,
+		TransactionCharge: in.CommissionPesewas,
+		Bearer:            "subaccount",
+	}, &res)
+	if err != nil {
+		return Checkout{}, err
+	}
+	return Checkout{CheckoutURL: res.Data.AuthorizationURL, Reference: res.Data.Reference}, nil
+}
+
+type verifyDTO struct {
+	Status string `json:"status"`
+}
+
+func (p *Paystack) VerifyTransaction(ctx context.Context, reference string) (TransactionStatus, error) {
+	var res paystackEnvelope[verifyDTO]
+	if err := p.do(ctx, http.MethodGet, "/transaction/verify/"+url.PathEscape(reference), nil, &res); err != nil {
+		return "", err
+	}
+	return TransactionStatus(res.Data.Status), nil
+}
+
+// VerifyWebhookSignature checks the x-paystack-signature header: it must be
+// the hex-encoded HMAC-SHA512 of the raw body, keyed with the secret key.
+// Constant-time compare so this can't be timed to leak the signature.
+func (p *Paystack) VerifyWebhookSignature(rawBody []byte, signatureHeader string) bool {
+	if signatureHeader == "" {
+		return false
+	}
+	mac := hmac.New(sha512.New, []byte(p.secretKey))
+	mac.Write(rawBody)
+	expected := hex.EncodeToString(mac.Sum(nil))
+	return subtle.ConstantTimeCompare([]byte(expected), []byte(signatureHeader)) == 1
 }
 
 var _ Provider = (*Paystack)(nil)

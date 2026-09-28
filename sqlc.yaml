@@ -11,6 +11,7 @@ sql:
       - "db/migrations/000007_discovery_indexes.up.sql"
       - "db/migrations/000008_payout_accounts.up.sql"
       - "db/migrations/000009_verification_review.up.sql"
+      - "db/migrations/000010_payments.up.sql"
     gen:
       go:
         package: "db"

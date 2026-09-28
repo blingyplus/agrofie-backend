@@ -52,6 +52,15 @@ type BookingDetail struct {
 	EventTypeName        *string `json:"eventTypeName,omitempty"`
 	// Only set once the booking has been accepted.
 	TermsText *string `json:"termsText,omitempty"`
+	// The most recent payment attempt for this booking, if any.
+	Payment *Payment `json:"payment,omitempty"`
+}
+
+type Checkout struct {
+	CheckoutURL       string `json:"checkoutUrl"`
+	Reference         string `json:"reference"`
+	AmountPesewas     int    `json:"amountPesewas"`
+	CommissionPesewas int    `json:"commissionPesewas"`
 }
 
 type ConnectPayoutInput struct {
@@ -113,6 +122,19 @@ type OrganizerBooking struct {
 	TalentDisplayName string  `json:"talentDisplayName"`
 	TalentID          string  `json:"talentId"`
 	EventTypeName     *string `json:"eventTypeName,omitempty"`
+}
+
+// One Paystack split-checkout attempt for a booking. Amounts are
+// integer pesewas; commissionPesewas is what Agrofie keeps, the rest
+// settles to the talent's own subaccount.
+type Payment struct {
+	Reference         string  `json:"reference"`
+	StatusCode        string  `json:"statusCode"`
+	StatusName        string  `json:"statusName"`
+	AmountPesewas     int     `json:"amountPesewas"`
+	CommissionPesewas int     `json:"commissionPesewas"`
+	CurrencyCode      string  `json:"currencyCode"`
+	CheckoutURL       *string `json:"checkoutUrl,omitempty"`
 }
 
 type PayoutAccount struct {

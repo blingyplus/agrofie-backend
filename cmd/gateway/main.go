@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"errors"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -13,6 +15,7 @@ import (
 	"github.com/blingyplus/agrofie-backend/graph/gqlauth"
 	"github.com/blingyplus/agrofie-backend/internal/availability"
 	"github.com/blingyplus/agrofie-backend/internal/booking"
+	"github.com/blingyplus/agrofie-backend/internal/checkout"
 	"github.com/blingyplus/agrofie-backend/internal/config"
 	"github.com/blingyplus/agrofie-backend/internal/db"
 	"github.com/blingyplus/agrofie-backend/internal/discovery"
@@ -50,6 +53,7 @@ func main() {
 	verifications := verification.NewService(pool)
 	availabilitySvc := availability.NewService(pool)
 	bookings := booking.NewService(pool, availabilitySvc)
+	checkoutSvc := checkout.NewService(pool, paymentsProvider, bookings, cfg.CommissionPercent)
 
 	prober := probe.NewConnectProber(cfg.AuthURL, cfg.BookingURL, cfg.PaymentsURL)
 	authClient := graph.NewAuthClient(cfg.AuthURL)
@@ -60,6 +64,7 @@ func main() {
 		Verifications:  verifications,
 		Availability:   availabilitySvc,
 		Bookings:       bookings,
+		Checkout:       checkoutSvc,
 		Prober:         prober,
 		AuthClient:     authClient,
 	}
@@ -73,11 +78,37 @@ func main() {
 	mux.HandleFunc("GET /healthz", health.Handler(cfg.ServiceName))
 	mux.Handle("/graphql", gqlauth.Middleware(authClient)(gql))
 	mux.Handle("/playground", playground.Handler("Agrofie GraphQL", "/graphql"))
+	mux.HandleFunc("POST /webhooks/paystack", paystackWebhookHandler(checkoutSvc))
 
 	slog.Info("gateway listening", "addr", cfg.Addr())
 	if err := http.ListenAndServe(cfg.Addr(), withCORS(mux)); err != nil {
 		slog.Error("gateway stopped", "err", err)
 		os.Exit(1)
+	}
+}
+
+// paystackWebhookHandler reads the raw request body (never the parsed
+// GraphQL/JSON path) so the signature can be verified against the exact
+// bytes Paystack signed, before anything in the body is trusted.
+func paystackWebhookHandler(svc *checkout.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20)) // 1MiB cap
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		sig := r.Header.Get("x-paystack-signature")
+		if err := svc.HandleWebhookEvent(r.Context(), body, sig); err != nil {
+			if errors.Is(err, checkout.ErrInvalidInput) {
+				slog.Warn("paystack webhook rejected", "err", err)
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			slog.Error("paystack webhook handling failed", "err", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
 	}
 }
 

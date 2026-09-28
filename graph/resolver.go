@@ -8,6 +8,7 @@ import (
 	"github.com/blingyplus/agrofie-backend/gen/agrofie/v1/agrofierv1connect"
 	"github.com/blingyplus/agrofie-backend/internal/availability"
 	"github.com/blingyplus/agrofie-backend/internal/booking"
+	"github.com/blingyplus/agrofie-backend/internal/checkout"
 	"github.com/blingyplus/agrofie-backend/internal/discovery"
 	"github.com/blingyplus/agrofie-backend/internal/lookup"
 	"github.com/blingyplus/agrofie-backend/internal/talentprofile"
@@ -22,6 +23,7 @@ type Resolver struct {
 	Verifications  *verification.Service
 	Availability   *availability.Service
 	Bookings       *booking.Service
+	Checkout       *checkout.Service
 	Prober         HealthProber
 	AuthClient     agrofierv1connect.AuthServiceClient
 }

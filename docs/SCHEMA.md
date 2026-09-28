@@ -15,8 +15,8 @@ Rule: if a **name, type, status, or category can change** or needs **admin contr
 | `languages`, `event_types`, `rate_units`, `currencies` | Commercial / profile |
 | `media_types` | avatar, photo, audio, video |
 | `verification_types`, `verification_statuses` | KYC pipeline |
-| `booking_statuses` | inquiry → … → cancelled |
-| `ledger_entry_types`, `ledger_statuses` | **Legacy** (from the original hold/release scaffold). Unused; replaced by the payments tables below. |
+| `booking_statuses` | inquiry → agreed → paid → completed / cancelled |
+| `payment_statuses` | pending / succeeded / failed |
 | `dispute_reasons`, `dispute_statuses`, `cancellation_reasons` | Ops |
 
 ## Identity vs profile
@@ -47,11 +47,12 @@ Kratos tables live in Postgres schema `kratos` (same database, `search_path=krat
 | `bookings` | FKs + venue_text + snapshotted quote |
 | `booking_status_events` | Append-only status history |
 | `contracts` | Terms document per booking |
-| `escrow_ledger` | **Legacy**, unused. Do not write to it. |
-| `payout_accounts` | *(planned)* talent's Paystack subaccount code, type (bank / mobile money), verified flag |
-| `payments` | *(planned)* one row per Paystack transaction: booking, reference, amount, commission, status |
-| `payment_events` | *(planned)* raw verified webhook events, unique by event id, for idempotency and audit |
+| `payout_accounts` | Talent's Paystack subaccount code, settlement type (bank / mobile money), last-4 account number, active flag |
+| `payments` | One row per checkout attempt: booking, provider_reference (unique), amount_pesewas, commission_pesewas, currency, checkout_url, status |
+| `payment_events` | Raw webhook log, unique on `(provider_reference, event_type)` — the idempotency guard against Paystack's retried deliveries |
 | `reviews`, `disputes` | Post-event |
+
+`escrow_ledger` / `ledger_entry_types` / `ledger_statuses` (the original hold/release scaffold) were dropped in migration `000010_payments`, replaced by the tables above. Agrofie never holds funds — see docs/PRODUCT.md (Money model).
 
 ## Seed (migration `000005_seed`)
 

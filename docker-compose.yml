@@ -134,6 +134,9 @@ services:
       context: .
       dockerfile: Dockerfile
       target: runtime
+    env_file:
+      - path: .env
+        required: false
     environment:
       HTTP_PORT: "8080"
       DATABASE_URL: postgres://agrofie:agrofie@postgres:5432/agrofie?sslmode=disable

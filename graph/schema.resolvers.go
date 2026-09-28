@@ -15,6 +15,7 @@ import (
 	agrofierv1 "github.com/blingyplus/agrofie-backend/gen/agrofie/v1"
 	"github.com/blingyplus/agrofie-backend/graph/gqlauth"
 	"github.com/blingyplus/agrofie-backend/graph/model"
+	"github.com/blingyplus/agrofie-backend/internal/checkout"
 	"github.com/blingyplus/agrofie-backend/internal/discovery"
 	"github.com/blingyplus/agrofie-backend/internal/lookup"
 	"github.com/blingyplus/agrofie-backend/internal/talentprofile"
@@ -207,6 +208,26 @@ func (r *mutationResolver) CancelBooking(ctx context.Context, id string) (*model
 		return nil, mapBookingErr(err)
 	}
 	return r.organizerBookingByID(ctx, id)
+}
+
+// InitiateCheckout is the resolver for the initiateCheckout field.
+func (r *mutationResolver) InitiateCheckout(ctx context.Context, bookingID string) (*model.Checkout, error) {
+	p, _ := gqlauth.FromContext(ctx)
+	out, err := r.Checkout.InitiateCheckout(ctx, p.UserID, bookingID)
+	if err != nil {
+		return nil, mapCheckoutErr(err)
+	}
+	return toModelCheckout(out), nil
+}
+
+// VerifyPayment is the resolver for the verifyPayment field.
+func (r *mutationResolver) VerifyPayment(ctx context.Context, bookingID string) (*model.Payment, error) {
+	p, _ := gqlauth.FromContext(ctx)
+	out, err := r.Checkout.VerifyPayment(ctx, p.UserID, bookingID)
+	if err != nil {
+		return nil, mapCheckoutErr(err)
+	}
+	return toModelPayment(out), nil
 }
 
 // Health is the resolver for the health field.
@@ -485,7 +506,13 @@ func (r *queryResolver) Booking(ctx context.Context, id string) (*model.BookingD
 	if err != nil {
 		return nil, mapBookingErr(err)
 	}
-	return toModelBookingDetail(detail), nil
+	out := toModelBookingDetail(detail)
+	if payment, err := r.Checkout.LatestPayment(ctx, p.UserID, id); err == nil {
+		out.Payment = toModelPayment(payment)
+	} else if !errors.Is(err, checkout.ErrNoPayment) {
+		return nil, mapCheckoutErr(err)
+	}
+	return out, nil
 }
 
 // Mutation returns MutationResolver implementation.
