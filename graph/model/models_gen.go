@@ -38,6 +38,22 @@ type AvailabilityWindow struct {
 	IsAvailable bool   `json:"isAvailable"`
 }
 
+type BookingDetail struct {
+	ID                   string  `json:"id"`
+	StatusCode           string  `json:"statusCode"`
+	StatusName           string  `json:"statusName"`
+	StartsAt             string  `json:"startsAt"`
+	EndsAt               string  `json:"endsAt"`
+	VenueText            *string `json:"venueText,omitempty"`
+	QuotedAmount         string  `json:"quotedAmount"`
+	CurrencyCode         string  `json:"currencyCode"`
+	OrganizerDisplayName string  `json:"organizerDisplayName"`
+	TalentDisplayName    string  `json:"talentDisplayName"`
+	EventTypeName        *string `json:"eventTypeName,omitempty"`
+	// Only set once the booking has been accepted.
+	TermsText *string `json:"termsText,omitempty"`
+}
+
 type ConnectPayoutInput struct {
 	BusinessName   string         `json:"businessName"`
 	SettlementType SettlementType `json:"settlementType"`
@@ -83,6 +99,20 @@ type Lookup struct {
 }
 
 type Mutation struct {
+}
+
+type OrganizerBooking struct {
+	ID                string  `json:"id"`
+	StatusCode        string  `json:"statusCode"`
+	StatusName        string  `json:"statusName"`
+	StartsAt          string  `json:"startsAt"`
+	EndsAt            string  `json:"endsAt"`
+	VenueText         *string `json:"venueText,omitempty"`
+	QuotedAmount      string  `json:"quotedAmount"`
+	CurrencyCode      string  `json:"currencyCode"`
+	TalentDisplayName string  `json:"talentDisplayName"`
+	TalentID          string  `json:"talentId"`
+	EventTypeName     *string `json:"eventTypeName,omitempty"`
 }
 
 type PayoutAccount struct {
@@ -131,6 +161,19 @@ type RegisterInput struct {
 	RoleCode    string  `json:"roleCode"`
 }
 
+// Dates and times are ISO 8601 strings (e.g. "2026-12-10T00:00:00Z").
+type RequestBookingInput struct {
+	TalentID      string  `json:"talentId"`
+	EventTypeCode *string `json:"eventTypeCode,omitempty"`
+	PlaceCode     *string `json:"placeCode,omitempty"`
+	StartsAt      string  `json:"startsAt"`
+	EndsAt        string  `json:"endsAt"`
+	VenueText     *string `json:"venueText,omitempty"`
+	// Which of the talent's current published rates to quote. Never a client-supplied amount.
+	RateUnitCode string  `json:"rateUnitCode"`
+	Note         *string `json:"note,omitempty"`
+}
+
 type SettlementBank struct {
 	Name string `json:"name"`
 	Code string `json:"code"`
@@ -145,6 +188,20 @@ type SubmitVerificationInput struct {
 type Tag struct {
 	Code string `json:"code"`
 	Name string `json:"name"`
+}
+
+type TalentBooking struct {
+	ID                   string  `json:"id"`
+	StatusCode           string  `json:"statusCode"`
+	StatusName           string  `json:"statusName"`
+	StartsAt             string  `json:"startsAt"`
+	EndsAt               string  `json:"endsAt"`
+	VenueText            *string `json:"venueText,omitempty"`
+	QuotedAmount         string  `json:"quotedAmount"`
+	CurrencyCode         string  `json:"currencyCode"`
+	OrganizerDisplayName string  `json:"organizerDisplayName"`
+	OrganizerID          string  `json:"organizerId"`
+	EventTypeName        *string `json:"eventTypeName,omitempty"`
 }
 
 type TalentCard struct {

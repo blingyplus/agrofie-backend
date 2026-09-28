@@ -44,6 +44,15 @@ type Query {
 
   """A talent's public availability windows in [from, to). No notes."""
   talentAvailability(talentId: ID!, from: String!, to: String!): [AvailabilityWindow!]!
+
+  """The caller's own bookings as the organizer who made them."""
+  myBookingsAsOrganizer: [OrganizerBooking!]! @hasRole(code: "organizer")
+
+  """The caller's own bookings as the talent they're for."""
+  myBookingsAsTalent: [TalentBooking!]! @hasRole(code: "talent")
+
+  """Full detail, including the contract once agreed. Only the organizer or talent involved can see it."""
+  booking(id: ID!): BookingDetail @authenticated
 }
 
 type Mutation {
@@ -78,6 +87,18 @@ type Mutation {
 
   """Remove one of the caller's own availability blocks."""
   removeMyAvailabilityBlock(id: ID!): Boolean! @hasRole(code: "talent")
+
+  """Request a booking. Nothing is charged yet; the price is looked up server-side from the talent's published rate."""
+  requestBooking(input: RequestBookingInput!): OrganizerBooking! @hasRole(code: "organizer")
+
+  """Accept a pending inquiry. Snapshots the contract and moves the booking to agreed."""
+  acceptBooking(id: ID!): TalentBooking! @hasRole(code: "talent")
+
+  """Decline a pending inquiry."""
+  declineBooking(id: ID!): TalentBooking! @hasRole(code: "talent")
+
+  """Withdraw the caller's own pending inquiry. Once agreed, cancelling goes through a dispute instead."""
+  cancelBooking(id: ID!): OrganizerBooking! @hasRole(code: "organizer")
 }
 
 input RegisterInput {
@@ -294,4 +315,61 @@ type AvailabilityWindow {
   startsAt: String!
   endsAt: String!
   isAvailable: Boolean!
+}
+
+"""Dates and times are ISO 8601 strings (e.g. "2026-12-10T00:00:00Z")."""
+input RequestBookingInput {
+  talentId: ID!
+  eventTypeCode: String
+  placeCode: String
+  startsAt: String!
+  endsAt: String!
+  venueText: String
+  """Which of the talent's current published rates to quote. Never a client-supplied amount."""
+  rateUnitCode: String!
+  note: String
+}
+
+type OrganizerBooking {
+  id: ID!
+  statusCode: String!
+  statusName: String!
+  startsAt: String!
+  endsAt: String!
+  venueText: String
+  quotedAmount: String!
+  currencyCode: String!
+  talentDisplayName: String!
+  talentId: ID!
+  eventTypeName: String
+}
+
+type TalentBooking {
+  id: ID!
+  statusCode: String!
+  statusName: String!
+  startsAt: String!
+  endsAt: String!
+  venueText: String
+  quotedAmount: String!
+  currencyCode: String!
+  organizerDisplayName: String!
+  organizerId: ID!
+  eventTypeName: String
+}
+
+type BookingDetail {
+  id: ID!
+  statusCode: String!
+  statusName: String!
+  startsAt: String!
+  endsAt: String!
+  venueText: String
+  quotedAmount: String!
+  currencyCode: String!
+  organizerDisplayName: String!
+  talentDisplayName: String!
+  eventTypeName: String
+  """Only set once the booking has been accepted."""
+  termsText: String
 }

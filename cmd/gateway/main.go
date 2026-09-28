@@ -12,6 +12,7 @@ import (
 	"github.com/blingyplus/agrofie-backend/graph"
 	"github.com/blingyplus/agrofie-backend/graph/gqlauth"
 	"github.com/blingyplus/agrofie-backend/internal/availability"
+	"github.com/blingyplus/agrofie-backend/internal/booking"
 	"github.com/blingyplus/agrofie-backend/internal/config"
 	"github.com/blingyplus/agrofie-backend/internal/db"
 	"github.com/blingyplus/agrofie-backend/internal/discovery"
@@ -48,6 +49,7 @@ func main() {
 	talentProfiles := talentprofile.NewService(pool, paymentsProvider, cfg.CommissionPercent)
 	verifications := verification.NewService(pool)
 	availabilitySvc := availability.NewService(pool)
+	bookings := booking.NewService(pool, availabilitySvc)
 
 	prober := probe.NewConnectProber(cfg.AuthURL, cfg.BookingURL, cfg.PaymentsURL)
 	authClient := graph.NewAuthClient(cfg.AuthURL)
@@ -57,6 +59,7 @@ func main() {
 		TalentProfiles: talentProfiles,
 		Verifications:  verifications,
 		Availability:   availabilitySvc,
+		Bookings:       bookings,
 		Prober:         prober,
 		AuthClient:     authClient,
 	}

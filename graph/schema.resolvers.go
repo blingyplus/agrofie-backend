@@ -168,6 +168,47 @@ func (r *mutationResolver) RemoveMyAvailabilityBlock(ctx context.Context, id str
 	return true, nil
 }
 
+// RequestBooking is the resolver for the requestBooking field.
+func (r *mutationResolver) RequestBooking(ctx context.Context, input model.RequestBookingInput) (*model.OrganizerBooking, error) {
+	p, _ := gqlauth.FromContext(ctx)
+	in, err := toRequestInput(input)
+	if err != nil {
+		return nil, mapBookingErr(err)
+	}
+	b, err := r.Bookings.RequestBooking(ctx, p.UserID, in)
+	if err != nil {
+		return nil, mapBookingErr(err)
+	}
+	return r.organizerBookingByID(ctx, b.ID)
+}
+
+// AcceptBooking is the resolver for the acceptBooking field.
+func (r *mutationResolver) AcceptBooking(ctx context.Context, id string) (*model.TalentBooking, error) {
+	p, _ := gqlauth.FromContext(ctx)
+	if _, err := r.Bookings.AcceptBooking(ctx, p.UserID, id); err != nil {
+		return nil, mapBookingErr(err)
+	}
+	return r.talentBookingByID(ctx, p.UserID, id)
+}
+
+// DeclineBooking is the resolver for the declineBooking field.
+func (r *mutationResolver) DeclineBooking(ctx context.Context, id string) (*model.TalentBooking, error) {
+	p, _ := gqlauth.FromContext(ctx)
+	if _, err := r.Bookings.DeclineBooking(ctx, p.UserID, id); err != nil {
+		return nil, mapBookingErr(err)
+	}
+	return r.talentBookingByID(ctx, p.UserID, id)
+}
+
+// CancelBooking is the resolver for the cancelBooking field.
+func (r *mutationResolver) CancelBooking(ctx context.Context, id string) (*model.OrganizerBooking, error) {
+	p, _ := gqlauth.FromContext(ctx)
+	if _, err := r.Bookings.CancelBooking(ctx, p.UserID, id); err != nil {
+		return nil, mapBookingErr(err)
+	}
+	return r.organizerBookingByID(ctx, id)
+}
+
 // Health is the resolver for the health field.
 func (r *queryResolver) Health(ctx context.Context) (*model.Health, error) {
 	authStatus, booking, payments := r.Prober.Probe(ctx)
@@ -405,6 +446,46 @@ func (r *queryResolver) TalentAvailability(ctx context.Context, talentID string,
 		})
 	}
 	return out, nil
+}
+
+// MyBookingsAsOrganizer is the resolver for the myBookingsAsOrganizer field.
+func (r *queryResolver) MyBookingsAsOrganizer(ctx context.Context) ([]*model.OrganizerBooking, error) {
+	p, _ := gqlauth.FromContext(ctx)
+	rows, err := r.Bookings.ListMyBookingsAsOrganizer(ctx, p.UserID)
+	if err != nil {
+		return nil, mapBookingErr(err)
+	}
+	out := make([]*model.OrganizerBooking, 0, len(rows))
+	for _, row := range rows {
+		row := row
+		out = append(out, toModelOrganizerBooking(&row))
+	}
+	return out, nil
+}
+
+// MyBookingsAsTalent is the resolver for the myBookingsAsTalent field.
+func (r *queryResolver) MyBookingsAsTalent(ctx context.Context) ([]*model.TalentBooking, error) {
+	p, _ := gqlauth.FromContext(ctx)
+	rows, err := r.Bookings.ListMyBookingsAsTalent(ctx, p.UserID)
+	if err != nil {
+		return nil, mapBookingErr(err)
+	}
+	out := make([]*model.TalentBooking, 0, len(rows))
+	for _, row := range rows {
+		row := row
+		out = append(out, toModelTalentBooking(&row))
+	}
+	return out, nil
+}
+
+// Booking is the resolver for the booking field.
+func (r *queryResolver) Booking(ctx context.Context, id string) (*model.BookingDetail, error) {
+	p, _ := gqlauth.FromContext(ctx)
+	detail, err := r.Bookings.GetDetail(ctx, p.UserID, id)
+	if err != nil {
+		return nil, mapBookingErr(err)
+	}
+	return toModelBookingDetail(detail), nil
 }
 
 // Mutation returns MutationResolver implementation.

@@ -8,8 +8,10 @@ import (
 
 	"connectrpc.com/connect"
 	agrofierv1 "github.com/blingyplus/agrofie-backend/gen/agrofie/v1"
+	"github.com/blingyplus/agrofie-backend/graph/gqlauth"
 	"github.com/blingyplus/agrofie-backend/graph/model"
 	"github.com/blingyplus/agrofie-backend/internal/availability"
+	"github.com/blingyplus/agrofie-backend/internal/booking"
 	"github.com/blingyplus/agrofie-backend/internal/discovery"
 	"github.com/blingyplus/agrofie-backend/internal/lookup"
 	"github.com/blingyplus/agrofie-backend/internal/payments"
@@ -318,4 +320,90 @@ func toModelAvailabilityBlock(b *availability.Block) *model.AvailabilityBlock {
 		ID: b.ID, StartsAt: b.StartsAt.Format(time.RFC3339), EndsAt: b.EndsAt.Format(time.RFC3339),
 		IsAvailable: b.IsAvailable, Note: b.Note,
 	}
+}
+
+func mapBookingErr(err error) error {
+	switch {
+	case errors.Is(err, booking.ErrInvalidInput), errors.Is(err, booking.ErrRateNotFound),
+		errors.Is(err, booking.ErrTalentNotBookable), errors.Is(err, booking.ErrNotAvailable),
+		errors.Is(err, booking.ErrConflict), errors.Is(err, booking.ErrNotPending):
+		return &gqlerror.Error{Message: err.Error(), Extensions: map[string]any{"code": "BAD_USER_INPUT"}}
+	case errors.Is(err, booking.ErrNotFound):
+		return &gqlerror.Error{Message: "booking not found", Extensions: map[string]any{"code": "NOT_FOUND"}}
+	case errors.Is(err, booking.ErrForbidden):
+		return &gqlerror.Error{Message: "forbidden", Extensions: map[string]any{"code": "FORBIDDEN"}}
+	default:
+		return err
+	}
+}
+
+func toRequestInput(in model.RequestBookingInput) (booking.RequestInput, error) {
+	startsAt, endsAt, err := parseRange(in.StartsAt, in.EndsAt)
+	if err != nil {
+		return booking.RequestInput{}, err
+	}
+	return booking.RequestInput{
+		TalentID: in.TalentID, EventTypeCode: in.EventTypeCode, PlaceCode: in.PlaceCode,
+		StartsAt: startsAt, EndsAt: endsAt, VenueText: in.VenueText, RateUnitCode: in.RateUnitCode, Note: in.Note,
+	}, nil
+}
+
+func toModelOrganizerBooking(b *booking.OrganizerBookingItem) *model.OrganizerBooking {
+	return &model.OrganizerBooking{
+		ID: b.ID, StatusCode: b.StatusCode, StatusName: b.StatusName,
+		StartsAt: b.StartsAt.Format(time.RFC3339), EndsAt: b.EndsAt.Format(time.RFC3339), VenueText: b.VenueText,
+		QuotedAmount: b.QuotedAmount, CurrencyCode: b.CurrencyCode,
+		TalentDisplayName: b.TalentDisplayName, TalentID: b.TalentID, EventTypeName: b.EventTypeName,
+	}
+}
+
+func toModelTalentBooking(b *booking.TalentBookingItem) *model.TalentBooking {
+	return &model.TalentBooking{
+		ID: b.ID, StatusCode: b.StatusCode, StatusName: b.StatusName,
+		StartsAt: b.StartsAt.Format(time.RFC3339), EndsAt: b.EndsAt.Format(time.RFC3339), VenueText: b.VenueText,
+		QuotedAmount: b.QuotedAmount, CurrencyCode: b.CurrencyCode,
+		OrganizerDisplayName: b.OrganizerDisplayName, OrganizerID: b.OrganizerID, EventTypeName: b.EventTypeName,
+	}
+}
+
+func toModelBookingDetail(b *booking.Detail) *model.BookingDetail {
+	return &model.BookingDetail{
+		ID: b.ID, StatusCode: b.StatusCode, StatusName: b.StatusName,
+		StartsAt: b.StartsAt.Format(time.RFC3339), EndsAt: b.EndsAt.Format(time.RFC3339), VenueText: b.VenueText,
+		QuotedAmount: b.QuotedAmount, CurrencyCode: b.CurrencyCode,
+		OrganizerDisplayName: b.OrganizerDisplayName, TalentDisplayName: b.TalentDisplayName,
+		EventTypeName: b.EventTypeName, TermsText: b.TermsText,
+	}
+}
+
+// organizerBookingByID/talentBookingByID re-fetch through the list queries
+// (no single-booking-as-item query exists yet) so a mutation's response
+// always matches what a follow-up list query would show.
+func (r *Resolver) organizerBookingByID(ctx context.Context, id string) (*model.OrganizerBooking, error) {
+	p, _ := gqlauth.FromContext(ctx)
+	rows, err := r.Bookings.ListMyBookingsAsOrganizer(ctx, p.UserID)
+	if err != nil {
+		return nil, mapBookingErr(err)
+	}
+	for _, row := range rows {
+		if row.ID == id {
+			row := row
+			return toModelOrganizerBooking(&row), nil
+		}
+	}
+	return nil, mapBookingErr(booking.ErrNotFound)
+}
+
+func (r *Resolver) talentBookingByID(ctx context.Context, userID, id string) (*model.TalentBooking, error) {
+	rows, err := r.Bookings.ListMyBookingsAsTalent(ctx, userID)
+	if err != nil {
+		return nil, mapBookingErr(err)
+	}
+	for _, row := range rows {
+		if row.ID == id {
+			row := row
+			return toModelTalentBooking(&row), nil
+		}
+	}
+	return nil, mapBookingErr(booking.ErrNotFound)
 }
