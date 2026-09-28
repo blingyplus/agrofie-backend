@@ -41,7 +41,7 @@ INSERT INTO verification_statuses (code, name, sort_order) VALUES
 INSERT INTO booking_statuses (code, name, sort_order) VALUES
     ('inquiry', 'Inquiry', 1),
     ('agreed', 'Agreed', 2),
-    ('paid', 'Paid (held)', 3),
+    ('paid', 'Paid', 3),
     ('completed', 'Completed', 4),
     ('cancelled', 'Cancelled', 5);
 
