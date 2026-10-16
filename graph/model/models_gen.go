@@ -17,6 +17,24 @@ type AddAvailabilityBlockInput struct {
 	Note        *string `json:"note,omitempty"`
 }
 
+// One item in the admin dispute queue: a dispute plus enough booking context to triage without a follow-up lookup.
+type AdminDispute struct {
+	ID                   string  `json:"id"`
+	BookingID            string  `json:"bookingId"`
+	ReasonCode           string  `json:"reasonCode"`
+	ReasonName           string  `json:"reasonName"`
+	StatusCode           string  `json:"statusCode"`
+	StatusName           string  `json:"statusName"`
+	Details              *string `json:"details,omitempty"`
+	ResolutionNote       *string `json:"resolutionNote,omitempty"`
+	OpenedByUserID       string  `json:"openedByUserId"`
+	CreatedAt            string  `json:"createdAt"`
+	OrganizerDisplayName string  `json:"organizerDisplayName"`
+	TalentDisplayName    string  `json:"talentDisplayName"`
+	BookingStatusCode    string  `json:"bookingStatusCode"`
+	StartsAt             string  `json:"startsAt"`
+}
+
 type AuthPayload struct {
 	SessionToken string `json:"sessionToken"`
 	User         *User  `json:"user"`
@@ -56,6 +74,8 @@ type BookingDetail struct {
 	Payment *Payment `json:"payment,omitempty"`
 	// Every review left on this booking (0, 1, or 2 — one per side).
 	Reviews []*Review `json:"reviews"`
+	// Every dispute opened on this booking, newest first.
+	Disputes []*Dispute `json:"disputes"`
 }
 
 type Checkout struct {
@@ -77,6 +97,19 @@ type Country struct {
 	Code     string `json:"code"`
 	Name     string `json:"name"`
 	IsActive bool   `json:"isActive"`
+}
+
+type Dispute struct {
+	ID             string  `json:"id"`
+	BookingID      string  `json:"bookingId"`
+	ReasonCode     string  `json:"reasonCode"`
+	ReasonName     string  `json:"reasonName"`
+	StatusCode     string  `json:"statusCode"`
+	StatusName     string  `json:"statusName"`
+	Details        *string `json:"details,omitempty"`
+	ResolutionNote *string `json:"resolutionNote,omitempty"`
+	OpenedByUserID string  `json:"openedByUserId"`
+	CreatedAt      string  `json:"createdAt"`
 }
 
 type GeoPlace struct {
@@ -110,6 +143,12 @@ type Lookup struct {
 }
 
 type Mutation struct {
+}
+
+type OpenDisputeInput struct {
+	BookingID  string  `json:"bookingId"`
+	ReasonCode string  `json:"reasonCode"`
+	Details    *string `json:"details,omitempty"`
 }
 
 type OrganizerBooking struct {

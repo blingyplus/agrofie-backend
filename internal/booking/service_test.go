@@ -326,6 +326,58 @@ func TestDeclineBookingSetsCancelledWithTalentReason(t *testing.T) {
 	}
 }
 
+func TestDeclineBookingRejectsNonOwnerTalent(t *testing.T) {
+	tx := newTx(t)
+	svc := newService(tx)
+	organizer := newUser(t, tx, "Organizer")
+	talentUser, profileID := newBookableTalent(t, tx, "Talent")
+	otherTalentUser, _ := newBookableTalent(t, tx, "Other Talent")
+	makeAvailable(t, tx, talentUser, day(0), day(30))
+	b, err := svc.RequestBooking(context.Background(), organizer, validInput(profileID))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := svc.DeclineBooking(context.Background(), otherTalentUser, b.ID); !errors.Is(err, booking.ErrForbidden) {
+		t.Fatalf("wrong talent declining: got %v, want ErrForbidden", err)
+	}
+}
+
+func TestMarkPaidRejectsBookingNotYetAgreed(t *testing.T) {
+	// MarkPaid is only ever driven by the payments package (a verified
+	// webhook or reconciliation check), never the client — this guard is
+	// the only thing stopping a stray or misrouted call from paying out a
+	// booking nobody has agreed to yet.
+	tx := newTx(t)
+	svc := newService(tx)
+	organizer := newUser(t, tx, "Organizer")
+	talentUser, profileID := newBookableTalent(t, tx, "Talent")
+	makeAvailable(t, tx, talentUser, day(0), day(30))
+	b, err := svc.RequestBooking(context.Background(), organizer, validInput(profileID))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := svc.MarkPaid(context.Background(), b.ID); !errors.Is(err, booking.ErrNotPending) {
+		t.Fatalf("marking an inquiry paid: got %v, want ErrNotPending", err)
+	}
+}
+
+func TestRequestBookingRejectsMalformedAndUnknownTalentID(t *testing.T) {
+	tx := newTx(t)
+	svc := newService(tx)
+	organizer := newUser(t, tx, "Organizer")
+
+	if _, err := svc.RequestBooking(context.Background(), organizer, validInput("not-a-uuid")); !errors.Is(err, booking.ErrInvalidInput) {
+		t.Fatalf("malformed talent id: got %v, want ErrInvalidInput", err)
+	}
+
+	unknownID := "00000000-0000-0000-0000-000000000000"
+	if _, err := svc.RequestBooking(context.Background(), organizer, validInput(unknownID)); !errors.Is(err, booking.ErrInvalidInput) {
+		t.Fatalf("unknown talent id: got %v, want ErrInvalidInput", err)
+	}
+}
+
 func TestCancelBookingByOrganizerOnlyWorksWhilePending(t *testing.T) {
 	tx := newTx(t)
 	svc := newService(tx)

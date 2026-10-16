@@ -18,7 +18,7 @@ proto:
 	go run github.com/bufbuild/buf/cmd/buf@v1.50.0 generate
 
 sqlc:
-	go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.29.0 generate
+	go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1 generate
 
 gqlgen:
 	go run github.com/99designs/gqlgen generate

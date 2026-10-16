@@ -282,6 +282,129 @@ func TestHandleWebhookEventMarksBookingPaidOnChargeSuccess(t *testing.T) {
 	}
 }
 
+func TestHandleWebhookEventMarksPaymentFailedOnChargeFailed(t *testing.T) {
+	tx := newTx(t)
+	provider := &stubProvider{secretKey: "sk_test_x"}
+	svc, bookings := newServices(tx, provider)
+	organizer, bookingID := newAgreedBooking(t, tx)
+
+	out, err := svc.InitiateCheckout(context.Background(), organizer, bookingID)
+	if err != nil {
+		t.Fatalf("InitiateCheckout: %v", err)
+	}
+
+	body, _ := json.Marshal(map[string]any{
+		"event": "charge.failed",
+		"data":  map[string]any{"reference": out.Reference, "status": "failed"},
+	})
+	if err := svc.HandleWebhookEvent(context.Background(), body, sign(provider.secretKey, body)); err != nil {
+		t.Fatalf("HandleWebhookEvent: %v", err)
+	}
+
+	payment, err := svc.LatestPayment(context.Background(), organizer, bookingID)
+	if err != nil {
+		t.Fatalf("LatestPayment: %v", err)
+	}
+	if payment.StatusCode != "failed" {
+		t.Fatalf("payment status = %q, want failed", payment.StatusCode)
+	}
+
+	// A failed charge never touched the booking's own status.
+	detail, err := bookings.GetDetail(context.Background(), organizer, bookingID)
+	if err != nil {
+		t.Fatalf("GetDetail: %v", err)
+	}
+	if detail.StatusCode != "agreed" {
+		t.Fatalf("booking status = %q, want agreed (unchanged)", detail.StatusCode)
+	}
+}
+
+func TestHandleWebhookEventRecordsUnknownEventTypeWithoutError(t *testing.T) {
+	tx := newTx(t)
+	provider := &stubProvider{secretKey: "sk_test_x"}
+	svc, _ := newServices(tx, provider)
+
+	body := []byte(`{"event":"subscription.create","data":{"reference":"ref_whatever","status":"n/a"}}`)
+	if err := svc.HandleWebhookEvent(context.Background(), body, sign(provider.secretKey, body)); err != nil {
+		t.Fatalf("HandleWebhookEvent: %v", err)
+	}
+}
+
+func TestLatestPaymentRejectsUninvolvedCaller(t *testing.T) {
+	tx := newTx(t)
+	svc, _ := newServices(tx, &stubProvider{})
+	organizer, bookingID := newAgreedBooking(t, tx)
+	stranger := newUser(t, tx, "Stranger")
+
+	if _, err := svc.InitiateCheckout(context.Background(), organizer, bookingID); err != nil {
+		t.Fatalf("InitiateCheckout: %v", err)
+	}
+	if _, err := svc.LatestPayment(context.Background(), stranger, bookingID); !errors.Is(err, checkout.ErrForbidden) {
+		t.Fatalf("got %v, want ErrForbidden", err)
+	}
+}
+
+func TestLatestPaymentReturnsErrNoPaymentBeforeCheckout(t *testing.T) {
+	tx := newTx(t)
+	svc, _ := newServices(tx, &stubProvider{})
+	organizer, bookingID := newAgreedBooking(t, tx)
+
+	if _, err := svc.LatestPayment(context.Background(), organizer, bookingID); !errors.Is(err, checkout.ErrNoPayment) {
+		t.Fatalf("got %v, want ErrNoPayment", err)
+	}
+}
+
+func TestVerifyPaymentRejectsNonOrganizer(t *testing.T) {
+	tx := newTx(t)
+	svc, _ := newServices(tx, &stubProvider{verifyStatus: "success"})
+	organizer, bookingID := newAgreedBooking(t, tx)
+	stranger := newUser(t, tx, "Stranger")
+
+	if _, err := svc.InitiateCheckout(context.Background(), organizer, bookingID); err != nil {
+		t.Fatalf("InitiateCheckout: %v", err)
+	}
+	if _, err := svc.VerifyPayment(context.Background(), stranger, bookingID); !errors.Is(err, checkout.ErrForbidden) {
+		t.Fatalf("got %v, want ErrForbidden", err)
+	}
+}
+
+func TestVerifyPaymentAppliesFailedStatusWithoutMarkingBookingPaid(t *testing.T) {
+	tx := newTx(t)
+	provider := &stubProvider{verifyStatus: "failed"}
+	svc, bookings := newServices(tx, provider)
+	organizer, bookingID := newAgreedBooking(t, tx)
+
+	if _, err := svc.InitiateCheckout(context.Background(), organizer, bookingID); err != nil {
+		t.Fatalf("InitiateCheckout: %v", err)
+	}
+
+	status, err := svc.VerifyPayment(context.Background(), organizer, bookingID)
+	if err != nil {
+		t.Fatalf("VerifyPayment: %v", err)
+	}
+	if status.StatusCode != "failed" {
+		t.Fatalf("status = %q, want failed", status.StatusCode)
+	}
+
+	detail, err := bookings.GetDetail(context.Background(), organizer, bookingID)
+	if err != nil {
+		t.Fatalf("GetDetail: %v", err)
+	}
+	if detail.StatusCode != "agreed" {
+		t.Fatalf("booking status = %q, want agreed (unchanged)", detail.StatusCode)
+	}
+}
+
+func TestVerifyPaymentReturnsErrNoPaymentBeforeCheckout(t *testing.T) {
+	tx := newTx(t)
+	svc, _ := newServices(tx, &stubProvider{verifyStatus: "success"})
+	organizer, bookingID := newAgreedBooking(t, tx)
+
+	if _, err := svc.VerifyPayment(context.Background(), organizer, bookingID); !errors.Is(err, checkout.ErrNoPayment) {
+		t.Fatalf("got %v, want ErrNoPayment", err)
+	}
+}
+
 func TestVerifyPaymentAppliesPaystackFallbackStatus(t *testing.T) {
 	tx := newTx(t)
 	provider := &stubProvider{verifyStatus: "success"}

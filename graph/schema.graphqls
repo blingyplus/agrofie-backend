@@ -19,6 +19,7 @@ type Query {
   bookingStatuses(activeOnly: Boolean = true): [Lookup!]!
   rateUnits(activeOnly: Boolean = true): [Lookup!]!
   verificationTypes(activeOnly: Boolean = true): [Lookup!]!
+  disputeReasons(activeOnly: Boolean = true): [Lookup!]!
 
   """The caller's own verification history, newest first. Requires the talent role."""
   myVerifications: [Verification!]! @hasRole(code: "talent")
@@ -56,6 +57,9 @@ type Query {
 
   """A talent's public aggregate rating. Never review authorship at this level."""
   talentReviewSummary(talentId: ID!): ReviewSummary!
+
+  """The admin dispute queue, newest first, optionally filtered to one status. Requires the admin role."""
+  disputes(statusCode: String): [AdminDispute!]! @hasRole(code: "admin")
 }
 
 type Mutation {
@@ -114,6 +118,12 @@ type Mutation {
 
   """Leave the caller's one review of the other party on a completed booking."""
   submitReview(input: SubmitReviewInput!): Review! @authenticated
+
+  """Open a dispute on a booking the caller is a party to (organizer or talent), once it's agreed, paid, or completed. Only one unresolved dispute is allowed per booking at a time."""
+  openDispute(input: OpenDisputeInput!): Dispute! @authenticated
+
+  """Move a dispute to under_review, resolved, or closed, with an optional note. Never moves money or reopens the booking. Requires the admin role."""
+  resolveDispute(id: ID!, statusCode: String!, resolutionNote: String): AdminDispute! @hasRole(code: "admin")
 }
 
 input RegisterInput {
@@ -391,6 +401,45 @@ type BookingDetail {
   payment: Payment
   """Every review left on this booking (0, 1, or 2 — one per side)."""
   reviews: [Review!]!
+  """Every dispute opened on this booking, newest first."""
+  disputes: [Dispute!]!
+}
+
+input OpenDisputeInput {
+  bookingId: ID!
+  reasonCode: String!
+  details: String
+}
+
+type Dispute {
+  id: ID!
+  bookingId: ID!
+  reasonCode: String!
+  reasonName: String!
+  statusCode: String!
+  statusName: String!
+  details: String
+  resolutionNote: String
+  openedByUserId: ID!
+  createdAt: String!
+}
+
+"""One item in the admin dispute queue: a dispute plus enough booking context to triage without a follow-up lookup."""
+type AdminDispute {
+  id: ID!
+  bookingId: ID!
+  reasonCode: String!
+  reasonName: String!
+  statusCode: String!
+  statusName: String!
+  details: String
+  resolutionNote: String
+  openedByUserId: ID!
+  createdAt: String!
+  organizerDisplayName: String!
+  talentDisplayName: String!
+  bookingStatusCode: String!
+  startsAt: String!
 }
 
 input SubmitReviewInput {

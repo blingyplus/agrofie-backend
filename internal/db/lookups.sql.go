@@ -93,6 +93,47 @@ func (q *Queries) ListCountries(ctx context.Context, activeOnly bool) ([]ListCou
 	return items, nil
 }
 
+const listDisputeReasons = `-- name: ListDisputeReasons :many
+SELECT id, code, name, sort_order, is_active
+FROM dispute_reasons
+WHERE ($1::bool = false OR is_active = true)
+ORDER BY sort_order, name
+`
+
+type ListDisputeReasonsRow struct {
+	ID        pgtype.UUID `json:"id"`
+	Code      string      `json:"code"`
+	Name      string      `json:"name"`
+	SortOrder int32       `json:"sort_order"`
+	IsActive  bool        `json:"is_active"`
+}
+
+func (q *Queries) ListDisputeReasons(ctx context.Context, activeOnly bool) ([]ListDisputeReasonsRow, error) {
+	rows, err := q.db.Query(ctx, listDisputeReasons, activeOnly)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListDisputeReasonsRow{}
+	for rows.Next() {
+		var i ListDisputeReasonsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Code,
+			&i.Name,
+			&i.SortOrder,
+			&i.IsActive,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listEventTypes = `-- name: ListEventTypes :many
 SELECT id, code, name, sort_order, is_active
 FROM event_types

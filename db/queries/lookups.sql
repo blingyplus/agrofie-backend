@@ -10,6 +10,12 @@ FROM genres
 WHERE (sqlc.arg(active_only)::bool = false OR is_active = true)
 ORDER BY sort_order, name;
 
+-- name: ListDisputeReasons :many
+SELECT id, code, name, sort_order, is_active
+FROM dispute_reasons
+WHERE (sqlc.arg(active_only)::bool = false OR is_active = true)
+ORDER BY sort_order, name;
+
 -- name: ListTalentTypes :many
 SELECT id, code, name, sort_order, is_active
 FROM talent_types

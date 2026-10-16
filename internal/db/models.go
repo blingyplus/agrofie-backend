@@ -97,14 +97,17 @@ type Currency struct {
 }
 
 type Dispute struct {
-	ID              pgtype.UUID        `json:"id"`
-	BookingID       pgtype.UUID        `json:"booking_id"`
-	OpenedByUserID  pgtype.UUID        `json:"opened_by_user_id"`
-	DisputeReasonID pgtype.UUID        `json:"dispute_reason_id"`
-	DisputeStatusID pgtype.UUID        `json:"dispute_status_id"`
-	Details         *string            `json:"details"`
-	CreatedAt       pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+	ID               pgtype.UUID        `json:"id"`
+	BookingID        pgtype.UUID        `json:"booking_id"`
+	OpenedByUserID   pgtype.UUID        `json:"opened_by_user_id"`
+	DisputeReasonID  pgtype.UUID        `json:"dispute_reason_id"`
+	DisputeStatusID  pgtype.UUID        `json:"dispute_status_id"`
+	Details          *string            `json:"details"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+	ResolutionNote   *string            `json:"resolution_note"`
+	ResolvedByUserID pgtype.UUID        `json:"resolved_by_user_id"`
+	ResolvedAt       pgtype.Timestamptz `json:"resolved_at"`
 }
 
 type DisputeReason struct {

@@ -71,7 +71,7 @@ func (r *mutationResolver) Logout(ctx context.Context) (bool, error) {
 func (r *mutationResolver) UpdateLookupName(ctx context.Context, table model.LookupTable, code string, name string) (*model.Lookup, error) {
 	item, err := r.Lookups.UpdateName(ctx, lookup.Table(table), code, name)
 	if err != nil {
-		return nil, err
+		return nil, mapLookupErr(err)
 	}
 	return toLookup(item), nil
 }
@@ -80,7 +80,7 @@ func (r *mutationResolver) UpdateLookupName(ctx context.Context, table model.Loo
 func (r *mutationResolver) SetLookupActive(ctx context.Context, table model.LookupTable, code string, isActive bool) (*model.Lookup, error) {
 	item, err := r.Lookups.SetActive(ctx, lookup.Table(table), code, isActive)
 	if err != nil {
-		return nil, err
+		return nil, mapLookupErr(err)
 	}
 	return toLookup(item), nil
 }
@@ -249,6 +249,26 @@ func (r *mutationResolver) SubmitReview(ctx context.Context, input model.SubmitR
 	return toModelReview(out), nil
 }
 
+// OpenDispute is the resolver for the openDispute field.
+func (r *mutationResolver) OpenDispute(ctx context.Context, input model.OpenDisputeInput) (*model.Dispute, error) {
+	p, _ := gqlauth.FromContext(ctx)
+	out, err := r.Disputes.Open(ctx, p.UserID, input.BookingID, input.ReasonCode, input.Details)
+	if err != nil {
+		return nil, mapDisputeErr(err)
+	}
+	return toModelDispute(out), nil
+}
+
+// ResolveDispute is the resolver for the resolveDispute field.
+func (r *mutationResolver) ResolveDispute(ctx context.Context, id string, statusCode string, resolutionNote *string) (*model.AdminDispute, error) {
+	p, _ := gqlauth.FromContext(ctx)
+	out, err := r.Disputes.Resolve(ctx, p.UserID, id, statusCode, resolutionNote)
+	if err != nil {
+		return nil, mapDisputeErr(err)
+	}
+	return r.adminDisputeByID(ctx, out.ID)
+}
+
 // Health is the resolver for the health field.
 func (r *queryResolver) Health(ctx context.Context) (*model.Health, error) {
 	authStatus, booking, payments := r.Prober.Probe(ctx)
@@ -364,6 +384,11 @@ func (r *queryResolver) RateUnits(ctx context.Context, activeOnly *bool) ([]*mod
 // VerificationTypes is the resolver for the verificationTypes field.
 func (r *queryResolver) VerificationTypes(ctx context.Context, activeOnly *bool) ([]*model.Lookup, error) {
 	return listLookups(ctx, boolOr(activeOnly, true), r.Lookups.VerificationTypes)
+}
+
+// DisputeReasons is the resolver for the disputeReasons field.
+func (r *queryResolver) DisputeReasons(ctx context.Context, activeOnly *bool) ([]*model.Lookup, error) {
+	return listLookups(ctx, boolOr(activeOnly, true), r.Lookups.DisputeReasons)
 }
 
 // MyVerifications is the resolver for the myVerifications field.
@@ -531,6 +556,19 @@ func (r *queryResolver) TalentReviewSummary(ctx context.Context, talentID string
 		return nil, mapReviewErr(err)
 	}
 	return toModelReviewSummary(out), nil
+}
+
+// Disputes is the resolver for the disputes field.
+func (r *queryResolver) Disputes(ctx context.Context, statusCode *string) ([]*model.AdminDispute, error) {
+	rows, err := r.Resolver.Disputes.ListForAdmin(ctx, statusCode)
+	if err != nil {
+		return nil, mapDisputeErr(err)
+	}
+	out := make([]*model.AdminDispute, 0, len(rows))
+	for i := range rows {
+		out = append(out, toModelAdminDispute(&rows[i]))
+	}
+	return out, nil
 }
 
 // Mutation returns MutationResolver implementation.

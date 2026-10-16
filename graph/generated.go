@@ -39,6 +39,23 @@ type DirectiveRoot struct {
 }
 
 type ComplexityRoot struct {
+	AdminDispute struct {
+		BookingID            func(childComplexity int) int
+		BookingStatusCode    func(childComplexity int) int
+		CreatedAt            func(childComplexity int) int
+		Details              func(childComplexity int) int
+		ID                   func(childComplexity int) int
+		OpenedByUserID       func(childComplexity int) int
+		OrganizerDisplayName func(childComplexity int) int
+		ReasonCode           func(childComplexity int) int
+		ReasonName           func(childComplexity int) int
+		ResolutionNote       func(childComplexity int) int
+		StartsAt             func(childComplexity int) int
+		StatusCode           func(childComplexity int) int
+		StatusName           func(childComplexity int) int
+		TalentDisplayName    func(childComplexity int) int
+	}
+
 	AuthPayload struct {
 		SessionToken func(childComplexity int) int
 		User         func(childComplexity int) int
@@ -61,6 +78,7 @@ type ComplexityRoot struct {
 
 	BookingDetail struct {
 		CurrencyCode         func(childComplexity int) int
+		Disputes             func(childComplexity int) int
 		EndsAt               func(childComplexity int) int
 		EventTypeName        func(childComplexity int) int
 		ID                   func(childComplexity int) int
@@ -88,6 +106,19 @@ type ComplexityRoot struct {
 		ID       func(childComplexity int) int
 		IsActive func(childComplexity int) int
 		Name     func(childComplexity int) int
+	}
+
+	Dispute struct {
+		BookingID      func(childComplexity int) int
+		CreatedAt      func(childComplexity int) int
+		Details        func(childComplexity int) int
+		ID             func(childComplexity int) int
+		OpenedByUserID func(childComplexity int) int
+		ReasonCode     func(childComplexity int) int
+		ReasonName     func(childComplexity int) int
+		ResolutionNote func(childComplexity int) int
+		StatusCode     func(childComplexity int) int
+		StatusName     func(childComplexity int) int
 	}
 
 	GeoPlace struct {
@@ -126,10 +157,12 @@ type ComplexityRoot struct {
 		InitiateCheckout          func(childComplexity int, bookingID string) int
 		Login                     func(childComplexity int, input model.LoginInput) int
 		Logout                    func(childComplexity int) int
+		OpenDispute               func(childComplexity int, input model.OpenDisputeInput) int
 		Register                  func(childComplexity int, input model.RegisterInput) int
 		RejectVerification        func(childComplexity int, id string, reviewNotes *string) int
 		RemoveMyAvailabilityBlock func(childComplexity int, id string) int
 		RequestBooking            func(childComplexity int, input model.RequestBookingInput) int
+		ResolveDispute            func(childComplexity int, id string, statusCode string, resolutionNote *string) int
 		SetLookupActive           func(childComplexity int, table model.LookupTable, code string, isActive bool) int
 		SetMyRates                func(childComplexity int, rates []*model.RateInput) int
 		SubmitReview              func(childComplexity int, input model.SubmitReviewInput) int
@@ -184,6 +217,8 @@ type ComplexityRoot struct {
 		Booking               func(childComplexity int, id string) int
 		BookingStatuses       func(childComplexity int, activeOnly *bool) int
 		Countries             func(childComplexity int, activeOnly *bool) int
+		DisputeReasons        func(childComplexity int, activeOnly *bool) int
+		Disputes              func(childComplexity int, statusCode *string) int
 		EventTypes            func(childComplexity int, activeOnly *bool) int
 		Genres                func(childComplexity int, activeOnly *bool) int
 		GeoPlaces             func(childComplexity int, countryCode *string, parentCode *string, activeOnly *bool) int
@@ -327,6 +362,8 @@ type MutationResolver interface {
 	VerifyPayment(ctx context.Context, bookingID string) (*model.Payment, error)
 	CompleteBooking(ctx context.Context, id string) (*model.BookingDetail, error)
 	SubmitReview(ctx context.Context, input model.SubmitReviewInput) (*model.Review, error)
+	OpenDispute(ctx context.Context, input model.OpenDisputeInput) (*model.Dispute, error)
+	ResolveDispute(ctx context.Context, id string, statusCode string, resolutionNote *string) (*model.AdminDispute, error)
 }
 type QueryResolver interface {
 	Health(ctx context.Context) (*model.Health, error)
@@ -341,6 +378,7 @@ type QueryResolver interface {
 	BookingStatuses(ctx context.Context, activeOnly *bool) ([]*model.Lookup, error)
 	RateUnits(ctx context.Context, activeOnly *bool) ([]*model.Lookup, error)
 	VerificationTypes(ctx context.Context, activeOnly *bool) ([]*model.Lookup, error)
+	DisputeReasons(ctx context.Context, activeOnly *bool) ([]*model.Lookup, error)
 	MyVerifications(ctx context.Context) ([]*model.Verification, error)
 	PendingVerifications(ctx context.Context) ([]*model.PendingVerification, error)
 	SearchTalent(ctx context.Context, filter *model.TalentFilter, first *int, after *string) (*model.TalentPage, error)
@@ -354,6 +392,7 @@ type QueryResolver interface {
 	MyBookingsAsTalent(ctx context.Context) ([]*model.TalentBooking, error)
 	Booking(ctx context.Context, id string) (*model.BookingDetail, error)
 	TalentReviewSummary(ctx context.Context, talentID string) (*model.ReviewSummary, error)
+	Disputes(ctx context.Context, statusCode *string) ([]*model.AdminDispute, error)
 }
 
 // endregion ************************** generated!.gotpl **************************
@@ -373,6 +412,91 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 	ec := newExecutionContext(nil, e, nil)
 	_ = ec
 	switch typeName + "." + field {
+
+	case "AdminDispute.bookingId":
+		if e.ComplexityRoot.AdminDispute.BookingID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AdminDispute.BookingID(childComplexity), true
+	case "AdminDispute.bookingStatusCode":
+		if e.ComplexityRoot.AdminDispute.BookingStatusCode == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AdminDispute.BookingStatusCode(childComplexity), true
+	case "AdminDispute.createdAt":
+		if e.ComplexityRoot.AdminDispute.CreatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AdminDispute.CreatedAt(childComplexity), true
+	case "AdminDispute.details":
+		if e.ComplexityRoot.AdminDispute.Details == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AdminDispute.Details(childComplexity), true
+	case "AdminDispute.id":
+		if e.ComplexityRoot.AdminDispute.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AdminDispute.ID(childComplexity), true
+	case "AdminDispute.openedByUserId":
+		if e.ComplexityRoot.AdminDispute.OpenedByUserID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AdminDispute.OpenedByUserID(childComplexity), true
+	case "AdminDispute.organizerDisplayName":
+		if e.ComplexityRoot.AdminDispute.OrganizerDisplayName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AdminDispute.OrganizerDisplayName(childComplexity), true
+	case "AdminDispute.reasonCode":
+		if e.ComplexityRoot.AdminDispute.ReasonCode == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AdminDispute.ReasonCode(childComplexity), true
+	case "AdminDispute.reasonName":
+		if e.ComplexityRoot.AdminDispute.ReasonName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AdminDispute.ReasonName(childComplexity), true
+	case "AdminDispute.resolutionNote":
+		if e.ComplexityRoot.AdminDispute.ResolutionNote == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AdminDispute.ResolutionNote(childComplexity), true
+	case "AdminDispute.startsAt":
+		if e.ComplexityRoot.AdminDispute.StartsAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AdminDispute.StartsAt(childComplexity), true
+	case "AdminDispute.statusCode":
+		if e.ComplexityRoot.AdminDispute.StatusCode == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AdminDispute.StatusCode(childComplexity), true
+	case "AdminDispute.statusName":
+		if e.ComplexityRoot.AdminDispute.StatusName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AdminDispute.StatusName(childComplexity), true
+	case "AdminDispute.talentDisplayName":
+		if e.ComplexityRoot.AdminDispute.TalentDisplayName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AdminDispute.TalentDisplayName(childComplexity), true
 
 	case "AuthPayload.sessionToken":
 		if e.ComplexityRoot.AuthPayload.SessionToken == nil {
@@ -449,6 +573,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.BookingDetail.CurrencyCode(childComplexity), true
+	case "BookingDetail.disputes":
+		if e.ComplexityRoot.BookingDetail.Disputes == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BookingDetail.Disputes(childComplexity), true
 	case "BookingDetail.endsAt":
 		if e.ComplexityRoot.BookingDetail.EndsAt == nil {
 			break
@@ -577,6 +707,67 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Country.Name(childComplexity), true
+
+	case "Dispute.bookingId":
+		if e.ComplexityRoot.Dispute.BookingID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Dispute.BookingID(childComplexity), true
+	case "Dispute.createdAt":
+		if e.ComplexityRoot.Dispute.CreatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Dispute.CreatedAt(childComplexity), true
+	case "Dispute.details":
+		if e.ComplexityRoot.Dispute.Details == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Dispute.Details(childComplexity), true
+	case "Dispute.id":
+		if e.ComplexityRoot.Dispute.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Dispute.ID(childComplexity), true
+	case "Dispute.openedByUserId":
+		if e.ComplexityRoot.Dispute.OpenedByUserID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Dispute.OpenedByUserID(childComplexity), true
+	case "Dispute.reasonCode":
+		if e.ComplexityRoot.Dispute.ReasonCode == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Dispute.ReasonCode(childComplexity), true
+	case "Dispute.reasonName":
+		if e.ComplexityRoot.Dispute.ReasonName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Dispute.ReasonName(childComplexity), true
+	case "Dispute.resolutionNote":
+		if e.ComplexityRoot.Dispute.ResolutionNote == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Dispute.ResolutionNote(childComplexity), true
+	case "Dispute.statusCode":
+		if e.ComplexityRoot.Dispute.StatusCode == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Dispute.StatusCode(childComplexity), true
+	case "Dispute.statusName":
+		if e.ComplexityRoot.Dispute.StatusName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Dispute.StatusName(childComplexity), true
 
 	case "GeoPlace.code":
 		if e.ComplexityRoot.GeoPlace.Code == nil {
@@ -782,6 +973,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.Logout(childComplexity), true
+	case "Mutation.openDispute":
+		if e.ComplexityRoot.Mutation.OpenDispute == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_openDispute_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.OpenDispute(childComplexity, args["input"].(model.OpenDisputeInput)), true
 	case "Mutation.register":
 		if e.ComplexityRoot.Mutation.Register == nil {
 			break
@@ -826,6 +1028,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.RequestBooking(childComplexity, args["input"].(model.RequestBookingInput)), true
+	case "Mutation.resolveDispute":
+		if e.ComplexityRoot.Mutation.ResolveDispute == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_resolveDispute_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.ResolveDispute(childComplexity, args["id"].(string), args["statusCode"].(string), args["resolutionNote"].(*string)), true
 	case "Mutation.setLookupActive":
 		if e.ComplexityRoot.Mutation.SetLookupActive == nil {
 			break
@@ -1115,6 +1328,28 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.Countries(childComplexity, args["activeOnly"].(*bool)), true
+	case "Query.disputeReasons":
+		if e.ComplexityRoot.Query.DisputeReasons == nil {
+			break
+		}
+
+		args, err := ec.field_Query_disputeReasons_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.DisputeReasons(childComplexity, args["activeOnly"].(*bool)), true
+	case "Query.disputes":
+		if e.ComplexityRoot.Query.Disputes == nil {
+			break
+		}
+
+		args, err := ec.field_Query_disputes_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.Disputes(childComplexity, args["statusCode"].(*string)), true
 	case "Query.eventTypes":
 		if e.ComplexityRoot.Query.EventTypes == nil {
 			break
@@ -1695,6 +1930,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputAddAvailabilityBlockInput,
 		ec.unmarshalInputConnectPayoutInput,
 		ec.unmarshalInputLoginInput,
+		ec.unmarshalInputOpenDisputeInput,
 		ec.unmarshalInputRateInput,
 		ec.unmarshalInputRegisterInput,
 		ec.unmarshalInputRequestBookingInput,
@@ -1796,6 +2032,40 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 // Each function is generated once per unique object type, deduplicating the
 // switch statements that were previously inlined in every fieldContext_* function.
 
+func (ec *executionContext) childFields_AdminDispute(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "id":
+		return ec.fieldContext_AdminDispute_id(ctx, field)
+	case "bookingId":
+		return ec.fieldContext_AdminDispute_bookingId(ctx, field)
+	case "reasonCode":
+		return ec.fieldContext_AdminDispute_reasonCode(ctx, field)
+	case "reasonName":
+		return ec.fieldContext_AdminDispute_reasonName(ctx, field)
+	case "statusCode":
+		return ec.fieldContext_AdminDispute_statusCode(ctx, field)
+	case "statusName":
+		return ec.fieldContext_AdminDispute_statusName(ctx, field)
+	case "details":
+		return ec.fieldContext_AdminDispute_details(ctx, field)
+	case "resolutionNote":
+		return ec.fieldContext_AdminDispute_resolutionNote(ctx, field)
+	case "openedByUserId":
+		return ec.fieldContext_AdminDispute_openedByUserId(ctx, field)
+	case "createdAt":
+		return ec.fieldContext_AdminDispute_createdAt(ctx, field)
+	case "organizerDisplayName":
+		return ec.fieldContext_AdminDispute_organizerDisplayName(ctx, field)
+	case "talentDisplayName":
+		return ec.fieldContext_AdminDispute_talentDisplayName(ctx, field)
+	case "bookingStatusCode":
+		return ec.fieldContext_AdminDispute_bookingStatusCode(ctx, field)
+	case "startsAt":
+		return ec.fieldContext_AdminDispute_startsAt(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type AdminDispute", field.Name)
+}
+
 func (ec *executionContext) childFields_AuthPayload(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "sessionToken":
@@ -1866,6 +2136,8 @@ func (ec *executionContext) childFields_BookingDetail(ctx context.Context, field
 		return ec.fieldContext_BookingDetail_payment(ctx, field)
 	case "reviews":
 		return ec.fieldContext_BookingDetail_reviews(ctx, field)
+	case "disputes":
+		return ec.fieldContext_BookingDetail_disputes(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type BookingDetail", field.Name)
 }
@@ -1896,6 +2168,32 @@ func (ec *executionContext) childFields_Country(ctx context.Context, field graph
 		return ec.fieldContext_Country_isActive(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Country", field.Name)
+}
+
+func (ec *executionContext) childFields_Dispute(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "id":
+		return ec.fieldContext_Dispute_id(ctx, field)
+	case "bookingId":
+		return ec.fieldContext_Dispute_bookingId(ctx, field)
+	case "reasonCode":
+		return ec.fieldContext_Dispute_reasonCode(ctx, field)
+	case "reasonName":
+		return ec.fieldContext_Dispute_reasonName(ctx, field)
+	case "statusCode":
+		return ec.fieldContext_Dispute_statusCode(ctx, field)
+	case "statusName":
+		return ec.fieldContext_Dispute_statusName(ctx, field)
+	case "details":
+		return ec.fieldContext_Dispute_details(ctx, field)
+	case "resolutionNote":
+		return ec.fieldContext_Dispute_resolutionNote(ctx, field)
+	case "openedByUserId":
+		return ec.fieldContext_Dispute_openedByUserId(ctx, field)
+	case "createdAt":
+		return ec.fieldContext_Dispute_createdAt(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type Dispute", field.Name)
 }
 
 func (ec *executionContext) childFields_GeoPlace(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -2478,6 +2776,20 @@ func (ec *executionContext) field_Mutation_login_args(ctx context.Context, rawAr
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_openDispute_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
+		func(ctx context.Context, v any) (model.OpenDisputeInput, error) {
+			return ec.unmarshalNOpenDisputeInput2githubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐOpenDisputeInput(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_register_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -2539,6 +2851,36 @@ func (ec *executionContext) field_Mutation_requestBooking_args(ctx context.Conte
 		return nil, err
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_resolveDispute_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "statusCode",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["statusCode"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "resolutionNote",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["resolutionNote"] = arg2
 	return args, nil
 }
 
@@ -2725,6 +3067,34 @@ func (ec *executionContext) field_Query_countries_args(ctx context.Context, rawA
 		return nil, err
 	}
 	args["activeOnly"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_disputeReasons_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "activeOnly",
+		func(ctx context.Context, v any) (*bool, error) {
+			return ec.unmarshalOBoolean2ᚖbool(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["activeOnly"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_disputes_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "statusCode",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["statusCode"] = arg0
 	return args, nil
 }
 
@@ -3039,6 +3409,328 @@ func (ec *executionContext) field___Type_fields_args(ctx context.Context, rawArg
 // endregion ***************************** args.gotpl *****************************
 
 // region    **************************** field.gotpl *****************************
+
+func (ec *executionContext) _AdminDispute_id(ctx context.Context, field graphql.CollectedField, obj *model.AdminDispute) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AdminDispute_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AdminDispute_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AdminDispute", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _AdminDispute_bookingId(ctx context.Context, field graphql.CollectedField, obj *model.AdminDispute) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AdminDispute_bookingId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.BookingID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AdminDispute_bookingId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AdminDispute", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _AdminDispute_reasonCode(ctx context.Context, field graphql.CollectedField, obj *model.AdminDispute) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AdminDispute_reasonCode(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ReasonCode, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AdminDispute_reasonCode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AdminDispute", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _AdminDispute_reasonName(ctx context.Context, field graphql.CollectedField, obj *model.AdminDispute) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AdminDispute_reasonName(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ReasonName, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AdminDispute_reasonName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AdminDispute", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _AdminDispute_statusCode(ctx context.Context, field graphql.CollectedField, obj *model.AdminDispute) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AdminDispute_statusCode(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.StatusCode, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AdminDispute_statusCode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AdminDispute", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _AdminDispute_statusName(ctx context.Context, field graphql.CollectedField, obj *model.AdminDispute) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AdminDispute_statusName(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.StatusName, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AdminDispute_statusName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AdminDispute", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _AdminDispute_details(ctx context.Context, field graphql.CollectedField, obj *model.AdminDispute) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AdminDispute_details(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Details, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_AdminDispute_details(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AdminDispute", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _AdminDispute_resolutionNote(ctx context.Context, field graphql.CollectedField, obj *model.AdminDispute) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AdminDispute_resolutionNote(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ResolutionNote, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_AdminDispute_resolutionNote(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AdminDispute", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _AdminDispute_openedByUserId(ctx context.Context, field graphql.CollectedField, obj *model.AdminDispute) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AdminDispute_openedByUserId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.OpenedByUserID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AdminDispute_openedByUserId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AdminDispute", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _AdminDispute_createdAt(ctx context.Context, field graphql.CollectedField, obj *model.AdminDispute) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AdminDispute_createdAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AdminDispute_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AdminDispute", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _AdminDispute_organizerDisplayName(ctx context.Context, field graphql.CollectedField, obj *model.AdminDispute) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AdminDispute_organizerDisplayName(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.OrganizerDisplayName, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AdminDispute_organizerDisplayName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AdminDispute", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _AdminDispute_talentDisplayName(ctx context.Context, field graphql.CollectedField, obj *model.AdminDispute) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AdminDispute_talentDisplayName(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.TalentDisplayName, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AdminDispute_talentDisplayName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AdminDispute", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _AdminDispute_bookingStatusCode(ctx context.Context, field graphql.CollectedField, obj *model.AdminDispute) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AdminDispute_bookingStatusCode(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.BookingStatusCode, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AdminDispute_bookingStatusCode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AdminDispute", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _AdminDispute_startsAt(ctx context.Context, field graphql.CollectedField, obj *model.AdminDispute) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AdminDispute_startsAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.StartsAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AdminDispute_startsAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AdminDispute", field, false, false, errors.New("field of type String does not have child fields"))
+}
 
 func (ec *executionContext) _AuthPayload_sessionToken(ctx context.Context, field graphql.CollectedField, obj *model.AuthPayload) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
@@ -3642,6 +4334,38 @@ func (ec *executionContext) fieldContext_BookingDetail_reviews(_ context.Context
 	return fc, nil
 }
 
+func (ec *executionContext) _BookingDetail_disputes(ctx context.Context, field graphql.CollectedField, obj *model.BookingDetail) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BookingDetail_disputes(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Disputes, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.Dispute) graphql.Marshaler {
+			return ec.marshalNDispute2ᚕᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐDisputeᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BookingDetail_disputes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BookingDetail",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Dispute(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Checkout_checkoutUrl(ctx context.Context, field graphql.CollectedField, obj *model.Checkout) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -3824,6 +4548,236 @@ func (ec *executionContext) _Country_isActive(ctx context.Context, field graphql
 }
 func (ec *executionContext) fieldContext_Country_isActive(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("Country", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _Dispute_id(ctx context.Context, field graphql.CollectedField, obj *model.Dispute) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Dispute_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Dispute_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Dispute", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _Dispute_bookingId(ctx context.Context, field graphql.CollectedField, obj *model.Dispute) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Dispute_bookingId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.BookingID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Dispute_bookingId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Dispute", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _Dispute_reasonCode(ctx context.Context, field graphql.CollectedField, obj *model.Dispute) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Dispute_reasonCode(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ReasonCode, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Dispute_reasonCode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Dispute", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Dispute_reasonName(ctx context.Context, field graphql.CollectedField, obj *model.Dispute) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Dispute_reasonName(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ReasonName, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Dispute_reasonName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Dispute", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Dispute_statusCode(ctx context.Context, field graphql.CollectedField, obj *model.Dispute) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Dispute_statusCode(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.StatusCode, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Dispute_statusCode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Dispute", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Dispute_statusName(ctx context.Context, field graphql.CollectedField, obj *model.Dispute) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Dispute_statusName(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.StatusName, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Dispute_statusName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Dispute", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Dispute_details(ctx context.Context, field graphql.CollectedField, obj *model.Dispute) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Dispute_details(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Details, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Dispute_details(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Dispute", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Dispute_resolutionNote(ctx context.Context, field graphql.CollectedField, obj *model.Dispute) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Dispute_resolutionNote(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ResolutionNote, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Dispute_resolutionNote(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Dispute", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Dispute_openedByUserId(ctx context.Context, field graphql.CollectedField, obj *model.Dispute) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Dispute_openedByUserId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.OpenedByUserID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Dispute_openedByUserId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Dispute", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _Dispute_createdAt(ctx context.Context, field graphql.CollectedField, obj *model.Dispute) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Dispute_createdAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Dispute_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Dispute", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) _GeoPlace_id(ctx context.Context, field graphql.CollectedField, obj *model.GeoPlace) (ret graphql.Marshaler) {
@@ -5424,6 +6378,125 @@ func (ec *executionContext) fieldContext_Mutation_submitReview(ctx context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_openDispute(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_openDispute(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().OpenDispute(ctx, fc.Args["input"].(model.OpenDisputeInput))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Authenticated == nil {
+					var zeroVal *model.Dispute
+					return zeroVal, errors.New("directive authenticated is not implemented")
+				}
+				return ec.Directives.Authenticated(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		func(ctx context.Context, selections ast.SelectionSet, v *model.Dispute) graphql.Marshaler {
+			return ec.marshalNDispute2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐDispute(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_openDispute(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Dispute(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_openDispute_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_resolveDispute(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_resolveDispute(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().ResolveDispute(ctx, fc.Args["id"].(string), fc.Args["statusCode"].(string), fc.Args["resolutionNote"].(*string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				code, err := ec.unmarshalNString2string(ctx, "admin")
+				if err != nil {
+					var zeroVal *model.AdminDispute
+					return zeroVal, err
+				}
+				if ec.Directives.HasRole == nil {
+					var zeroVal *model.AdminDispute
+					return zeroVal, errors.New("directive hasRole is not implemented")
+				}
+				return ec.Directives.HasRole(ctx, nil, directive0, code)
+			}
+
+			next = directive1
+			return next
+		},
+		func(ctx context.Context, selections ast.SelectionSet, v *model.AdminDispute) graphql.Marshaler {
+			return ec.marshalNAdminDispute2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐAdminDispute(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_resolveDispute(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_AdminDispute(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_resolveDispute_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _OrganizerBooking_id(ctx context.Context, field graphql.CollectedField, obj *model.OrganizerBooking) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -6608,6 +7681,50 @@ func (ec *executionContext) fieldContext_Query_verificationTypes(ctx context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_disputeReasons(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_disputeReasons(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().DisputeReasons(ctx, fc.Args["activeOnly"].(*bool))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.Lookup) graphql.Marshaler {
+			return ec.marshalNLookup2ᚕᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐLookupᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_disputeReasons(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Lookup(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_disputeReasons_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_myVerifications(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -7259,6 +8376,68 @@ func (ec *executionContext) fieldContext_Query_talentReviewSummary(ctx context.C
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_talentReviewSummary_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_disputes(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_disputes(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().Disputes(ctx, fc.Args["statusCode"].(*string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				code, err := ec.unmarshalNString2string(ctx, "admin")
+				if err != nil {
+					var zeroVal []*model.AdminDispute
+					return zeroVal, err
+				}
+				if ec.Directives.HasRole == nil {
+					var zeroVal []*model.AdminDispute
+					return zeroVal, errors.New("directive hasRole is not implemented")
+				}
+				return ec.Directives.HasRole(ctx, nil, directive0, code)
+			}
+
+			next = directive1
+			return next
+		},
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.AdminDispute) graphql.Marshaler {
+			return ec.marshalNAdminDispute2ᚕᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐAdminDisputeᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_disputes(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_AdminDispute(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_disputes_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -9977,6 +11156,50 @@ func (ec *executionContext) unmarshalInputLoginInput(ctx context.Context, obj an
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputOpenDisputeInput(ctx context.Context, obj any) (model.OpenDisputeInput, error) {
+	var it model.OpenDisputeInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"bookingId", "reasonCode", "details"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "bookingId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bookingId"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BookingID = data
+		case "reasonCode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("reasonCode"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ReasonCode = data
+		case "details":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("details"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Details = data
+		}
+	}
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputRateInput(ctx context.Context, obj any) (model.RateInput, error) {
 	var it model.RateInput
 	if obj == nil {
@@ -10384,6 +11607,109 @@ func (ec *executionContext) unmarshalInputUpdateTalentProfileInput(ctx context.C
 
 // region    **************************** object.gotpl ****************************
 
+var adminDisputeImplementors = []string{"AdminDispute"}
+
+func (ec *executionContext) _AdminDispute(ctx context.Context, sel ast.SelectionSet, obj *model.AdminDispute) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, adminDisputeImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AdminDispute")
+		case "id":
+			out.Values[i] = ec._AdminDispute_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "bookingId":
+			out.Values[i] = ec._AdminDispute_bookingId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "reasonCode":
+			out.Values[i] = ec._AdminDispute_reasonCode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "reasonName":
+			out.Values[i] = ec._AdminDispute_reasonName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "statusCode":
+			out.Values[i] = ec._AdminDispute_statusCode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "statusName":
+			out.Values[i] = ec._AdminDispute_statusName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "details":
+			out.Values[i] = ec._AdminDispute_details(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "resolutionNote":
+			out.Values[i] = ec._AdminDispute_resolutionNote(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "openedByUserId":
+			out.Values[i] = ec._AdminDispute_openedByUserId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createdAt":
+			out.Values[i] = ec._AdminDispute_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "organizerDisplayName":
+			out.Values[i] = ec._AdminDispute_organizerDisplayName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "talentDisplayName":
+			out.Values[i] = ec._AdminDispute_talentDisplayName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "bookingStatusCode":
+			out.Values[i] = ec._AdminDispute_bookingStatusCode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "startsAt":
+			out.Values[i] = ec._AdminDispute_startsAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
 var authPayloadImplementors = []string{"AuthPayload"}
 
 func (ec *executionContext) _AuthPayload(ctx context.Context, sel ast.SelectionSet, obj *model.AuthPayload) graphql.Marshaler {
@@ -10620,6 +11946,11 @@ func (ec *executionContext) _BookingDetail(ctx context.Context, sel ast.Selectio
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "disputes":
+			out.Values[i] = ec._BookingDetail_disputes(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -10723,6 +12054,89 @@ func (ec *executionContext) _Country(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "isActive":
 			out.Values[i] = ec._Country_isActive(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var disputeImplementors = []string{"Dispute"}
+
+func (ec *executionContext) _Dispute(ctx context.Context, sel ast.SelectionSet, obj *model.Dispute) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, disputeImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Dispute")
+		case "id":
+			out.Values[i] = ec._Dispute_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "bookingId":
+			out.Values[i] = ec._Dispute_bookingId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "reasonCode":
+			out.Values[i] = ec._Dispute_reasonCode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "reasonName":
+			out.Values[i] = ec._Dispute_reasonName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "statusCode":
+			out.Values[i] = ec._Dispute_statusCode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "statusName":
+			out.Values[i] = ec._Dispute_statusName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "details":
+			out.Values[i] = ec._Dispute_details(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "resolutionNote":
+			out.Values[i] = ec._Dispute_resolutionNote(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "openedByUserId":
+			out.Values[i] = ec._Dispute_openedByUserId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createdAt":
+			out.Values[i] = ec._Dispute_createdAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -11089,6 +12503,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "submitReview":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_submitReview(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "openDispute":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_openDispute(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "resolveDispute":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_resolveDispute(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -11675,6 +13103,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "disputeReasons":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_disputeReasons(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "myVerifications":
 			field := field
 
@@ -11949,6 +13399,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_talentReviewSummary(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "disputes":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_disputes(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -13051,6 +14523,32 @@ func (ec *executionContext) unmarshalNAddAvailabilityBlockInput2githubᚗcomᚋb
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalNAdminDispute2ᚕᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐAdminDisputeᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.AdminDispute) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNAdminDispute2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐAdminDispute(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNAdminDispute2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐAdminDispute(ctx context.Context, sel ast.SelectionSet, v *model.AdminDispute) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AdminDispute(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNAuthPayload2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐAuthPayload(ctx context.Context, sel ast.SelectionSet, v *model.AuthPayload) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -13180,6 +14678,32 @@ func (ec *executionContext) marshalNCountry2ᚖgithubᚗcomᚋblingyplusᚋagrof
 	return ec._Country(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNDispute2ᚕᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐDisputeᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Dispute) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNDispute2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐDispute(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNDispute2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐDispute(ctx context.Context, sel ast.SelectionSet, v *model.Dispute) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._Dispute(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNFloat2float64(ctx context.Context, v any) (float64, error) {
 	res, err := graphql.UnmarshalFloatContext(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -13303,6 +14827,11 @@ func (ec *executionContext) unmarshalNLookupTable2githubᚗcomᚋblingyplusᚋag
 
 func (ec *executionContext) marshalNLookupTable2githubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐLookupTable(ctx context.Context, sel ast.SelectionSet, v model.LookupTable) graphql.Marshaler {
 	return v
+}
+
+func (ec *executionContext) unmarshalNOpenDisputeInput2githubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐOpenDisputeInput(ctx context.Context, v any) (model.OpenDisputeInput, error) {
+	res, err := ec.unmarshalInputOpenDisputeInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNOrganizerBooking2ᚕᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐOrganizerBookingᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.OrganizerBooking) graphql.Marshaler {

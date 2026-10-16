@@ -14,6 +14,7 @@ import (
 	"github.com/blingyplus/agrofie-backend/internal/booking"
 	"github.com/blingyplus/agrofie-backend/internal/checkout"
 	"github.com/blingyplus/agrofie-backend/internal/discovery"
+	"github.com/blingyplus/agrofie-backend/internal/dispute"
 	"github.com/blingyplus/agrofie-backend/internal/lookup"
 	"github.com/blingyplus/agrofie-backend/internal/payments"
 	"github.com/blingyplus/agrofie-backend/internal/review"
@@ -45,13 +46,24 @@ func toLookup(item *lookup.Item) *model.Lookup {
 func listLookups(ctx context.Context, activeOnly bool, fn func(context.Context, bool) ([]lookup.Item, error)) ([]*model.Lookup, error) {
 	rows, err := fn(ctx, activeOnly)
 	if err != nil {
-		return nil, err
+		return nil, mapLookupErr(err)
 	}
 	out := make([]*model.Lookup, 0, len(rows))
 	for i := range rows {
 		out = append(out, toLookup(&rows[i]))
 	}
 	return out, nil
+}
+
+func mapLookupErr(err error) error {
+	switch {
+	case errors.Is(err, lookup.ErrInvalidInput):
+		return &gqlerror.Error{Message: err.Error(), Extensions: map[string]any{"code": "BAD_USER_INPUT"}}
+	case errors.Is(err, lookup.ErrNotFound):
+		return &gqlerror.Error{Message: err.Error(), Extensions: map[string]any{"code": "NOT_FOUND"}}
+	default:
+		return err
+	}
 }
 
 func toAuthPayload(session *agrofierv1.AuthSession) *model.AuthPayload {
@@ -439,6 +451,63 @@ func toModelReviewSummary(s *review.Summary) *model.ReviewSummary {
 	return &model.ReviewSummary{ReviewCount: s.ReviewCount, AverageRating: s.AverageRating}
 }
 
+func mapDisputeErr(err error) error {
+	switch {
+	case errors.Is(err, dispute.ErrInvalidInput), errors.Is(err, dispute.ErrNotDisputable), errors.Is(err, dispute.ErrAlreadyOpen):
+		return &gqlerror.Error{Message: err.Error(), Extensions: map[string]any{"code": "BAD_USER_INPUT"}}
+	case errors.Is(err, dispute.ErrNotFound):
+		return &gqlerror.Error{Message: "booking not found", Extensions: map[string]any{"code": "NOT_FOUND"}}
+	case errors.Is(err, dispute.ErrDisputeNotFound):
+		return &gqlerror.Error{Message: "dispute not found", Extensions: map[string]any{"code": "NOT_FOUND"}}
+	case errors.Is(err, dispute.ErrForbidden):
+		return &gqlerror.Error{Message: "forbidden", Extensions: map[string]any{"code": "FORBIDDEN"}}
+	default:
+		return err
+	}
+}
+
+func toModelDispute(d *dispute.Dispute) *model.Dispute {
+	return &model.Dispute{
+		ID: d.ID, BookingID: d.BookingID, ReasonCode: d.ReasonCode, ReasonName: d.ReasonName,
+		StatusCode: d.StatusCode, StatusName: d.StatusName, Details: d.Details, ResolutionNote: d.ResolutionNote,
+		OpenedByUserID: d.OpenedByUserID, CreatedAt: d.CreatedAt.Format(time.RFC3339),
+	}
+}
+
+func toModelDisputes(ds []dispute.Dispute) []*model.Dispute {
+	out := make([]*model.Dispute, 0, len(ds))
+	for i := range ds {
+		out = append(out, toModelDispute(&ds[i]))
+	}
+	return out
+}
+
+func toModelAdminDispute(d *dispute.AdminItem) *model.AdminDispute {
+	return &model.AdminDispute{
+		ID: d.ID, BookingID: d.BookingID, ReasonCode: d.ReasonCode, ReasonName: d.ReasonName,
+		StatusCode: d.StatusCode, StatusName: d.StatusName, Details: d.Details, ResolutionNote: d.ResolutionNote,
+		OpenedByUserID: d.OpenedByUserID, CreatedAt: d.CreatedAt.Format(time.RFC3339),
+		OrganizerDisplayName: d.OrganizerDisplayName, TalentDisplayName: d.TalentDisplayName,
+		BookingStatusCode: d.BookingStatusCode, StartsAt: d.StartsAt.Format(time.RFC3339),
+	}
+}
+
+// adminDisputeByID re-fetches a single dispute through the admin list query
+// (no single-dispute-as-admin-item query exists yet) so a mutation's
+// response always matches what a follow-up list query would show.
+func (r *Resolver) adminDisputeByID(ctx context.Context, id string) (*model.AdminDispute, error) {
+	rows, err := r.Disputes.ListForAdmin(ctx, nil)
+	if err != nil {
+		return nil, mapDisputeErr(err)
+	}
+	for i := range rows {
+		if rows[i].ID == id {
+			return toModelAdminDispute(&rows[i]), nil
+		}
+	}
+	return nil, mapDisputeErr(dispute.ErrDisputeNotFound)
+}
+
 // bookingDetail assembles the full BookingDetail — the booking itself, its
 // latest payment (if any), and its reviews (if any) — the same shape
 // whether reached via the booking query or a mutation's response.
@@ -458,6 +527,11 @@ func (r *Resolver) bookingDetail(ctx context.Context, callerUserID, bookingID st
 		return nil, mapReviewErr(err)
 	}
 	out.Reviews = toModelReviews(reviews)
+	disputes, err := r.Disputes.ListForBooking(ctx, callerUserID, bookingID)
+	if err != nil {
+		return nil, mapDisputeErr(err)
+	}
+	out.Disputes = toModelDisputes(disputes)
 	return out, nil
 }
 

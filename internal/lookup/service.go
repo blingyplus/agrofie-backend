@@ -2,11 +2,18 @@ package lookup
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/blingyplus/agrofie-backend/internal/db"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+)
+
+var (
+	ErrInvalidInput = errors.New("invalid input")
+	ErrNotFound     = errors.New("lookup item not found")
 )
 
 // Service is the application API for admin-controlled lookup tables.
@@ -74,6 +81,16 @@ func (s *Service) Genres(ctx context.Context, activeOnly bool) ([]Item, error) {
 		return nil, err
 	}
 	return itemsFrom(rows, func(r db.ListGenresRow) Item {
+		return Item{ID: idString(r.ID), Code: r.Code, Name: r.Name, SortOrder: r.SortOrder, IsActive: r.IsActive}
+	}), nil
+}
+
+func (s *Service) DisputeReasons(ctx context.Context, activeOnly bool) ([]Item, error) {
+	rows, err := s.q.ListDisputeReasons(ctx, activeOnly)
+	if err != nil {
+		return nil, err
+	}
+	return itemsFrom(rows, func(r db.ListDisputeReasonsRow) Item {
 		return Item{ID: idString(r.ID), Code: r.Code, Name: r.Name, SortOrder: r.SortOrder, IsActive: r.IsActive}
 	}), nil
 }
@@ -198,7 +215,7 @@ func (s *Service) UpdateName(ctx context.Context, table Table, code, name string
 		r, err := s.q.UpdateCancellationReasonName(ctx, db.UpdateCancellationReasonNameParams{Name: name, Code: code})
 		return itemPtr(r.ID, r.Code, r.Name, r.SortOrder, r.IsActive, err)
 	default:
-		return nil, fmt.Errorf("unknown lookup table %s", table)
+		return nil, fmt.Errorf("%w: unknown lookup table %s", ErrInvalidInput, table)
 	}
 }
 
@@ -229,7 +246,7 @@ func (s *Service) SetActive(ctx context.Context, table Table, code string, isAct
 		r, err := s.q.SetCancellationReasonActive(ctx, db.SetCancellationReasonActiveParams{IsActive: isActive, Code: code})
 		return itemPtr(r.ID, r.Code, r.Name, r.SortOrder, r.IsActive, err)
 	default:
-		return nil, fmt.Errorf("unknown lookup table %s", table)
+		return nil, fmt.Errorf("%w: unknown lookup table %s", ErrInvalidInput, table)
 	}
 }
 
@@ -241,7 +258,15 @@ func itemsFrom[T any](rows []T, fn func(T) Item) []Item {
 	return out
 }
 
+// itemPtr wraps the shared write-then-return pattern every UpdateName/
+// SetActive branch uses. A code that doesn't exist in the table is
+// pgx.ErrNoRows from the UPDATE ... RETURNING never matching a row —
+// translated here into ErrNotFound so callers (and the GraphQL layer) don't
+// have to know sqlc's row-not-found sentinel.
 func itemPtr(id pgtype.UUID, code, name string, sortOrder int32, isActive bool, err error) (*Item, error) {
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("%w: code %q", ErrNotFound, code)
+	}
 	if err != nil {
 		return nil, err
 	}
