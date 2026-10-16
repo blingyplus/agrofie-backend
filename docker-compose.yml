@@ -144,6 +144,13 @@ services:
       AUTH_URL: http://auth:8081
       BOOKING_URL: http://booking:8082
       PAYMENTS_URL: http://payments:8083
+      # Fake (test) payments are used when PAYSTACK_SECRET_KEY is unset. Set
+      # PUBLIC_BASE_URL to http://<your-LAN-IP>:8080 so a phone can open the
+      # fake checkout page. DEV_ALLOW_EARLY_COMPLETE lets you complete a
+      # booking before its event date while testing. Local dev only.
+      PAYMENTS_PROVIDER: ${PAYMENTS_PROVIDER:-}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8080}
+      DEV_ALLOW_EARLY_COMPLETE: ${DEV_ALLOW_EARLY_COMPLETE:-true}
     command: ["gateway"]
     ports:
       - "8080:8080"

@@ -36,6 +36,15 @@ type beginner interface {
 type Service struct {
 	db    beginner
 	avail *availability.Service
+
+	allowEarlyComplete bool
+}
+
+// AllowEarlyCompletion lets bookings be completed before the event window has
+// passed. For local end-to-end testing only (DEV_ALLOW_EARLY_COMPLETE=true).
+func (s *Service) AllowEarlyCompletion(v bool) *Service {
+	s.allowEarlyComplete = v
+	return s
 }
 
 func NewService(conn beginner, avail *availability.Service) *Service {
@@ -289,7 +298,7 @@ func (s *Service) CompleteBooking(ctx context.Context, callerUserID, bookingID s
 		if b.StatusCode != "paid" {
 			return ErrNotPending
 		}
-		if !time.Now().After(b.EndsAt.Time) {
+		if !s.allowEarlyComplete && !time.Now().After(b.EndsAt.Time) {
 			return ErrEventNotYetOver
 		}
 		return nil

@@ -4,7 +4,13 @@
 // See docs/PRODUCT.md (Money model) and docs/ARCHITECTURE.md.
 package payments
 
-import "context"
+import (
+	"context"
+	"crypto/hmac"
+	"crypto/sha512"
+	"encoding/hex"
+	"strings"
+)
 
 type SettlementType string
 
@@ -80,9 +86,28 @@ type Provider interface {
 	VerifyWebhookSignature(rawBody []byte, signatureHeader string) bool
 }
 
-// FakeProvider is a no-op adapter for local dev and tests. It is used
-// automatically when PAYSTACK_SECRET_KEY is not set.
-type FakeProvider struct{}
+// FakeProvider is a clearly-labelled TEST provider for local dev and demos. It
+// is used automatically when PAYSTACK_SECRET_KEY is not set and moves no money
+// anywhere. Checkout URLs point at the gateway's own /pay/fake/{reference}
+// test page, whose "Pay" button posts a signed charge.success through the same
+// HandleWebhookEvent path real Paystack uses. VerifyTransaction always reports
+// success so the "I've paid" reconciliation button works without the page.
+type FakeProvider struct {
+	// BaseURL is the externally reachable gateway origin the phone can open,
+	// e.g. http://192.168.1.20:8080 (PUBLIC_BASE_URL). Defaults to localhost.
+	BaseURL string
+}
+
+// FakeWebhookKey signs fake webhook bodies. It is public on purpose: the fake
+// provider is only ever wired when no real Paystack key exists.
+const FakeWebhookKey = "agrofie-fake-provider-test-only"
+
+// FakeSignature returns the signature FakeProvider expects for a body.
+func FakeSignature(body []byte) string {
+	m := hmac.New(sha512.New, []byte(FakeWebhookKey))
+	m.Write(body)
+	return hex.EncodeToString(m.Sum(nil))
+}
 
 func (FakeProvider) ListSettlementBanks(_ context.Context, _ string, t SettlementType) ([]Bank, error) {
 	if t == SettlementMobileMoney {
@@ -99,14 +124,20 @@ func (FakeProvider) CreateSubaccount(_ context.Context, in SubaccountInput, _ fl
 	}, nil
 }
 
-func (FakeProvider) InitializeCheckout(_ context.Context, in CheckoutInput) (Checkout, error) {
-	return Checkout{CheckoutURL: "https://checkout.fake.test/" + in.Reference, Reference: in.Reference}, nil
+func (f FakeProvider) InitializeCheckout(_ context.Context, in CheckoutInput) (Checkout, error) {
+	base := strings.TrimRight(f.BaseURL, "/")
+	if base == "" {
+		base = "http://localhost:8080"
+	}
+	return Checkout{CheckoutURL: base + "/pay/fake/" + in.Reference, Reference: in.Reference}, nil
 }
 
-func (FakeProvider) VerifyTransaction(_ context.Context, reference string) (TransactionStatus, error) {
+func (FakeProvider) VerifyTransaction(_ context.Context, _ string) (TransactionStatus, error) {
 	return "success", nil
 }
 
-func (FakeProvider) VerifyWebhookSignature(_ []byte, _ string) bool { return true }
+func (FakeProvider) VerifyWebhookSignature(rawBody []byte, signatureHeader string) bool {
+	return hmac.Equal([]byte(FakeSignature(rawBody)), []byte(signatureHeader))
+}
 
 var _ Provider = FakeProvider{}

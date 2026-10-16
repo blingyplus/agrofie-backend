@@ -2,7 +2,10 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"html"
 	"io"
 	"log/slog"
 	"net/http"
@@ -45,16 +48,21 @@ func main() {
 	lookups := lookup.NewService(db.New(pool))
 	discoverySvc := discovery.NewService(db.New(pool))
 
-	var paymentsProvider payments.Provider = payments.FakeProvider{}
-	if cfg.PaystackSecretKey != "" {
-		paymentsProvider = payments.NewPaystack(cfg.PaystackSecretKey)
+	var paymentsProvider payments.Provider
+	fakePayments := cfg.PaystackSecretKey == "" || cfg.PaymentsProvider == "fake"
+	if fakePayments {
+		paymentsProvider = payments.FakeProvider{BaseURL: cfg.PublicBaseURL}
+		slog.Warn("no PAYSTACK_SECRET_KEY (or PAYMENTS_PROVIDER=fake): using FAKE test payment provider (no real money). Checkout pages at /pay/fake/{reference}", "publicBaseURL", cfg.PublicBaseURL)
 	} else {
-		slog.Warn("PAYSTACK_SECRET_KEY not set; using FakeProvider for payouts")
+		paymentsProvider = payments.NewPaystack(cfg.PaystackSecretKey)
 	}
 	talentProfiles := talentprofile.NewService(pool, paymentsProvider, cfg.CommissionPercent)
 	verifications := verification.NewService(pool)
 	availabilitySvc := availability.NewService(pool)
-	bookings := booking.NewService(pool, availabilitySvc)
+	bookings := booking.NewService(pool, availabilitySvc).AllowEarlyCompletion(cfg.DevAllowEarlyComplete)
+	if cfg.DevAllowEarlyComplete {
+		slog.Warn("DEV_ALLOW_EARLY_COMPLETE on: bookings may be completed before the event ends")
+	}
 	checkoutSvc := checkout.NewService(pool, paymentsProvider, bookings, cfg.CommissionPercent)
 	reviewsSvc := review.NewService(pool)
 	disputesSvc := dispute.NewService(pool)
@@ -85,6 +93,10 @@ func main() {
 	mux.Handle("/graphql", gqlauth.Middleware(authClient)(gql))
 	mux.Handle("/playground", playground.Handler("Agrofie GraphQL", "/graphql"))
 	mux.HandleFunc("POST /webhooks/paystack", paystackWebhookHandler(checkoutSvc))
+	if fakePayments {
+		mux.HandleFunc("GET /pay/fake/{reference}", fakePayPage)
+		mux.HandleFunc("POST /pay/fake/{reference}", fakePayComplete(checkoutSvc))
+	}
 
 	slog.Info("gateway listening", "addr", cfg.Addr())
 	if err := http.ListenAndServe(cfg.Addr(), withCORS(mux)); err != nil {
@@ -129,4 +141,42 @@ func withCORS(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+const fakePayHTML = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Agrofie TEST payment</title>
+<style>body{font-family:system-ui,sans-serif;max-width:420px;margin:40px auto;padding:0 16px;text-align:center}
+.tag{background:#fde68a;border-radius:8px;padding:8px;font-weight:600}button{font-size:18px;padding:14px 28px;margin:8px;border-radius:10px;border:0;background:#16a34a;color:#fff}
+button.f{background:#dc2626}</style></head><body>
+<p class="tag">TEST MODE - fake payment provider. No real money moves.</p>
+<h2>Pay for booking</h2><p>Reference<br><code>%s</code></p>
+<form method="POST"><button name="outcome" value="success">Pay (simulate success)</button>
+<button class="f" name="outcome" value="failed">Simulate failure</button></form></body></html>`
+
+func fakePayPage(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	_, _ = fmt.Fprintf(w, fakePayHTML, html.EscapeString(r.PathValue("reference")))
+}
+
+// fakePayComplete simulates Paystack calling our webhook: it builds a
+// charge.success/charge.failed event, signs it with the fake key and runs it
+// through the same HandleWebhookEvent path (signature check, idempotent event
+// insert, MarkPaid). Only registered when no PAYSTACK_SECRET_KEY is set.
+func fakePayComplete(svc *checkout.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ref := r.PathValue("reference")
+		event := "charge.success"
+		if r.FormValue("outcome") == "failed" {
+			event = "charge.failed"
+		}
+		body, _ := json.Marshal(map[string]any{
+			"event": event, "data": map[string]any{"reference": ref, "status": event[7:], "fake": true},
+		})
+		if err := svc.HandleWebhookEvent(r.Context(), body, payments.FakeSignature(body)); err != nil {
+			slog.Error("fake payment failed", "err", err)
+			http.Error(w, "payment could not be applied: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = fmt.Fprintf(w, `<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><body style="font-family:system-ui;text-align:center;margin-top:60px"><h2>Test payment: %s</h2><p>Return to the Agrofie app and tap "I've paid" / refresh.</p>`, html.EscapeString(event))
+	}
 }
