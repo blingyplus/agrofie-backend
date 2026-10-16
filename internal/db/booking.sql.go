@@ -160,7 +160,10 @@ WHERE r.talent_profile_id = $1
   AND ru.code = $2
   AND r.effective_to IS NULL
   AND ($3::text IS NULL
+       OR r.event_type_id IS NULL
        OR r.event_type_id = (SELECT id FROM event_types WHERE code = $3::text))
+ORDER BY (r.event_type_id IS NULL) ASC, r.amount ASC
+LIMIT 1
 `
 
 type GetCurrentRateForBookingParams struct {
@@ -174,6 +177,7 @@ type GetCurrentRateForBookingRow struct {
 	CurrencyCode string `json:"currency_code"`
 }
 
+// Prefer a rate specific to the requested event type over a general one.
 func (q *Queries) GetCurrentRateForBooking(ctx context.Context, arg GetCurrentRateForBookingParams) (GetCurrentRateForBookingRow, error) {
 	row := q.db.QueryRow(ctx, getCurrentRateForBooking, arg.TalentProfileID, arg.Code, arg.EventTypeCode)
 	var i GetCurrentRateForBookingRow

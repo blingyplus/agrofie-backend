@@ -13,7 +13,11 @@ WHERE r.talent_profile_id = $1
   AND ru.code = $2
   AND r.effective_to IS NULL
   AND (sqlc.narg(event_type_code)::text IS NULL
-       OR r.event_type_id = (SELECT id FROM event_types WHERE code = sqlc.narg(event_type_code)::text));
+       OR r.event_type_id IS NULL
+       OR r.event_type_id = (SELECT id FROM event_types WHERE code = sqlc.narg(event_type_code)::text))
+-- Prefer a rate specific to the requested event type over a general one.
+ORDER BY (r.event_type_id IS NULL) ASC, r.amount ASC
+LIMIT 1;
 
 -- name: CountConflictingAgreedBookings :one
 -- Interval overlap test: an existing booking conflicts with the requested

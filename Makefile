@@ -1,4 +1,4 @@
-.PHONY: up down migrate proto sqlc gqlgen test vuln tidy seed-admin seed-talent
+.PHONY: up down migrate proto sqlc gqlgen test vuln tidy seed-admin seed-talent seed-demo
 
 DATABASE_URL ?= postgres://agrofie:agrofie@localhost:5432/agrofie?sslmode=disable
 
@@ -36,6 +36,13 @@ seed-admin:
 	go run ./cmd/seed-admin
 
 seed-talent:
+	go run ./cmd/seed-talent
+
+# Idempotent demo data for manual testing against `docker compose up`:
+# admin + verified talents (profiles, rates, fake payout, availability) + organizer.
+# Test credentials only; see .env.example / README.
+seed-demo:
+	ADMIN_PASSWORD=$${ADMIN_PASSWORD:-changeme-admin} go run ./cmd/seed-admin
 	go run ./cmd/seed-talent
 
 run-gateway:

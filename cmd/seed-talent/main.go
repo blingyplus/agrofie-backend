@@ -14,6 +14,8 @@ import (
 	"github.com/blingyplus/agrofie-backend/internal/auth"
 	"github.com/blingyplus/agrofie-backend/internal/config"
 	"github.com/blingyplus/agrofie-backend/internal/domain"
+	"github.com/blingyplus/agrofie-backend/internal/payments"
+	"github.com/blingyplus/agrofie-backend/internal/talentprofile"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -53,11 +55,9 @@ var acts = []act{
 
 func main() {
 	cfg := config.Load("seed-talent")
-	password := os.Getenv("SEED_TALENT_PASSWORD")
-	if password == "" {
-		slog.Error("SEED_TALENT_PASSWORD is required (see .env.example)")
-		os.Exit(1)
-	}
+	// Demo/test value only (documented in .env.example); override via env.
+	password := envOr("SEED_TALENT_PASSWORD", "changeme-seed-talent")
+	orgPassword := envOr("SEED_ORGANIZER_PASSWORD", "changeme-seed-organizer")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
@@ -70,7 +70,8 @@ func main() {
 	defer pool.Close()
 
 	svc := auth.NewService(pool, auth.NewKratos(cfg.KratosAdminURL, cfg.KratosPublicURL))
-	for _, a := range acts {
+	payouts := talentprofile.NewService(pool, payments.FakeProvider{}, cfg.CommissionPercent)
+	for i, a := range acts {
 		email := "seed." + a.Slug + "@agrofie.local"
 		if _, err := svc.Register(ctx, auth.RegisterInput{
 			Email: email, Password: password, DisplayName: a.Name, RoleCode: domain.RoleTalent,
@@ -82,8 +83,37 @@ func main() {
 			slog.Error("profile failed", "email", email, "err", err)
 			os.Exit(1)
 		}
+		var userID string
+		if err := pool.QueryRow(ctx, `SELECT id::text FROM users WHERE email = $1`, email).Scan(&userID); err != nil {
+			slog.Error("find user failed", "email", email, "err", err)
+			os.Exit(1)
+		}
+		// Fake (test) payout subaccount so the talent is bookable. Safe to repeat.
+		if _, err := payouts.ConnectPayout(ctx, userID, talentprofile.ConnectPayoutInput{
+			BusinessName: a.Name, SettlementType: payments.SettlementMobileMoney,
+			BankCode: "MTN", AccountNumber: fmt.Sprintf("055000%04d", i+1),
+		}); err != nil {
+			slog.Error("payout failed", "email", email, "err", err)
+			os.Exit(1)
+		}
 		fmt.Printf("seeded %s (%s)\n", a.Name, email)
 	}
+
+	orgEmail := "demo.organizer@agrofie.local"
+	if _, err := svc.Register(ctx, auth.RegisterInput{
+		Email: orgEmail, Password: orgPassword, DisplayName: "Demo Organizer", RoleCode: domain.RoleOrganizer,
+	}); err != nil && !errors.Is(err, auth.ErrConflict) {
+		slog.Error("register organizer failed", "err", err)
+		os.Exit(1)
+	}
+	fmt.Printf("seeded organizer %s\n", orgEmail)
+}
+
+func envOr(k, def string) string {
+	if v := os.Getenv(k); v != "" {
+		return v
+	}
+	return def
 }
 
 func fillProfile(ctx context.Context, pool *pgxpool.Pool, email string, a act) error {
@@ -136,6 +166,25 @@ func fillProfile(ctx context.Context, pool *pgxpool.Pool, email string, a act) e
 	if err := insert(`INSERT INTO talent_service_areas SELECT $1::uuid, g.id FROM geo_places g
 		JOIN countries c ON c.id = g.country_id WHERE c.code = 'GH' AND g.code = $2`, a.Areas); err != nil {
 		return fmt.Errorf("service areas: %w", err)
+	}
+
+	// Verified identity (what an admin approval does) + wide availability.
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO verifications (user_id, verification_type_id, verification_status_id, notes)
+		SELECT tp.user_id, vt.id, vs.id, 'demo seed'
+		FROM talent_profiles tp, verification_types vt, verification_statuses vs
+		WHERE tp.id = $1::uuid AND vt.code = 'identity' AND vs.code = 'verified'
+		  AND NOT EXISTS (SELECT 1 FROM verifications v WHERE v.user_id = tp.user_id
+		                  AND v.verification_type_id = vt.id AND v.verification_status_id = vs.id)`, profileID); err != nil {
+		return fmt.Errorf("verification: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM availability_blocks WHERE talent_profile_id = $1::uuid AND note = 'demo seed'`, profileID); err != nil {
+		return fmt.Errorf("clear availability: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO availability_blocks (talent_profile_id, starts_at, ends_at, is_available, note)
+		VALUES ($1::uuid, now() - interval '30 days', now() + interval '400 days', true, 'demo seed')`, profileID); err != nil {
+		return fmt.Errorf("availability: %w", err)
 	}
 
 	// Replace current rates: close open ones, then insert the seed rates.
