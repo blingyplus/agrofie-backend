@@ -327,6 +327,8 @@ type TalentProfile struct {
 	IsSearchable   bool               `json:"is_searchable"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	Featured       bool               `json:"featured"`
+	FeaturedRank   *int32             `json:"featured_rank"`
 }
 
 type TalentRate struct {

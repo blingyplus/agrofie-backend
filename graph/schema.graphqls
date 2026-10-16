@@ -28,7 +28,7 @@ type Query {
   pendingVerifications: [PendingVerification!]! @hasRole(code: "admin")
 
   """Searchable, active talent, newest first. Never exposes contact details."""
-  searchTalent(filter: TalentFilter, first: Int = 20, after: String): TalentPage!
+  searchTalent(filter: TalentFilter, sort: TalentSort = NEWEST, first: Int = 20, after: String): TalentPage!
   talent(id: ID!): TalentProfile
 
   """The caller's own talent profile, including unpublished changes. Requires the talent role."""
@@ -79,6 +79,9 @@ type Mutation {
 
   """Connect (or replace) the caller's payout account via a Paystack subaccount. Test mode until launch review."""
   connectMyPayoutAccount(input: ConnectPayoutInput!): PayoutAccount! @hasRole(code: "talent")
+
+  """Flag (or unflag) a searchable talent as featured on Discover. rank orders featured talent, lower first. Requires the admin role."""
+  setTalentFeatured(talentId: ID!, featured: Boolean!, rank: Int): TalentProfile! @hasRole(code: "admin")
 
   """Submit evidence for review. Approving an identity verification is what makes a talent searchable."""
   submitVerification(input: SubmitVerificationInput!): Verification! @hasRole(code: "talent")
@@ -201,6 +204,19 @@ input TalentFilter {
   languageCodes: [String!]
   """A geo place code; matches that place and everything beneath it."""
   placeCode: String
+  """Only admin-featured talent."""
+  featuredOnly: Boolean
+  """Only talent with at least this many reviews (e.g. for a "Top rated" rail)."""
+  minReviewCount: Int
+}
+
+enum TalentSort {
+  """Newest profile first."""
+  NEWEST
+  """Highest average rating first, then most reviews. Unrated talent last."""
+  TOP_RATED
+  """Featured talent first (by rank), then newest."""
+  FEATURED
 }
 
 type Tag {
@@ -225,6 +241,13 @@ type TalentCard {
   fromRate: Rate
   genres: [Tag!]!
   types: [Tag!]!
+  """Admin-curated placement for the Discover hero."""
+  featured: Boolean!
+  """Mean of organizer reviews (1-5, 2 dp). Null until the talent has a review."""
+  ratingAverage: Float
+  reviewCount: Int!
+  """When the talent joined Agrofie (RFC 3339). Drives "New on Agrofie"."""
+  createdAt: String!
 }
 
 type TalentProfile {
@@ -233,6 +256,13 @@ type TalentProfile {
   headline: String
   homePlaceName: String
   bio: String
+  """Admin-curated placement for the Discover hero."""
+  featured: Boolean!
+  """Mean of organizer reviews (1-5, 2 dp). Null until the talent has a review."""
+  ratingAverage: Float
+  reviewCount: Int!
+  """When the talent joined Agrofie (RFC 3339). Drives "New on Agrofie"."""
+  createdAt: String!
   genres: [Tag!]!
   types: [Tag!]!
   languages: [Tag!]!

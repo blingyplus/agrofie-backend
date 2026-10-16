@@ -121,10 +121,12 @@ func toDiscoveryFilter(f *model.TalentFilter) discovery.Filter {
 		return discovery.Filter{}
 	}
 	return discovery.Filter{
-		GenreCodes:    f.GenreCodes,
-		TypeCodes:     f.TypeCodes,
-		LanguageCodes: f.LanguageCodes,
-		PlaceCode:     stringOr(f.PlaceCode, ""),
+		GenreCodes:     f.GenreCodes,
+		TypeCodes:      f.TypeCodes,
+		LanguageCodes:  f.LanguageCodes,
+		PlaceCode:      stringOr(f.PlaceCode, ""),
+		FeaturedOnly:   f.FeaturedOnly != nil && *f.FeaturedOnly,
+		MinReviewCount: intOr(f.MinReviewCount, 0),
 	}
 }
 
@@ -160,6 +162,10 @@ func toTalentCard(c discovery.Card) *model.TalentCard {
 		HomePlaceName: c.HomePlaceName,
 		Genres:        toTags(c.Genres),
 		Types:         toTags(c.Types),
+		Featured:      c.Featured,
+		RatingAverage: c.RatingAverage,
+		ReviewCount:   c.ReviewCount,
+		CreatedAt:     c.CreatedAt.UTC().Format(time.RFC3339),
 	}
 	if c.FromRate != nil {
 		card.FromRate = toRate(*c.FromRate)
@@ -191,6 +197,10 @@ func toTalentProfile(p *discovery.Profile) *model.TalentProfile {
 		Headline:      p.Headline,
 		HomePlaceName: p.HomePlaceName,
 		Bio:           p.Bio,
+		Featured:      p.Featured,
+		RatingAverage: p.RatingAverage,
+		ReviewCount:   p.ReviewCount,
+		CreatedAt:     p.CreatedAt.UTC().Format(time.RFC3339),
 		Genres:        toTags(p.Genres),
 		Types:         toTags(p.Types),
 		Languages:     toTags(p.Languages),
@@ -565,4 +575,17 @@ func (r *Resolver) talentBookingByID(ctx context.Context, userID, id string) (*m
 		}
 	}
 	return nil, mapBookingErr(booking.ErrNotFound)
+}
+
+func toDiscoverySort(s *model.TalentSort) discovery.Sort {
+	if s == nil {
+		return discovery.SortNewest
+	}
+	switch *s {
+	case model.TalentSortTopRated:
+		return discovery.SortTopRated
+	case model.TalentSortFeatured:
+		return discovery.SortFeatured
+	}
+	return discovery.SortNewest
 }

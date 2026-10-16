@@ -165,6 +165,7 @@ type ComplexityRoot struct {
 		ResolveDispute            func(childComplexity int, id string, statusCode string, resolutionNote *string) int
 		SetLookupActive           func(childComplexity int, table model.LookupTable, code string, isActive bool) int
 		SetMyRates                func(childComplexity int, rates []*model.RateInput) int
+		SetTalentFeatured         func(childComplexity int, talentID string, featured bool, rank *int) int
 		SubmitReview              func(childComplexity int, input model.SubmitReviewInput) int
 		SubmitVerification        func(childComplexity int, input model.SubmitVerificationInput) int
 		UpdateLookupName          func(childComplexity int, table model.LookupTable, code string, name string) int
@@ -234,7 +235,7 @@ type ComplexityRoot struct {
 		PendingVerifications  func(childComplexity int) int
 		RateUnits             func(childComplexity int, activeOnly *bool) int
 		Roles                 func(childComplexity int, activeOnly *bool) int
-		SearchTalent          func(childComplexity int, filter *model.TalentFilter, first *int, after *string) int
+		SearchTalent          func(childComplexity int, filter *model.TalentFilter, sort *model.TalentSort, first *int, after *string) int
 		SettlementBanks       func(childComplexity int, typeArg model.SettlementType) int
 		Talent                func(childComplexity int, id string) int
 		TalentAvailability    func(childComplexity int, talentID string, from string, to string) int
@@ -289,12 +290,16 @@ type ComplexityRoot struct {
 	}
 
 	TalentCard struct {
+		CreatedAt     func(childComplexity int) int
 		DisplayName   func(childComplexity int) int
+		Featured      func(childComplexity int) int
 		FromRate      func(childComplexity int) int
 		Genres        func(childComplexity int) int
 		Headline      func(childComplexity int) int
 		HomePlaceName func(childComplexity int) int
 		ID            func(childComplexity int) int
+		RatingAverage func(childComplexity int) int
+		ReviewCount   func(childComplexity int) int
 		Types         func(childComplexity int) int
 	}
 
@@ -305,13 +310,17 @@ type ComplexityRoot struct {
 
 	TalentProfile struct {
 		Bio           func(childComplexity int) int
+		CreatedAt     func(childComplexity int) int
 		DisplayName   func(childComplexity int) int
+		Featured      func(childComplexity int) int
 		Genres        func(childComplexity int) int
 		Headline      func(childComplexity int) int
 		HomePlaceName func(childComplexity int) int
 		ID            func(childComplexity int) int
 		Languages     func(childComplexity int) int
 		Rates         func(childComplexity int) int
+		RatingAverage func(childComplexity int) int
+		ReviewCount   func(childComplexity int) int
 		ServiceAreas  func(childComplexity int) int
 		Types         func(childComplexity int) int
 	}
@@ -349,6 +358,7 @@ type MutationResolver interface {
 	UpdateMyTalentProfile(ctx context.Context, input model.UpdateTalentProfileInput) (*model.TalentProfile, error)
 	SetMyRates(ctx context.Context, rates []*model.RateInput) (*model.TalentProfile, error)
 	ConnectMyPayoutAccount(ctx context.Context, input model.ConnectPayoutInput) (*model.PayoutAccount, error)
+	SetTalentFeatured(ctx context.Context, talentID string, featured bool, rank *int) (*model.TalentProfile, error)
 	SubmitVerification(ctx context.Context, input model.SubmitVerificationInput) (*model.Verification, error)
 	ApproveVerification(ctx context.Context, id string, reviewNotes *string) (*model.Verification, error)
 	RejectVerification(ctx context.Context, id string, reviewNotes *string) (*model.Verification, error)
@@ -381,7 +391,7 @@ type QueryResolver interface {
 	DisputeReasons(ctx context.Context, activeOnly *bool) ([]*model.Lookup, error)
 	MyVerifications(ctx context.Context) ([]*model.Verification, error)
 	PendingVerifications(ctx context.Context) ([]*model.PendingVerification, error)
-	SearchTalent(ctx context.Context, filter *model.TalentFilter, first *int, after *string) (*model.TalentPage, error)
+	SearchTalent(ctx context.Context, filter *model.TalentFilter, sort *model.TalentSort, first *int, after *string) (*model.TalentPage, error)
 	Talent(ctx context.Context, id string) (*model.TalentProfile, error)
 	MyTalentProfile(ctx context.Context) (*model.TalentProfile, error)
 	SettlementBanks(ctx context.Context, typeArg model.SettlementType) ([]*model.SettlementBank, error)
@@ -1061,6 +1071,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.SetMyRates(childComplexity, args["rates"].([]*model.RateInput)), true
+	case "Mutation.setTalentFeatured":
+		if e.ComplexityRoot.Mutation.SetTalentFeatured == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setTalentFeatured_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.SetTalentFeatured(childComplexity, args["talentId"].(string), args["featured"].(bool), args["rank"].(*int)), true
 	case "Mutation.submitReview":
 		if e.ComplexityRoot.Mutation.SubmitReview == nil {
 			break
@@ -1486,7 +1507,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Query.SearchTalent(childComplexity, args["filter"].(*model.TalentFilter), args["first"].(*int), args["after"].(*string)), true
+		return e.ComplexityRoot.Query.SearchTalent(childComplexity, args["filter"].(*model.TalentFilter), args["sort"].(*model.TalentSort), args["first"].(*int), args["after"].(*string)), true
 	case "Query.settlementBanks":
 		if e.ComplexityRoot.Query.SettlementBanks == nil {
 			break
@@ -1722,12 +1743,24 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.TalentBooking.VenueText(childComplexity), true
 
+	case "TalentCard.createdAt":
+		if e.ComplexityRoot.TalentCard.CreatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TalentCard.CreatedAt(childComplexity), true
 	case "TalentCard.displayName":
 		if e.ComplexityRoot.TalentCard.DisplayName == nil {
 			break
 		}
 
 		return e.ComplexityRoot.TalentCard.DisplayName(childComplexity), true
+	case "TalentCard.featured":
+		if e.ComplexityRoot.TalentCard.Featured == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TalentCard.Featured(childComplexity), true
 	case "TalentCard.fromRate":
 		if e.ComplexityRoot.TalentCard.FromRate == nil {
 			break
@@ -1758,6 +1791,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.TalentCard.ID(childComplexity), true
+	case "TalentCard.ratingAverage":
+		if e.ComplexityRoot.TalentCard.RatingAverage == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TalentCard.RatingAverage(childComplexity), true
+	case "TalentCard.reviewCount":
+		if e.ComplexityRoot.TalentCard.ReviewCount == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TalentCard.ReviewCount(childComplexity), true
 	case "TalentCard.types":
 		if e.ComplexityRoot.TalentCard.Types == nil {
 			break
@@ -1784,12 +1829,24 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.TalentProfile.Bio(childComplexity), true
+	case "TalentProfile.createdAt":
+		if e.ComplexityRoot.TalentProfile.CreatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TalentProfile.CreatedAt(childComplexity), true
 	case "TalentProfile.displayName":
 		if e.ComplexityRoot.TalentProfile.DisplayName == nil {
 			break
 		}
 
 		return e.ComplexityRoot.TalentProfile.DisplayName(childComplexity), true
+	case "TalentProfile.featured":
+		if e.ComplexityRoot.TalentProfile.Featured == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TalentProfile.Featured(childComplexity), true
 	case "TalentProfile.genres":
 		if e.ComplexityRoot.TalentProfile.Genres == nil {
 			break
@@ -1826,6 +1883,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.TalentProfile.Rates(childComplexity), true
+	case "TalentProfile.ratingAverage":
+		if e.ComplexityRoot.TalentProfile.RatingAverage == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TalentProfile.RatingAverage(childComplexity), true
+	case "TalentProfile.reviewCount":
+		if e.ComplexityRoot.TalentProfile.ReviewCount == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TalentProfile.ReviewCount(childComplexity), true
 	case "TalentProfile.serviceAreas":
 		if e.ComplexityRoot.TalentProfile.ServiceAreas == nil {
 			break
@@ -2434,6 +2503,14 @@ func (ec *executionContext) childFields_TalentCard(ctx context.Context, field gr
 		return ec.fieldContext_TalentCard_genres(ctx, field)
 	case "types":
 		return ec.fieldContext_TalentCard_types(ctx, field)
+	case "featured":
+		return ec.fieldContext_TalentCard_featured(ctx, field)
+	case "ratingAverage":
+		return ec.fieldContext_TalentCard_ratingAverage(ctx, field)
+	case "reviewCount":
+		return ec.fieldContext_TalentCard_reviewCount(ctx, field)
+	case "createdAt":
+		return ec.fieldContext_TalentCard_createdAt(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type TalentCard", field.Name)
 }
@@ -2460,6 +2537,14 @@ func (ec *executionContext) childFields_TalentProfile(ctx context.Context, field
 		return ec.fieldContext_TalentProfile_homePlaceName(ctx, field)
 	case "bio":
 		return ec.fieldContext_TalentProfile_bio(ctx, field)
+	case "featured":
+		return ec.fieldContext_TalentProfile_featured(ctx, field)
+	case "ratingAverage":
+		return ec.fieldContext_TalentProfile_ratingAverage(ctx, field)
+	case "reviewCount":
+		return ec.fieldContext_TalentProfile_reviewCount(ctx, field)
+	case "createdAt":
+		return ec.fieldContext_TalentProfile_createdAt(ctx, field)
 	case "genres":
 		return ec.fieldContext_TalentProfile_genres(ctx, field)
 	case "types":
@@ -2928,6 +3013,36 @@ func (ec *executionContext) field_Mutation_setMyRates_args(ctx context.Context, 
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_setTalentFeatured_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "talentId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["talentId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "featured",
+		func(ctx context.Context, v any) (bool, error) {
+			return ec.unmarshalNBoolean2bool(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["featured"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "rank",
+		func(ctx context.Context, v any) (*int, error) {
+			return ec.unmarshalOInt2ᚖint(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["rank"] = arg2
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_submitReview_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -3231,22 +3346,30 @@ func (ec *executionContext) field_Query_searchTalent_args(ctx context.Context, r
 		return nil, err
 	}
 	args["filter"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "first",
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "sort",
+		func(ctx context.Context, v any) (*model.TalentSort, error) {
+			return ec.unmarshalOTalentSort2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐTalentSort(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["sort"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "first",
 		func(ctx context.Context, v any) (*int, error) {
 			return ec.unmarshalOInt2ᚖint(ctx, v)
 		})
 	if err != nil {
 		return nil, err
 	}
-	args["first"] = arg1
-	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "after",
+	args["first"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "after",
 		func(ctx context.Context, v any) (*string, error) {
 			return ec.unmarshalOString2ᚖstring(ctx, v)
 		})
 	if err != nil {
 		return nil, err
 	}
-	args["after"] = arg2
+	args["after"] = arg3
 	return args, nil
 }
 
@@ -5582,6 +5705,68 @@ func (ec *executionContext) fieldContext_Mutation_connectMyPayoutAccount(ctx con
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_setTalentFeatured(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_setTalentFeatured(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().SetTalentFeatured(ctx, fc.Args["talentId"].(string), fc.Args["featured"].(bool), fc.Args["rank"].(*int))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				code, err := ec.unmarshalNString2string(ctx, "admin")
+				if err != nil {
+					var zeroVal *model.TalentProfile
+					return zeroVal, err
+				}
+				if ec.Directives.HasRole == nil {
+					var zeroVal *model.TalentProfile
+					return zeroVal, errors.New("directive hasRole is not implemented")
+				}
+				return ec.Directives.HasRole(ctx, nil, directive0, code)
+			}
+
+			next = directive1
+			return next
+		},
+		func(ctx context.Context, selections ast.SelectionSet, v *model.TalentProfile) graphql.Marshaler {
+			return ec.marshalNTalentProfile2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐTalentProfile(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_setTalentFeatured(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_TalentProfile(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setTalentFeatured_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_submitVerification(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -7835,7 +8020,7 @@ func (ec *executionContext) _Query_searchTalent(ctx context.Context, field graph
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Query().SearchTalent(ctx, fc.Args["filter"].(*model.TalentFilter), fc.Args["first"].(*int), fc.Args["after"].(*string))
+			return ec.Resolvers.Query().SearchTalent(ctx, fc.Args["filter"].(*model.TalentFilter), fc.Args["sort"].(*model.TalentSort), fc.Args["first"].(*int), fc.Args["after"].(*string))
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v *model.TalentPage) graphql.Marshaler {
@@ -9329,6 +9514,98 @@ func (ec *executionContext) fieldContext_TalentCard_types(_ context.Context, fie
 	return fc, nil
 }
 
+func (ec *executionContext) _TalentCard_featured(ctx context.Context, field graphql.CollectedField, obj *model.TalentCard) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TalentCard_featured(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Featured, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TalentCard_featured(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TalentCard", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _TalentCard_ratingAverage(ctx context.Context, field graphql.CollectedField, obj *model.TalentCard) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TalentCard_ratingAverage(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.RatingAverage, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *float64) graphql.Marshaler {
+			return ec.marshalOFloat2ᚖfloat64(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_TalentCard_ratingAverage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TalentCard", field, false, false, errors.New("field of type Float does not have child fields"))
+}
+
+func (ec *executionContext) _TalentCard_reviewCount(ctx context.Context, field graphql.CollectedField, obj *model.TalentCard) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TalentCard_reviewCount(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ReviewCount, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TalentCard_reviewCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TalentCard", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _TalentCard_createdAt(ctx context.Context, field graphql.CollectedField, obj *model.TalentCard) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TalentCard_createdAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TalentCard_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TalentCard", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
 func (ec *executionContext) _TalentPage_items(ctx context.Context, field graphql.CollectedField, obj *model.TalentPage) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -9496,6 +9773,98 @@ func (ec *executionContext) _TalentProfile_bio(ctx context.Context, field graphq
 	)
 }
 func (ec *executionContext) fieldContext_TalentProfile_bio(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TalentProfile", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _TalentProfile_featured(ctx context.Context, field graphql.CollectedField, obj *model.TalentProfile) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TalentProfile_featured(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Featured, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TalentProfile_featured(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TalentProfile", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _TalentProfile_ratingAverage(ctx context.Context, field graphql.CollectedField, obj *model.TalentProfile) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TalentProfile_ratingAverage(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.RatingAverage, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *float64) graphql.Marshaler {
+			return ec.marshalOFloat2ᚖfloat64(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_TalentProfile_ratingAverage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TalentProfile", field, false, false, errors.New("field of type Float does not have child fields"))
+}
+
+func (ec *executionContext) _TalentProfile_reviewCount(ctx context.Context, field graphql.CollectedField, obj *model.TalentProfile) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TalentProfile_reviewCount(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ReviewCount, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TalentProfile_reviewCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TalentProfile", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _TalentProfile_createdAt(ctx context.Context, field graphql.CollectedField, obj *model.TalentProfile) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TalentProfile_createdAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TalentProfile_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("TalentProfile", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
@@ -11487,7 +11856,7 @@ func (ec *executionContext) unmarshalInputTalentFilter(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"genreCodes", "typeCodes", "languageCodes", "placeCode"}
+	fieldsInOrder := [...]string{"genreCodes", "typeCodes", "languageCodes", "placeCode", "featuredOnly", "minReviewCount"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -11522,6 +11891,20 @@ func (ec *executionContext) unmarshalInputTalentFilter(ctx context.Context, obj 
 				return it, err
 			}
 			it.PlaceCode = data
+		case "featuredOnly":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("featuredOnly"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FeaturedOnly = data
+		case "minReviewCount":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("minReviewCount"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MinReviewCount = data
 		}
 	}
 	return it, nil
@@ -12412,6 +12795,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "connectMyPayoutAccount":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_connectMyPayoutAccount(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "setTalentFeatured":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setTalentFeatured(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -13848,6 +14238,26 @@ func (ec *executionContext) _TalentCard(ctx context.Context, sel ast.SelectionSe
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "featured":
+			out.Values[i] = ec._TalentCard_featured(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "ratingAverage":
+			out.Values[i] = ec._TalentCard_ratingAverage(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "reviewCount":
+			out.Values[i] = ec._TalentCard_reviewCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createdAt":
+			out.Values[i] = ec._TalentCard_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -13947,6 +14357,26 @@ func (ec *executionContext) _TalentProfile(ctx context.Context, sel ast.Selectio
 		case "bio":
 			out.Values[i] = ec._TalentProfile_bio(ctx, field, obj)
 			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "featured":
+			out.Values[i] = ec._TalentProfile_featured(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "ratingAverage":
+			out.Values[i] = ec._TalentProfile_ratingAverage(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "reviewCount":
+			out.Values[i] = ec._TalentProfile_reviewCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createdAt":
+			out.Values[i] = ec._TalentProfile_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "genres":
@@ -15404,6 +15834,23 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	return res
 }
 
+func (ec *executionContext) unmarshalOFloat2ᚖfloat64(ctx context.Context, v any) (*float64, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalFloatContext(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOFloat2ᚖfloat64(ctx context.Context, sel ast.SelectionSet, v *float64) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	_ = sel
+	res := graphql.MarshalFloatContext(*v)
+	return graphql.WrapContextMarshaler(ctx, res)
+}
+
 func (ec *executionContext) unmarshalOInt2ᚖint(ctx context.Context, v any) (*int, error) {
 	if v == nil {
 		return nil, nil
@@ -15509,6 +15956,22 @@ func (ec *executionContext) marshalOTalentProfile2ᚖgithubᚗcomᚋblingyplus�
 		return graphql.Null
 	}
 	return ec._TalentProfile(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOTalentSort2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐTalentSort(ctx context.Context, v any) (*model.TalentSort, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(model.TalentSort)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOTalentSort2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐTalentSort(ctx context.Context, sel ast.SelectionSet, v *model.TalentSort) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) marshalO__EnumValue2ᚕgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐEnumValueᚄ(ctx context.Context, sel ast.SelectionSet, v []introspection.EnumValue) graphql.Marshaler {

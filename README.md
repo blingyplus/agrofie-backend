@@ -50,7 +50,7 @@ Schema migrations: `db/migrations/`. GraphQL schema: `graph/schema.graphqls`. Kr
 echo 'PUBLIC_BASE_URL=http://<LAN-IP>:8080' >> .env      # e.g. http://192.168.100.98:8080
 echo 'PAYMENTS_PROVIDER=fake' >> .env                     # optional if a Paystack key is set
 docker compose up --build -d
-make seed-demo                                           # admin + 12 verified talents + organizer
+make seed-demo                                           # admin + 12 verified talents (4 featured, ~76 reviewed bookings) + 4 organizers
 scripts/e2e.sh                                           # scripted full walk; must print E2E PASSED
 ```
 

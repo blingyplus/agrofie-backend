@@ -12,12 +12,19 @@ import (
 )
 
 const getSearchableTalent = `-- name: GetSearchableTalent :one
-SELECT tp.id, tp.headline, tp.bio, tp.created_at, pr.display_name, hp.name AS home_place_name
+SELECT tp.id, tp.headline, tp.bio, tp.created_at, tp.featured, pr.display_name, hp.name AS home_place_name,
+       rs.review_count, COALESCE(rs.rating_average, 0)::float8 AS rating_average -- 0 when review_count = 0
 FROM talent_profiles tp
 JOIN profiles pr ON pr.user_id = tp.user_id
 JOIN users u ON u.id = tp.user_id
 JOIN user_statuses us ON us.id = u.user_status_id AND us.code = 'active'
 LEFT JOIN geo_places hp ON hp.id = tp.home_geo_place_id
+LEFT JOIN LATERAL (
+    SELECT count(*)::int AS review_count, round(avg(r.rating), 2)::float8 AS rating_average
+    FROM reviews r
+    JOIN bookings b ON b.id = r.booking_id
+    WHERE b.talent_profile_id = tp.id AND r.author_user_id = b.organizer_user_id
+) rs ON true
 WHERE tp.id = $1 AND tp.is_searchable
 `
 
@@ -26,8 +33,11 @@ type GetSearchableTalentRow struct {
 	Headline      *string            `json:"headline"`
 	Bio           *string            `json:"bio"`
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	Featured      bool               `json:"featured"`
 	DisplayName   string             `json:"display_name"`
 	HomePlaceName *string            `json:"home_place_name"`
+	ReviewCount   int32              `json:"review_count"`
+	RatingAverage float64            `json:"rating_average"`
 }
 
 func (q *Queries) GetSearchableTalent(ctx context.Context, id pgtype.UUID) (GetSearchableTalentRow, error) {
@@ -38,8 +48,11 @@ func (q *Queries) GetSearchableTalent(ctx context.Context, id pgtype.UUID) (GetS
 		&i.Headline,
 		&i.Bio,
 		&i.CreatedAt,
+		&i.Featured,
 		&i.DisplayName,
 		&i.HomePlaceName,
+		&i.ReviewCount,
+		&i.RatingAverage,
 	)
 	return i, err
 }
@@ -236,72 +249,105 @@ WITH RECURSIVE place_subtree AS (
     SELECT g.id
     FROM geo_places g
     JOIN countries c ON c.id = g.country_id
-    WHERE $4::text <> ''
-      AND c.code = $8::text
-      AND g.code = $4::text
+    WHERE $5::text <> ''
+      AND c.code = $6::text
+      AND g.code = $5::text
     UNION ALL
     SELECT g.id
     FROM geo_places g
     JOIN place_subtree s ON g.parent_id = s.id
+),
+base AS (
+    SELECT tp.id, tp.headline, tp.created_at, tp.featured, pr.display_name, hp.name AS home_place_name,
+           rs.review_count, COALESCE(rs.rating_average, 0)::float8 AS rating_average,
+           -- Keyset score per sort mode; every mode orders (score, created_at, id) descending.
+           -- NEWEST: constant. TOP_RATED: rating (2 dp) then review count. FEATURED: featured rank.
+           (CASE $7::text
+                WHEN 'top_rated' THEN COALESCE(rs.rating_average, 0) * 100000 + LEAST(rs.review_count, 999)
+                WHEN 'featured'  THEN CASE WHEN tp.featured THEN 1000000 - LEAST(COALESCE(tp.featured_rank, 999999), 999999) ELSE 0 END
+                ELSE 0
+            END)::float8 AS sort_score
+    FROM talent_profiles tp
+    JOIN profiles pr ON pr.user_id = tp.user_id
+    JOIN users u ON u.id = tp.user_id
+    JOIN user_statuses us ON us.id = u.user_status_id AND us.code = 'active'
+    LEFT JOIN geo_places hp ON hp.id = tp.home_geo_place_id
+    -- Public rating = what organizers wrote about the talent's bookings.
+    LEFT JOIN LATERAL (
+        SELECT count(*)::int AS review_count, round(avg(r.rating), 2)::float8 AS rating_average
+        FROM reviews r
+        JOIN bookings b ON b.id = r.booking_id
+        WHERE b.talent_profile_id = tp.id AND r.author_user_id = b.organizer_user_id
+    ) rs ON true
+    WHERE tp.is_searchable
+      AND (NOT $8::boolean OR tp.featured)
+      AND ($9::int <= 0 OR rs.review_count >= $9::int)
+      AND (cardinality($10::text[]) = 0 OR EXISTS (
+            SELECT 1 FROM talent_genres tg JOIN genres g ON g.id = tg.genre_id
+            WHERE tg.talent_profile_id = tp.id AND g.code = ANY($10::text[])))
+      AND (cardinality($11::text[]) = 0 OR EXISTS (
+            SELECT 1 FROM talent_types_map tm JOIN talent_types t ON t.id = tm.talent_type_id
+            WHERE tm.talent_profile_id = tp.id AND t.code = ANY($11::text[])))
+      AND (cardinality($12::text[]) = 0 OR EXISTS (
+            SELECT 1 FROM talent_languages tl JOIN languages l ON l.id = tl.language_id
+            WHERE tl.talent_profile_id = tp.id AND l.code = ANY($12::text[])))
+      AND ($5::text = '' OR EXISTS (
+            SELECT 1 FROM place_subtree ps
+            WHERE ps.id = tp.home_geo_place_id
+               OR EXISTS (SELECT 1 FROM talent_service_areas sa
+                          WHERE sa.talent_profile_id = tp.id AND sa.geo_place_id = ps.id)))
 )
-SELECT tp.id, tp.headline, tp.created_at, pr.display_name, hp.name AS home_place_name
-FROM talent_profiles tp
-JOIN profiles pr ON pr.user_id = tp.user_id
-JOIN users u ON u.id = tp.user_id
-JOIN user_statuses us ON us.id = u.user_status_id AND us.code = 'active'
-LEFT JOIN geo_places hp ON hp.id = tp.home_geo_place_id
-WHERE tp.is_searchable
-  AND (cardinality($1::text[]) = 0 OR EXISTS (
-        SELECT 1 FROM talent_genres tg JOIN genres g ON g.id = tg.genre_id
-        WHERE tg.talent_profile_id = tp.id AND g.code = ANY($1::text[])))
-  AND (cardinality($2::text[]) = 0 OR EXISTS (
-        SELECT 1 FROM talent_types_map tm JOIN talent_types t ON t.id = tm.talent_type_id
-        WHERE tm.talent_profile_id = tp.id AND t.code = ANY($2::text[])))
-  AND (cardinality($3::text[]) = 0 OR EXISTS (
-        SELECT 1 FROM talent_languages tl JOIN languages l ON l.id = tl.language_id
-        WHERE tl.talent_profile_id = tp.id AND l.code = ANY($3::text[])))
-  AND ($4::text = '' OR EXISTS (
-        SELECT 1 FROM place_subtree ps
-        WHERE ps.id = tp.home_geo_place_id
-           OR EXISTS (SELECT 1 FROM talent_service_areas sa
-                      WHERE sa.talent_profile_id = tp.id AND sa.geo_place_id = ps.id)))
-  AND ($5::uuid IS NULL
-       OR (tp.created_at, tp.id) < ($6::timestamptz, $5::uuid))
-ORDER BY tp.created_at DESC, tp.id DESC
-LIMIT $7::int
+SELECT id, headline, created_at, featured, display_name, home_place_name, review_count, rating_average, sort_score
+FROM base
+WHERE ($1::uuid IS NULL
+       OR (sort_score, created_at, id) < ($2::float8, $3::timestamptz, $1::uuid))
+ORDER BY sort_score DESC, created_at DESC, id DESC
+LIMIT $4::int
 `
 
 type SearchTalentParams struct {
+	CursorID        pgtype.UUID        `json:"cursor_id"`
+	CursorScore     *float64           `json:"cursor_score"`
+	CursorCreatedAt pgtype.Timestamptz `json:"cursor_created_at"`
+	PageSize        int32              `json:"page_size"`
+	PlaceCode       string             `json:"place_code"`
+	CountryCode     string             `json:"country_code"`
+	SortMode        string             `json:"sort_mode"`
+	FeaturedOnly    bool               `json:"featured_only"`
+	MinReviewCount  int32              `json:"min_review_count"`
 	GenreCodes      []string           `json:"genre_codes"`
 	TypeCodes       []string           `json:"type_codes"`
 	LanguageCodes   []string           `json:"language_codes"`
-	PlaceCode       string             `json:"place_code"`
-	CursorID        pgtype.UUID        `json:"cursor_id"`
-	CursorCreatedAt pgtype.Timestamptz `json:"cursor_created_at"`
-	PageSize        int32              `json:"page_size"`
-	CountryCode     string             `json:"country_code"`
 }
 
 type SearchTalentRow struct {
 	ID            pgtype.UUID        `json:"id"`
 	Headline      *string            `json:"headline"`
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	Featured      bool               `json:"featured"`
 	DisplayName   string             `json:"display_name"`
 	HomePlaceName *string            `json:"home_place_name"`
+	ReviewCount   int32              `json:"review_count"`
+	RatingAverage float64            `json:"rating_average"`
+	SortScore     float64            `json:"sort_score"`
 }
 
 // Discovery reads. These never select users.email / users.phone: contact details
 // stay hidden until a booking is agreed.
 func (q *Queries) SearchTalent(ctx context.Context, arg SearchTalentParams) ([]SearchTalentRow, error) {
 	rows, err := q.db.Query(ctx, searchTalent,
+		arg.CursorID,
+		arg.CursorScore,
+		arg.CursorCreatedAt,
+		arg.PageSize,
+		arg.PlaceCode,
+		arg.CountryCode,
+		arg.SortMode,
+		arg.FeaturedOnly,
+		arg.MinReviewCount,
 		arg.GenreCodes,
 		arg.TypeCodes,
 		arg.LanguageCodes,
-		arg.PlaceCode,
-		arg.CursorID,
-		arg.CursorCreatedAt,
-		arg.PageSize,
-		arg.CountryCode,
 	)
 	if err != nil {
 		return nil, err
@@ -314,8 +360,12 @@ func (q *Queries) SearchTalent(ctx context.Context, arg SearchTalentParams) ([]S
 			&i.ID,
 			&i.Headline,
 			&i.CreatedAt,
+			&i.Featured,
 			&i.DisplayName,
 			&i.HomePlaceName,
+			&i.ReviewCount,
+			&i.RatingAverage,
+			&i.SortScore,
 		); err != nil {
 			return nil, err
 		}
@@ -325,4 +375,27 @@ func (q *Queries) SearchTalent(ctx context.Context, arg SearchTalentParams) ([]S
 		return nil, err
 	}
 	return items, nil
+}
+
+const setTalentFeatured = `-- name: SetTalentFeatured :execrows
+UPDATE talent_profiles
+SET featured = $1::boolean,
+    featured_rank = CASE WHEN $1::boolean THEN $2::int ELSE NULL END,
+    updated_at = now()
+WHERE id = $3::uuid AND is_searchable
+`
+
+type SetTalentFeaturedParams struct {
+	Featured     bool        `json:"featured"`
+	FeaturedRank *int32      `json:"featured_rank"`
+	ID           pgtype.UUID `json:"id"`
+}
+
+// Admin-only editorial flag (enforced at the GraphQL layer). Clearing featured also clears the rank.
+func (q *Queries) SetTalentFeatured(ctx context.Context, arg SetTalentFeaturedParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setTalentFeatured, arg.Featured, arg.FeaturedRank, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

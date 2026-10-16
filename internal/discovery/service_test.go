@@ -187,7 +187,7 @@ func TestSearchExcludesHiddenAndSuspendedTalent(t *testing.T) {
 	hidden := newTalent(t, tx, talentFixture{Name: "Hidden", Searchable: false, Genres: []string{g}})
 	suspended := newTalent(t, tx, talentFixture{Name: "Suspended", Searchable: true, Status: "suspended", Genres: []string{g}})
 
-	page, err := svc.Search(context.Background(), discovery.Filter{GenreCodes: []string{g}}, 20, "")
+	page, err := svc.Search(context.Background(), discovery.Filter{GenreCodes: []string{g}}, discovery.SortNewest, 20, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -205,7 +205,7 @@ func TestSearchGenreFilterMatchesAnyOfTheGivenGenres(t *testing.T) {
 	b := newTalent(t, tx, talentFixture{Name: "B", Searchable: true, Genres: []string{g2}})
 	newTalent(t, tx, talentFixture{Name: "C", Searchable: true, Genres: []string{g3}})
 
-	page, err := svc.Search(context.Background(), discovery.Filter{GenreCodes: []string{g1, g2}}, 20, "")
+	page, err := svc.Search(context.Background(), discovery.Filter{GenreCodes: []string{g1, g2}}, discovery.SortNewest, 20, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -225,7 +225,7 @@ func TestSearchCombinesDifferentFiltersWithAND(t *testing.T) {
 
 	page, err := svc.Search(context.Background(), discovery.Filter{
 		GenreCodes: []string{g}, TypeCodes: []string{"dj"}, LanguageCodes: []string{"tw"},
-	}, 20, "")
+	}, discovery.SortNewest, 20, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -246,7 +246,7 @@ func TestSearchRegionMatchesHomeDescendantsAndServiceAreas(t *testing.T) {
 	servesRegion := newTalent(t, tx, talentFixture{Name: "Serves", Searchable: true, Genres: []string{g}, Home: otherRegion, Areas: []string{region}})
 	newTalent(t, tx, talentFixture{Name: "Elsewhere", Searchable: true, Genres: []string{g}, Home: otherRegion})
 
-	page, err := svc.Search(context.Background(), discovery.Filter{GenreCodes: []string{g}, PlaceCode: region}, 20, "")
+	page, err := svc.Search(context.Background(), discovery.Filter{GenreCodes: []string{g}, PlaceCode: region}, discovery.SortNewest, 20, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -273,7 +273,7 @@ func TestSearchPaginatesNewestFirstWithoutGapsOrDuplicates(t *testing.T) {
 	var got []string
 	after := ""
 	for pages := 0; pages < 10; pages++ {
-		page, err := svc.Search(context.Background(), discovery.Filter{GenreCodes: []string{g}}, 2, after)
+		page, err := svc.Search(context.Background(), discovery.Filter{GenreCodes: []string{g}}, discovery.SortNewest, 2, after)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -290,7 +290,7 @@ func TestSearchPaginatesNewestFirstWithoutGapsOrDuplicates(t *testing.T) {
 
 func TestSearchRejectsMalformedCursor(t *testing.T) {
 	tx := newTx(t)
-	_, err := newService(tx).Search(context.Background(), discovery.Filter{}, 10, "not-a-cursor")
+	_, err := newService(tx).Search(context.Background(), discovery.Filter{}, discovery.SortNewest, 10, "not-a-cursor")
 	if !errors.Is(err, discovery.ErrInvalidCursor) {
 		t.Fatalf("got %v, want ErrInvalidCursor", err)
 	}
@@ -307,7 +307,7 @@ func TestCardShowsCheapestCurrentRateAndIgnoresExpiredOnes(t *testing.T) {
 	}})
 	newTalent(t, tx, talentFixture{Name: "NoRate", Searchable: true, Genres: []string{g}})
 
-	page, err := svc.Search(context.Background(), discovery.Filter{GenreCodes: []string{g}}, 20, "")
+	page, err := svc.Search(context.Background(), discovery.Filter{GenreCodes: []string{g}}, discovery.SortNewest, 20, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -330,7 +330,7 @@ func TestCardCarriesGenreAndTypeTags(t *testing.T) {
 	g := newGenre(t, tx)
 	newTalent(t, tx, talentFixture{Name: "Tagged", Searchable: true, Genres: []string{g}, Types: []string{"dj"}})
 
-	page, err := svc.Search(context.Background(), discovery.Filter{GenreCodes: []string{g}}, 20, "")
+	page, err := svc.Search(context.Background(), discovery.Filter{GenreCodes: []string{g}}, discovery.SortNewest, 20, "")
 	if err != nil || len(page.Items) != 1 {
 		t.Fatalf("err=%v items=%d", err, len(page.Items))
 	}
@@ -399,5 +399,86 @@ func TestDatabaseAllowsOnlyOneCurrentRatePerUnit(t *testing.T) {
 		SELECT $1::uuid, 200, cur.id, ru.id FROM currencies cur, rate_units ru WHERE cur.code='GHS' AND ru.code='per_event'`, id)
 	if err == nil {
 		t.Fatal("expected unique violation for a second current per_event rate")
+	}
+}
+
+// helper: a completed booking with an organizer review of the given rating.
+func addOrganizerReview(t *testing.T, tx pgx.Tx, talentID string, rating int) {
+	t.Helper()
+	org := mustScanString(t, tx, `
+		INSERT INTO users (email, user_status_id, kratos_identity_id)
+		SELECT $1, id, gen_random_uuid() FROM user_statuses WHERE code = 'active' RETURNING id::text`, uniq("o")+"@example.test")
+	mustExec(t, tx, `INSERT INTO profiles (user_id, display_name) VALUES ($1, 'Org')`, org)
+	booking := mustScanString(t, tx, `
+		INSERT INTO bookings (organizer_user_id, talent_profile_id, booking_status_id, starts_at, ends_at)
+		SELECT $1::uuid, $2::uuid, bs.id, now() - interval '2 days', now() - interval '1 day'
+		FROM booking_statuses bs WHERE bs.code = 'completed' RETURNING id::text`, org, talentID)
+	mustExec(t, tx, `INSERT INTO reviews (booking_id, author_user_id, rating) VALUES ($1, $2, $3)`, booking, org, rating)
+}
+
+func TestSearchRatingFeaturedAndSorts(t *testing.T) {
+	tx := newTx(t)
+	svc := newService(tx)
+	g := newGenre(t, tx)
+	base := time.Now().Add(-time.Hour)
+	mk := func(name string, i int) string {
+		return newTalent(t, tx, talentFixture{Name: name, Searchable: true, Genres: []string{g}, CreatedAt: base.Add(time.Duration(i) * time.Minute)})
+	}
+	none := mk("None", 0)
+	mid := mk("Mid", 1)   // 4.0 (2 reviews)
+	top := mk("Top", 2)   // 5.0 (1 review)
+	many := mk("Many", 3) // 5.0 (3 reviews) -> beats Top on tie
+	addOrganizerReview(t, tx, mid, 4)
+	addOrganizerReview(t, tx, mid, 4)
+	addOrganizerReview(t, tx, top, 5)
+	for i := 0; i < 3; i++ {
+		addOrganizerReview(t, tx, many, 5)
+	}
+	mustExec(t, tx, `UPDATE talent_profiles SET featured = true, featured_rank = 2 WHERE id = $1`, none)
+	mustExec(t, tx, `UPDATE talent_profiles SET featured = true, featured_rank = 1 WHERE id = $1`, mid)
+
+	f := discovery.Filter{GenreCodes: []string{g}}
+	collect := func(f discovery.Filter, sort discovery.Sort, size int) []string {
+		var got []string
+		after := ""
+		for i := 0; i < 10; i++ {
+			page, err := svc.Search(context.Background(), f, sort, size, after)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got = append(got, ids(page)...)
+			if page.NextCursor == "" {
+				break
+			}
+			after = page.NextCursor
+		}
+		return got
+	}
+	if got, want := collect(f, discovery.SortTopRated, 2), []string{many, top, mid, none}; fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Fatalf("top rated: got %v want %v", got, want)
+	}
+	if got, want := collect(f, discovery.SortFeatured, 3), []string{mid, none, many, top}; fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Fatalf("featured: got %v want %v", got, want)
+	}
+	if got, want := collect(discovery.Filter{GenreCodes: []string{g}, FeaturedOnly: true}, discovery.SortFeatured, 1), []string{mid, none}; fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Fatalf("featuredOnly: got %v want %v", got, want)
+	}
+	if got, want := collect(discovery.Filter{GenreCodes: []string{g}, MinReviewCount: 2}, discovery.SortTopRated, 5), []string{many, mid}; fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Fatalf("minReviews: got %v want %v", got, want)
+	}
+
+	p, err := svc.Get(context.Background(), many)
+	if err != nil || p.RatingAverage == nil || *p.RatingAverage != 5 || p.ReviewCount != 3 {
+		t.Fatalf("detail rating: %+v %v", p, err)
+	}
+	p, _ = svc.Get(context.Background(), none)
+	if p.RatingAverage != nil || p.ReviewCount != 0 || !p.Featured {
+		t.Fatalf("unrated detail: %+v", p)
+	}
+	if err := svc.SetFeatured(context.Background(), none, false, nil); err != nil {
+		t.Fatal(err)
+	}
+	if p, _ = svc.Get(context.Background(), none); p.Featured {
+		t.Fatal("still featured")
 	}
 }

@@ -13,41 +13,77 @@ WITH RECURSIVE place_subtree AS (
     SELECT g.id
     FROM geo_places g
     JOIN place_subtree s ON g.parent_id = s.id
+),
+base AS (
+    SELECT tp.id, tp.headline, tp.created_at, tp.featured, pr.display_name, hp.name AS home_place_name,
+           rs.review_count, COALESCE(rs.rating_average, 0)::float8 AS rating_average,
+           -- Keyset score per sort mode; every mode orders (score, created_at, id) descending.
+           -- NEWEST: constant. TOP_RATED: rating (2 dp) then review count. FEATURED: featured rank.
+           (CASE sqlc.arg(sort_mode)::text
+                WHEN 'top_rated' THEN COALESCE(rs.rating_average, 0) * 100000 + LEAST(rs.review_count, 999)
+                WHEN 'featured'  THEN CASE WHEN tp.featured THEN 1000000 - LEAST(COALESCE(tp.featured_rank, 999999), 999999) ELSE 0 END
+                ELSE 0
+            END)::float8 AS sort_score
+    FROM talent_profiles tp
+    JOIN profiles pr ON pr.user_id = tp.user_id
+    JOIN users u ON u.id = tp.user_id
+    JOIN user_statuses us ON us.id = u.user_status_id AND us.code = 'active'
+    LEFT JOIN geo_places hp ON hp.id = tp.home_geo_place_id
+    -- Public rating = what organizers wrote about the talent's bookings.
+    LEFT JOIN LATERAL (
+        SELECT count(*)::int AS review_count, round(avg(r.rating), 2)::float8 AS rating_average
+        FROM reviews r
+        JOIN bookings b ON b.id = r.booking_id
+        WHERE b.talent_profile_id = tp.id AND r.author_user_id = b.organizer_user_id
+    ) rs ON true
+    WHERE tp.is_searchable
+      AND (NOT sqlc.arg(featured_only)::boolean OR tp.featured)
+      AND (sqlc.arg(min_review_count)::int <= 0 OR rs.review_count >= sqlc.arg(min_review_count)::int)
+      AND (cardinality(sqlc.arg(genre_codes)::text[]) = 0 OR EXISTS (
+            SELECT 1 FROM talent_genres tg JOIN genres g ON g.id = tg.genre_id
+            WHERE tg.talent_profile_id = tp.id AND g.code = ANY(sqlc.arg(genre_codes)::text[])))
+      AND (cardinality(sqlc.arg(type_codes)::text[]) = 0 OR EXISTS (
+            SELECT 1 FROM talent_types_map tm JOIN talent_types t ON t.id = tm.talent_type_id
+            WHERE tm.talent_profile_id = tp.id AND t.code = ANY(sqlc.arg(type_codes)::text[])))
+      AND (cardinality(sqlc.arg(language_codes)::text[]) = 0 OR EXISTS (
+            SELECT 1 FROM talent_languages tl JOIN languages l ON l.id = tl.language_id
+            WHERE tl.talent_profile_id = tp.id AND l.code = ANY(sqlc.arg(language_codes)::text[])))
+      AND (sqlc.arg(place_code)::text = '' OR EXISTS (
+            SELECT 1 FROM place_subtree ps
+            WHERE ps.id = tp.home_geo_place_id
+               OR EXISTS (SELECT 1 FROM talent_service_areas sa
+                          WHERE sa.talent_profile_id = tp.id AND sa.geo_place_id = ps.id)))
 )
-SELECT tp.id, tp.headline, tp.created_at, pr.display_name, hp.name AS home_place_name
-FROM talent_profiles tp
-JOIN profiles pr ON pr.user_id = tp.user_id
-JOIN users u ON u.id = tp.user_id
-JOIN user_statuses us ON us.id = u.user_status_id AND us.code = 'active'
-LEFT JOIN geo_places hp ON hp.id = tp.home_geo_place_id
-WHERE tp.is_searchable
-  AND (cardinality(sqlc.arg(genre_codes)::text[]) = 0 OR EXISTS (
-        SELECT 1 FROM talent_genres tg JOIN genres g ON g.id = tg.genre_id
-        WHERE tg.talent_profile_id = tp.id AND g.code = ANY(sqlc.arg(genre_codes)::text[])))
-  AND (cardinality(sqlc.arg(type_codes)::text[]) = 0 OR EXISTS (
-        SELECT 1 FROM talent_types_map tm JOIN talent_types t ON t.id = tm.talent_type_id
-        WHERE tm.talent_profile_id = tp.id AND t.code = ANY(sqlc.arg(type_codes)::text[])))
-  AND (cardinality(sqlc.arg(language_codes)::text[]) = 0 OR EXISTS (
-        SELECT 1 FROM talent_languages tl JOIN languages l ON l.id = tl.language_id
-        WHERE tl.talent_profile_id = tp.id AND l.code = ANY(sqlc.arg(language_codes)::text[])))
-  AND (sqlc.arg(place_code)::text = '' OR EXISTS (
-        SELECT 1 FROM place_subtree ps
-        WHERE ps.id = tp.home_geo_place_id
-           OR EXISTS (SELECT 1 FROM talent_service_areas sa
-                      WHERE sa.talent_profile_id = tp.id AND sa.geo_place_id = ps.id)))
-  AND (sqlc.narg(cursor_id)::uuid IS NULL
-       OR (tp.created_at, tp.id) < (sqlc.narg(cursor_created_at)::timestamptz, sqlc.narg(cursor_id)::uuid))
-ORDER BY tp.created_at DESC, tp.id DESC
+SELECT id, headline, created_at, featured, display_name, home_place_name, review_count, rating_average, sort_score
+FROM base
+WHERE (sqlc.narg(cursor_id)::uuid IS NULL
+       OR (sort_score, created_at, id) < (sqlc.narg(cursor_score)::float8, sqlc.narg(cursor_created_at)::timestamptz, sqlc.narg(cursor_id)::uuid))
+ORDER BY sort_score DESC, created_at DESC, id DESC
 LIMIT sqlc.arg(page_size)::int;
 
 -- name: GetSearchableTalent :one
-SELECT tp.id, tp.headline, tp.bio, tp.created_at, pr.display_name, hp.name AS home_place_name
+SELECT tp.id, tp.headline, tp.bio, tp.created_at, tp.featured, pr.display_name, hp.name AS home_place_name,
+       rs.review_count, COALESCE(rs.rating_average, 0)::float8 AS rating_average -- 0 when review_count = 0
 FROM talent_profiles tp
 JOIN profiles pr ON pr.user_id = tp.user_id
 JOIN users u ON u.id = tp.user_id
 JOIN user_statuses us ON us.id = u.user_status_id AND us.code = 'active'
 LEFT JOIN geo_places hp ON hp.id = tp.home_geo_place_id
+LEFT JOIN LATERAL (
+    SELECT count(*)::int AS review_count, round(avg(r.rating), 2)::float8 AS rating_average
+    FROM reviews r
+    JOIN bookings b ON b.id = r.booking_id
+    WHERE b.talent_profile_id = tp.id AND r.author_user_id = b.organizer_user_id
+) rs ON true
 WHERE tp.id = $1 AND tp.is_searchable;
+
+-- name: SetTalentFeatured :execrows
+-- Admin-only editorial flag (enforced at the GraphQL layer). Clearing featured also clears the rank.
+UPDATE talent_profiles
+SET featured = sqlc.arg(featured)::boolean,
+    featured_rank = CASE WHEN sqlc.arg(featured)::boolean THEN sqlc.narg(featured_rank)::int ELSE NULL END,
+    updated_at = now()
+WHERE id = sqlc.arg(id)::uuid AND is_searchable;
 
 -- name: ListGenresForTalent :many
 SELECT tg.talent_profile_id, g.code, g.name

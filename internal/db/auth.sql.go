@@ -238,9 +238,20 @@ VALUES ($1)
 RETURNING id, user_id, headline, bio, home_geo_place_id, is_searchable, created_at, updated_at
 `
 
-func (q *Queries) InsertTalentProfile(ctx context.Context, userID pgtype.UUID) (TalentProfile, error) {
+type InsertTalentProfileRow struct {
+	ID             pgtype.UUID        `json:"id"`
+	UserID         pgtype.UUID        `json:"user_id"`
+	Headline       *string            `json:"headline"`
+	Bio            *string            `json:"bio"`
+	HomeGeoPlaceID pgtype.UUID        `json:"home_geo_place_id"`
+	IsSearchable   bool               `json:"is_searchable"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) InsertTalentProfile(ctx context.Context, userID pgtype.UUID) (InsertTalentProfileRow, error) {
 	row := q.db.QueryRow(ctx, insertTalentProfile, userID)
-	var i TalentProfile
+	var i InsertTalentProfileRow
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,

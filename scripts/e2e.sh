@@ -23,6 +23,8 @@ fail() { echo "  FAIL $1"; FAILS=$((FAILS+1)); }
 expect() { local got; got=$(echo "$2" | jq -r "$3" 2>/dev/null); if [ "$got" = "$4" ]; then ok "$1 ($got)"; else fail "$1: wanted '$4' got '$got'  $(echo "$2" | head -c 400)"; fi; }
 val() { echo "$1" | jq -r "$2"; }
 step() { echo; echo "== $1"; }
+# Always remove the users/bookings this run created (@e2e.test) so Discover stays clean.
+trap '"$(dirname "$0")/e2e-cleanup.sh"' EXIT
 
 step "register + login (no email verification needed)"
 R=$(gql "" 'mutation($i:RegisterInput!){register(input:$i){sessionToken user{id roleCodes}}}' "{\"i\":{\"email\":\"org$RUN@e2e.test\",\"password\":\"$PW\",\"displayName\":\"E2E Organizer\",\"roleCode\":\"organizer\"}}")
@@ -106,6 +108,27 @@ R=$(gql "$ORG" 'mutation($i:ID!){verifyPayment(bookingId:$i){statusCode}}' "{\"i
 R=$(gql "$ORG" 'query($i:ID!){booking(id:$i){statusCode}}' "{\"i\":\"$B2\"}"); expect "B2 paid via verify" "$R" '.data.booking.statusCode' paid
 R=$(book 36); B3=$(val "$R" .data.requestBooking.id)
 R=$(gql "$TAL" 'mutation($i:ID!){declineBooking(id:$i){statusCode}}' "{\"i\":\"$B3\"}"); expect "talent declined -> cancelled" "$R" '.data.declineBooking.statusCode' cancelled
+
+step "discover data: rating, featured, sorts"
+R=$(gql "$ORG" 'query($t:ID!){talent(id:$t){featured ratingAverage reviewCount createdAt}}' "{\"t\":\"$TID\"}")
+expect "detail rating (organizer review only)" "$R" '.data.talent.ratingAverage' 5; expect "detail reviewCount" "$R" '.data.talent.reviewCount' 1
+expect "detail not featured" "$R" '.data.talent.featured' false; expect "createdAt is RFC3339" "$R" '.data.talent.createdAt|test("^[0-9]{4}-")' true
+R=$(gql "$ORG" 'query{searchTalent(first:100,sort:TOP_RATED,filter:{genreCodes:["highlife"],minReviewCount:1}){items{id ratingAverage reviewCount}}}')
+echo "$R" | jq -e --arg t "$TID" '[.data.searchTalent.items[]|select(.id==$t)|.reviewCount]==[1]' >/dev/null && ok "minReviewCount keeps rated talent" || fail "minReviewCount $R"
+echo "$R" | jq -e '[.data.searchTalent.items[].ratingAverage]|. == (sort|reverse)' >/dev/null && ok "TOP_RATED sorted desc" || fail "TOP_RATED order $R"
+R=$(gql "$ORG" 'mutation($t:ID!){setTalentFeatured(talentId:$t,featured:true,rank:1){id}}' "{\"t\":\"$TID\"}"); echo "$R" | jq -e '.errors' >/dev/null && ok "organizer cannot feature" || fail "organizer featured a talent"
+R=$(gql "$TAL" 'mutation($t:ID!){setTalentFeatured(talentId:$t,featured:true,rank:1){id}}' "{\"t\":\"$TID\"}"); echo "$R" | jq -e '.errors' >/dev/null && ok "talent cannot self-feature" || fail "talent self-featured"
+R=$(gql "$ADM" 'mutation($t:ID!){setTalentFeatured(talentId:$t,featured:true,rank:1){featured}}' "{\"t\":\"$TID\"}"); expect "admin features talent" "$R" '.data.setTalentFeatured.featured' true
+R=$(gql "$ORG" 'query{searchTalent(first:100,sort:FEATURED,filter:{featuredOnly:true}){items{id featured}}}'); echo "$R" | jq -e --arg t "$TID" '[.data.searchTalent.items[]|select(.id==$t)]|length==1 and all(.[];.featured)' >/dev/null && ok "featuredOnly lists it" || fail "featuredOnly $R"
+# page through 1-at-a-time to prove keyset pagination works with a non-default sort
+N=0; AFTER=""; SEEN=""
+for _ in $(seq 1 60); do
+  R=$(gql "$ORG" 'query($a:String){searchTalent(first:1,sort:TOP_RATED,after:$a){items{id} nextCursor}}' "$(jq -n --arg a "$AFTER" 'if $a=="" then {} else {a:$a} end')")
+  SEEN="$SEEN $(val "$R" '.data.searchTalent.items[0].id')"; N=$((N+1)); AFTER=$(val "$R" '.data.searchTalent.nextCursor // empty'); [ -n "$AFTER" ] || break
+done
+UNIQ=$(echo $SEEN | tr ' ' '\n' | sort -u | wc -l | tr -d ' '); [ "$UNIQ" = "$N" ] && [ "$N" -ge 2 ] && ok "TOP_RATED pagination: $N pages, no repeats" || fail "pagination pages=$N unique=$UNIQ"
+R=$(gql "$ADM" 'mutation($t:ID!){setTalentFeatured(talentId:$t,featured:false){featured}}' "{\"t\":\"$TID\"}"); expect "admin unfeatures" "$R" '.data.setTalentFeatured.featured' false
+R=$(gql "$ORG" 'query{talent(id:"'"$TID"'"){email phone}}'); echo "$R" | jq -e '.errors' >/dev/null && ok "no contact fields on talent" || fail "contact fields exposed"
 
 step "disputes + admin resolution"
 R=$(gql "$ORG" 'mutation($i:ID!){openDispute(input:{bookingId:$i,reasonCode:"no_show",details:"Talent never arrived"}){id statusCode}}' "{\"i\":\"$B2\"}"); D=$(val "$R" .data.openDispute.id); expect "dispute opened" "$R" '.data.openDispute.statusCode' open

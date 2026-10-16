@@ -44,7 +44,20 @@ type Filter struct {
 	TypeCodes     []string
 	LanguageCodes []string
 	PlaceCode     string
+	// FeaturedOnly keeps only admin-featured talent.
+	FeaturedOnly bool
+	// MinReviewCount keeps talent with at least this many organizer reviews.
+	MinReviewCount int
 }
+
+// Sort orders a search. Every mode is keyset-paginated.
+type Sort string
+
+const (
+	SortNewest   Sort = "newest"    // newest profile first (default)
+	SortTopRated Sort = "top_rated" // rating desc, then review count; unrated last
+	SortFeatured Sort = "featured"  // featured (by rank) first, then newest
+)
 
 type Tag struct {
 	Code string
@@ -66,7 +79,12 @@ type Card struct {
 	FromRate      *Rate // cheapest current rate, nil if none
 	Genres        []Tag
 	Types         []Tag
-	createdAt     time.Time
+	Featured      bool
+	// RatingAverage is the mean of organizer reviews (2 dp); nil when ReviewCount is 0.
+	RatingAverage *float64
+	ReviewCount   int
+	CreatedAt     time.Time
+	score         float64 // keyset score for the active sort mode
 }
 
 type Profile struct {
@@ -82,8 +100,9 @@ type Page struct {
 	NextCursor string // empty when there are no more results
 }
 
-// Search returns searchable, active talent newest first using keyset pagination.
-func (s *Service) Search(ctx context.Context, f Filter, first int, after string) (Page, error) {
+// Search returns searchable, active talent using keyset pagination, newest first
+// unless another sort is requested.
+func (s *Service) Search(ctx context.Context, f Filter, sort Sort, first int, after string) (Page, error) {
 	size := first
 	if size <= 0 {
 		size = defaultPageSize
@@ -93,18 +112,22 @@ func (s *Service) Search(ctx context.Context, f Filter, first int, after string)
 	}
 
 	params := db.SearchTalentParams{
-		GenreCodes:    nonNil(f.GenreCodes),
-		TypeCodes:     nonNil(f.TypeCodes),
-		LanguageCodes: nonNil(f.LanguageCodes),
-		PlaceCode:     f.PlaceCode,
-		CountryCode:   defaultCountry,
-		PageSize:      int32(size + 1), // one extra row tells us whether another page exists
+		GenreCodes:     nonNil(f.GenreCodes),
+		TypeCodes:      nonNil(f.TypeCodes),
+		LanguageCodes:  nonNil(f.LanguageCodes),
+		PlaceCode:      f.PlaceCode,
+		FeaturedOnly:   f.FeaturedOnly,
+		MinReviewCount: int32(max(f.MinReviewCount, 0)),
+		SortMode:       string(sortOrDefault(sort)),
+		CountryCode:    defaultCountry,
+		PageSize:       int32(size + 1), // one extra row tells us whether another page exists
 	}
 	if after != "" {
-		at, id, err := decodeCursor(after)
+		score, at, id, err := decodeCursor(after)
 		if err != nil {
 			return Page{}, err
 		}
+		params.CursorScore = &score
 		params.CursorCreatedAt = pgtype.Timestamptz{Time: at, Valid: true}
 		params.CursorID = pgtype.UUID{Bytes: id, Valid: true}
 	}
@@ -126,7 +149,11 @@ func (s *Service) Search(ctx context.Context, f Filter, first int, after string)
 			DisplayName:   r.DisplayName,
 			Headline:      r.Headline,
 			HomePlaceName: r.HomePlaceName,
-			createdAt:     r.CreatedAt.Time,
+			Featured:      r.Featured,
+			RatingAverage: ratingOrNil(r.ReviewCount, r.RatingAverage),
+			ReviewCount:   int(r.ReviewCount),
+			CreatedAt:     r.CreatedAt.Time,
+			score:         r.SortScore,
 		})
 		idList = append(idList, r.ID)
 	}
@@ -137,7 +164,7 @@ func (s *Service) Search(ctx context.Context, f Filter, first int, after string)
 	page := Page{Items: cards}
 	if hasMore && len(cards) > 0 {
 		last := cards[len(cards)-1]
-		page.NextCursor = encodeCursor(last.createdAt, last.ID)
+		page.NextCursor = encodeCursor(last.score, last.CreatedAt, last.ID)
 	}
 	return page, nil
 }
@@ -163,7 +190,10 @@ func (s *Service) Get(ctx context.Context, id string) (*Profile, error) {
 			DisplayName:   row.DisplayName,
 			Headline:      row.Headline,
 			HomePlaceName: row.HomePlaceName,
-			createdAt:     row.CreatedAt.Time,
+			Featured:      row.Featured,
+			RatingAverage: ratingOrNil(row.ReviewCount, row.RatingAverage),
+			ReviewCount:   int(row.ReviewCount),
+			CreatedAt:     row.CreatedAt.Time,
 		},
 		Bio: row.Bio,
 	}
@@ -254,28 +284,77 @@ func uuidString(u pgtype.UUID) string {
 	return uuid.UUID(u.Bytes).String()
 }
 
-// Cursors are opaque to clients: base64url("<unix micros>|<uuid>").
-func encodeCursor(at time.Time, id string) string {
-	raw := strconv.FormatInt(at.UnixMicro(), 10) + "|" + id
+func sortOrDefault(s Sort) Sort {
+	switch s {
+	case SortTopRated, SortFeatured:
+		return s
+	}
+	return SortNewest
+}
+
+func ratingOrNil(count int32, avg float64) *float64 {
+	if count <= 0 {
+		return nil
+	}
+	return &avg
+}
+
+// SetFeatured flags (or unflags) a searchable talent for the Discover hero.
+// rank orders featured talent (lower first); nil sorts last. Admin-only: the
+// caller (GraphQL layer) enforces the role.
+func (s *Service) SetFeatured(ctx context.Context, id string, featured bool, rank *int) error {
+	parsed, err := uuid.Parse(id)
+	if err != nil {
+		return ErrNotFound
+	}
+	var r *int32
+	if rank != nil {
+		v := int32(*rank)
+		r = &v
+	}
+	n, err := s.q.SetTalentFeatured(ctx, db.SetTalentFeaturedParams{
+		ID: pgtype.UUID{Bytes: parsed, Valid: true}, Featured: featured, FeaturedRank: r,
+	})
+	if err != nil {
+		return fmt.Errorf("set featured: %w", err)
+	}
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// Cursors are opaque to clients: base64url("<sort score>|<unix micros>|<uuid>").
+func encodeCursor(score float64, at time.Time, id string) string {
+	raw := strconv.FormatFloat(score, 'f', -1, 64) + "|" + strconv.FormatInt(at.UnixMicro(), 10) + "|" + id
 	return base64.RawURLEncoding.EncodeToString([]byte(raw))
 }
 
-func decodeCursor(s string) (time.Time, uuid.UUID, error) {
+func decodeCursor(s string) (float64, time.Time, uuid.UUID, error) {
+	bad := func() (float64, time.Time, uuid.UUID, error) { return 0, time.Time{}, uuid.Nil, ErrInvalidCursor }
 	raw, err := base64.RawURLEncoding.DecodeString(s)
 	if err != nil {
-		return time.Time{}, uuid.Nil, ErrInvalidCursor
+		return bad()
 	}
-	micros, idStr, ok := strings.Cut(string(raw), "|")
+	scoreStr, rest, ok := strings.Cut(string(raw), "|")
 	if !ok {
-		return time.Time{}, uuid.Nil, ErrInvalidCursor
+		return bad()
+	}
+	micros, idStr, ok := strings.Cut(rest, "|")
+	if !ok {
+		return bad()
+	}
+	score, err := strconv.ParseFloat(scoreStr, 64)
+	if err != nil {
+		return bad()
 	}
 	n, err := strconv.ParseInt(micros, 10, 64)
 	if err != nil {
-		return time.Time{}, uuid.Nil, ErrInvalidCursor
+		return bad()
 	}
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		return time.Time{}, uuid.Nil, ErrInvalidCursor
+		return bad()
 	}
-	return time.UnixMicro(n).UTC(), id, nil
+	return score, time.UnixMicro(n).UTC(), id, nil
 }

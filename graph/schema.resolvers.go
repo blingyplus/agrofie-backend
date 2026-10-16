@@ -19,6 +19,7 @@ import (
 	"github.com/blingyplus/agrofie-backend/internal/lookup"
 	"github.com/blingyplus/agrofie-backend/internal/talentprofile"
 	"github.com/blingyplus/agrofie-backend/internal/verification"
+	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
 // Register is the resolver for the register field.
@@ -111,6 +112,21 @@ func (r *mutationResolver) ConnectMyPayoutAccount(ctx context.Context, input mod
 		return nil, mapTalentProfileErr(err)
 	}
 	return toModelPayoutAccount(out), nil
+}
+
+// SetTalentFeatured is the resolver for the setTalentFeatured field.
+func (r *mutationResolver) SetTalentFeatured(ctx context.Context, talentID string, featured bool, rank *int) (*model.TalentProfile, error) {
+	if err := r.Discovery.SetFeatured(ctx, talentID, featured, rank); err != nil {
+		if errors.Is(err, discovery.ErrNotFound) {
+			return nil, &gqlerror.Error{Message: "talent not found or not published", Extensions: map[string]any{"code": "NOT_FOUND"}}
+		}
+		return nil, mapDiscoveryErr(err)
+	}
+	p, err := r.Discovery.Get(ctx, talentID)
+	if err != nil {
+		return nil, mapDiscoveryErr(err)
+	}
+	return toTalentProfile(p), nil
 }
 
 // SubmitVerification is the resolver for the submitVerification field.
@@ -423,8 +439,8 @@ func (r *queryResolver) PendingVerifications(ctx context.Context) ([]*model.Pend
 }
 
 // SearchTalent is the resolver for the searchTalent field.
-func (r *queryResolver) SearchTalent(ctx context.Context, filter *model.TalentFilter, first *int, after *string) (*model.TalentPage, error) {
-	page, err := r.Discovery.Search(ctx, toDiscoveryFilter(filter), intOr(first, 0), stringOr(after, ""))
+func (r *queryResolver) SearchTalent(ctx context.Context, filter *model.TalentFilter, sort *model.TalentSort, first *int, after *string) (*model.TalentPage, error) {
+	page, err := r.Discovery.Search(ctx, toDiscoveryFilter(filter), toDiscoverySort(sort), intOr(first, 0), stringOr(after, ""))
 	if err != nil {
 		return nil, mapDiscoveryErr(err)
 	}

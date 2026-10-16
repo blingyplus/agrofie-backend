@@ -297,6 +297,13 @@ type TalentCard struct {
 	FromRate *Rate  `json:"fromRate,omitempty"`
 	Genres   []*Tag `json:"genres"`
 	Types    []*Tag `json:"types"`
+	// Admin-curated placement for the Discover hero.
+	Featured bool `json:"featured"`
+	// Mean of organizer reviews (1-5, 2 dp). Null until the talent has a review.
+	RatingAverage *float64 `json:"ratingAverage,omitempty"`
+	ReviewCount   int      `json:"reviewCount"`
+	// When the talent joined Agrofie (RFC 3339). Drives "New on Agrofie".
+	CreatedAt string `json:"createdAt"`
 }
 
 type TalentFilter struct {
@@ -305,6 +312,10 @@ type TalentFilter struct {
 	LanguageCodes []string `json:"languageCodes,omitempty"`
 	// A geo place code; matches that place and everything beneath it.
 	PlaceCode *string `json:"placeCode,omitempty"`
+	// Only admin-featured talent.
+	FeaturedOnly *bool `json:"featuredOnly,omitempty"`
+	// Only talent with at least this many reviews (e.g. for a "Top rated" rail).
+	MinReviewCount *int `json:"minReviewCount,omitempty"`
 }
 
 type TalentPage struct {
@@ -319,11 +330,18 @@ type TalentProfile struct {
 	Headline      *string `json:"headline,omitempty"`
 	HomePlaceName *string `json:"homePlaceName,omitempty"`
 	Bio           *string `json:"bio,omitempty"`
-	Genres        []*Tag  `json:"genres"`
-	Types         []*Tag  `json:"types"`
-	Languages     []*Tag  `json:"languages"`
-	ServiceAreas  []*Tag  `json:"serviceAreas"`
-	Rates         []*Rate `json:"rates"`
+	// Admin-curated placement for the Discover hero.
+	Featured bool `json:"featured"`
+	// Mean of organizer reviews (1-5, 2 dp). Null until the talent has a review.
+	RatingAverage *float64 `json:"ratingAverage,omitempty"`
+	ReviewCount   int      `json:"reviewCount"`
+	// When the talent joined Agrofie (RFC 3339). Drives "New on Agrofie".
+	CreatedAt    string  `json:"createdAt"`
+	Genres       []*Tag  `json:"genres"`
+	Types        []*Tag  `json:"types"`
+	Languages    []*Tag  `json:"languages"`
+	ServiceAreas []*Tag  `json:"serviceAreas"`
+	Rates        []*Rate `json:"rates"`
 }
 
 type UpdateTalentProfileInput struct {
@@ -473,6 +491,66 @@ func (e *SettlementType) UnmarshalJSON(b []byte) error {
 }
 
 func (e SettlementType) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type TalentSort string
+
+const (
+	// Newest profile first.
+	TalentSortNewest TalentSort = "NEWEST"
+	// Highest average rating first, then most reviews. Unrated talent last.
+	TalentSortTopRated TalentSort = "TOP_RATED"
+	// Featured talent first (by rank), then newest.
+	TalentSortFeatured TalentSort = "FEATURED"
+)
+
+var AllTalentSort = []TalentSort{
+	TalentSortNewest,
+	TalentSortTopRated,
+	TalentSortFeatured,
+}
+
+func (e TalentSort) IsValid() bool {
+	switch e {
+	case TalentSortNewest, TalentSortTopRated, TalentSortFeatured:
+		return true
+	}
+	return false
+}
+
+func (e TalentSort) String() string {
+	return string(e)
+}
+
+func (e *TalentSort) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = TalentSort(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid TalentSort", str)
+	}
+	return nil
+}
+
+func (e TalentSort) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *TalentSort) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e TalentSort) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil
