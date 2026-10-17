@@ -14,6 +14,7 @@ sql:
       - "db/migrations/000010_payments.up.sql"
       - "db/migrations/000011_disputes_resolution.up.sql"
       - "db/migrations/000012_talent_featured.up.sql"
+      - "db/migrations/000013_booking_counters.up.sql"
     gen:
       go:
         package: "db"

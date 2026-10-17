@@ -35,6 +35,19 @@ type Booking struct {
 	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
 }
 
+type BookingOffer struct {
+	ID              pgtype.UUID        `json:"id"`
+	BookingID       pgtype.UUID        `json:"booking_id"`
+	Round           int32              `json:"round"`
+	OfferedByUserID pgtype.UUID        `json:"offered_by_user_id"`
+	Amount          pgtype.Numeric     `json:"amount"`
+	CurrencyCode    string             `json:"currency_code"`
+	StartsAt        pgtype.Timestamptz `json:"starts_at"`
+	EndsAt          pgtype.Timestamptz `json:"ends_at"`
+	Note            *string            `json:"note"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+}
+
 type BookingStatus struct {
 	ID        pgtype.UUID        `json:"id"`
 	Code      string             `json:"code"`

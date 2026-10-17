@@ -11,6 +11,35 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const applyBookingCounter = `-- name: ApplyBookingCounter :execrows
+UPDATE bookings b
+SET booking_status_id = (SELECT id FROM booking_statuses WHERE code = 'countered'),
+    quoted_amount = $1, starts_at = $2, ends_at = $3,
+    updated_at = now()
+FROM booking_statuses cur
+WHERE b.id = $4::uuid AND b.booking_status_id = cur.id AND cur.code IN ('inquiry', 'countered')
+`
+
+type ApplyBookingCounterParams struct {
+	Amount   pgtype.Numeric     `json:"amount"`
+	StartsAt pgtype.Timestamptz `json:"starts_at"`
+	EndsAt   pgtype.Timestamptz `json:"ends_at"`
+	ID       pgtype.UUID        `json:"id"`
+}
+
+func (q *Queries) ApplyBookingCounter(ctx context.Context, arg ApplyBookingCounterParams) (int64, error) {
+	result, err := q.db.Exec(ctx, applyBookingCounter,
+		arg.Amount,
+		arg.StartsAt,
+		arg.EndsAt,
+		arg.ID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const checkTalentBookable = `-- name: CheckTalentBookable :one
 SELECT tp.is_searchable,
        EXISTS(SELECT 1 FROM payout_accounts pa WHERE pa.talent_profile_id = tp.id AND pa.is_active) AS has_payout
@@ -61,6 +90,17 @@ func (q *Queries) CountConflictingAgreedBookings(ctx context.Context, arg CountC
 	return count, err
 }
 
+const getBookingCurrency = `-- name: GetBookingCurrency :one
+SELECT COALESCE(currency_code, 'GHS')::text FROM bookings WHERE id = $1
+`
+
+func (q *Queries) GetBookingCurrency(ctx context.Context, id pgtype.UUID) (string, error) {
+	row := q.db.QueryRow(ctx, getBookingCurrency, id)
+	var column_1 string
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const getBookingDetail = `-- name: GetBookingDetail :one
 SELECT b.id, b.organizer_user_id, b.talent_profile_id, tp.user_id AS talent_user_id,
        b.starts_at, b.ends_at, b.venue_text,
@@ -69,7 +109,9 @@ SELECT b.id, b.organizer_user_id, b.talent_profile_id, tp.user_id AS talent_user
        organizer_pr.display_name AS organizer_display_name,
        talent_pr.display_name AS talent_display_name,
        et.name AS event_type_name,
-       c.terms_text
+       c.terms_text,
+       (SELECT o.offered_by_user_id FROM booking_offers o WHERE o.booking_id = b.id ORDER BY o.round DESC LIMIT 1) AS last_offer_by_user_id,
+       (SELECT count(*) FROM booking_offers o WHERE o.booking_id = b.id)::int AS offer_count
 FROM bookings b
 JOIN booking_statuses bs ON bs.id = b.booking_status_id
 JOIN profiles organizer_pr ON organizer_pr.user_id = b.organizer_user_id
@@ -96,6 +138,8 @@ type GetBookingDetailRow struct {
 	TalentDisplayName    string             `json:"talent_display_name"`
 	EventTypeName        *string            `json:"event_type_name"`
 	TermsText            *string            `json:"terms_text"`
+	LastOfferByUserID    pgtype.UUID        `json:"last_offer_by_user_id"`
+	OfferCount           int32              `json:"offer_count"`
 }
 
 func (q *Queries) GetBookingDetail(ctx context.Context, id pgtype.UUID) (GetBookingDetailRow, error) {
@@ -117,24 +161,36 @@ func (q *Queries) GetBookingDetail(ctx context.Context, id pgtype.UUID) (GetBook
 		&i.TalentDisplayName,
 		&i.EventTypeName,
 		&i.TermsText,
+		&i.LastOfferByUserID,
+		&i.OfferCount,
 	)
 	return i, err
 }
 
 const getBookingForTransition = `-- name: GetBookingForTransition :one
-SELECT b.id, b.organizer_user_id, b.talent_profile_id, bs.code AS status_code, b.starts_at, b.ends_at
+SELECT b.id, b.organizer_user_id, b.talent_profile_id, tp.user_id AS talent_user_id,
+       bs.code AS status_code, b.starts_at, b.ends_at,
+       COALESCE(lo.offered_by_user_id, b.organizer_user_id) AS last_offer_by_user_id,
+       COALESCE(lo.round, 1)::int AS last_round
 FROM bookings b
 JOIN booking_statuses bs ON bs.id = b.booking_status_id
+JOIN talent_profiles tp ON tp.id = b.talent_profile_id
+LEFT JOIN LATERAL (
+    SELECT o.offered_by_user_id, o.round FROM booking_offers o WHERE o.booking_id = b.id ORDER BY o.round DESC LIMIT 1
+) lo ON true
 WHERE b.id = $1
 `
 
 type GetBookingForTransitionRow struct {
-	ID              pgtype.UUID        `json:"id"`
-	OrganizerUserID pgtype.UUID        `json:"organizer_user_id"`
-	TalentProfileID pgtype.UUID        `json:"talent_profile_id"`
-	StatusCode      string             `json:"status_code"`
-	StartsAt        pgtype.Timestamptz `json:"starts_at"`
-	EndsAt          pgtype.Timestamptz `json:"ends_at"`
+	ID                pgtype.UUID        `json:"id"`
+	OrganizerUserID   pgtype.UUID        `json:"organizer_user_id"`
+	TalentProfileID   pgtype.UUID        `json:"talent_profile_id"`
+	TalentUserID      pgtype.UUID        `json:"talent_user_id"`
+	StatusCode        string             `json:"status_code"`
+	StartsAt          pgtype.Timestamptz `json:"starts_at"`
+	EndsAt            pgtype.Timestamptz `json:"ends_at"`
+	LastOfferByUserID pgtype.UUID        `json:"last_offer_by_user_id"`
+	LastRound         int32              `json:"last_round"`
 }
 
 func (q *Queries) GetBookingForTransition(ctx context.Context, id pgtype.UUID) (GetBookingForTransitionRow, error) {
@@ -144,10 +200,29 @@ func (q *Queries) GetBookingForTransition(ctx context.Context, id pgtype.UUID) (
 		&i.ID,
 		&i.OrganizerUserID,
 		&i.TalentProfileID,
+		&i.TalentUserID,
 		&i.StatusCode,
 		&i.StartsAt,
 		&i.EndsAt,
+		&i.LastOfferByUserID,
+		&i.LastRound,
 	)
+	return i, err
+}
+
+const getBookingPrice = `-- name: GetBookingPrice :one
+SELECT quoted_amount::text AS amount, COALESCE(currency_code, 'GHS')::text AS currency_code FROM bookings WHERE id = $1
+`
+
+type GetBookingPriceRow struct {
+	Amount       string `json:"amount"`
+	CurrencyCode string `json:"currency_code"`
+}
+
+func (q *Queries) GetBookingPrice(ctx context.Context, id pgtype.UUID) (GetBookingPriceRow, error) {
+	row := q.db.QueryRow(ctx, getBookingPrice, id)
+	var i GetBookingPriceRow
+	err := row.Scan(&i.Amount, &i.CurrencyCode)
 	return i, err
 }
 
@@ -232,6 +307,36 @@ func (q *Queries) InsertBooking(ctx context.Context, arg InsertBookingParams) (I
 	return i, err
 }
 
+const insertBookingOffer = `-- name: InsertBookingOffer :exec
+INSERT INTO booking_offers (booking_id, round, offered_by_user_id, amount, currency_code, starts_at, ends_at, note)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+`
+
+type InsertBookingOfferParams struct {
+	BookingID       pgtype.UUID        `json:"booking_id"`
+	Round           int32              `json:"round"`
+	OfferedByUserID pgtype.UUID        `json:"offered_by_user_id"`
+	Amount          pgtype.Numeric     `json:"amount"`
+	CurrencyCode    string             `json:"currency_code"`
+	StartsAt        pgtype.Timestamptz `json:"starts_at"`
+	EndsAt          pgtype.Timestamptz `json:"ends_at"`
+	Note            *string            `json:"note"`
+}
+
+func (q *Queries) InsertBookingOffer(ctx context.Context, arg InsertBookingOfferParams) error {
+	_, err := q.db.Exec(ctx, insertBookingOffer,
+		arg.BookingID,
+		arg.Round,
+		arg.OfferedByUserID,
+		arg.Amount,
+		arg.CurrencyCode,
+		arg.StartsAt,
+		arg.EndsAt,
+		arg.Note,
+	)
+	return err
+}
+
 const insertBookingStatusEvent = `-- name: InsertBookingStatusEvent :exec
 INSERT INTO booking_status_events (booking_id, booking_status_id, actor_user_id, note)
 SELECT $1, (SELECT id FROM booking_statuses WHERE code = $4::text), $2, $3
@@ -268,11 +373,89 @@ func (q *Queries) InsertContract(ctx context.Context, arg InsertContractParams) 
 	return err
 }
 
+const insertInitialBookingOffer = `-- name: InsertInitialBookingOffer :exec
+INSERT INTO booking_offers (booking_id, round, offered_by_user_id, amount, currency_code, starts_at, ends_at, note)
+SELECT b.id, 1, b.organizer_user_id, b.quoted_amount, COALESCE(b.currency_code, 'GHS'), b.starts_at, b.ends_at, $2::text
+FROM bookings b WHERE b.id = $1
+`
+
+type InsertInitialBookingOfferParams struct {
+	ID   pgtype.UUID `json:"id"`
+	Note *string     `json:"note"`
+}
+
+func (q *Queries) InsertInitialBookingOffer(ctx context.Context, arg InsertInitialBookingOfferParams) error {
+	_, err := q.db.Exec(ctx, insertInitialBookingOffer, arg.ID, arg.Note)
+	return err
+}
+
+const listBookingOffers = `-- name: ListBookingOffers :many
+SELECT o.id, o.round, o.offered_by_user_id, (o.offered_by_user_id = b.organizer_user_id) AS by_organizer,
+       pr.display_name AS offered_by_name,
+       o.amount::text AS amount, (o.amount * 100)::bigint AS amount_pesewas, o.currency_code,
+       o.starts_at, o.ends_at, o.note, o.created_at
+FROM booking_offers o
+JOIN bookings b ON b.id = o.booking_id
+JOIN profiles pr ON pr.user_id = o.offered_by_user_id
+WHERE o.booking_id = $1
+ORDER BY o.round ASC
+`
+
+type ListBookingOffersRow struct {
+	ID              pgtype.UUID        `json:"id"`
+	Round           int32              `json:"round"`
+	OfferedByUserID pgtype.UUID        `json:"offered_by_user_id"`
+	ByOrganizer     bool               `json:"by_organizer"`
+	OfferedByName   string             `json:"offered_by_name"`
+	Amount          string             `json:"amount"`
+	AmountPesewas   int64              `json:"amount_pesewas"`
+	CurrencyCode    string             `json:"currency_code"`
+	StartsAt        pgtype.Timestamptz `json:"starts_at"`
+	EndsAt          pgtype.Timestamptz `json:"ends_at"`
+	Note            *string            `json:"note"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) ListBookingOffers(ctx context.Context, bookingID pgtype.UUID) ([]ListBookingOffersRow, error) {
+	rows, err := q.db.Query(ctx, listBookingOffers, bookingID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListBookingOffersRow{}
+	for rows.Next() {
+		var i ListBookingOffersRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Round,
+			&i.OfferedByUserID,
+			&i.ByOrganizer,
+			&i.OfferedByName,
+			&i.Amount,
+			&i.AmountPesewas,
+			&i.CurrencyCode,
+			&i.StartsAt,
+			&i.EndsAt,
+			&i.Note,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listMyBookingsAsOrganizer = `-- name: ListMyBookingsAsOrganizer :many
 SELECT b.id, b.starts_at, b.ends_at, b.venue_text, b.quoted_amount::text AS quoted_amount, b.currency_code,
        bs.code AS status_code, bs.name AS status_name,
        pr.display_name AS talent_display_name, b.talent_profile_id,
-       et.name AS event_type_name, b.created_at
+       et.name AS event_type_name, b.created_at,
+       (SELECT o.offered_by_user_id FROM booking_offers o WHERE o.booking_id = b.id ORDER BY o.round DESC LIMIT 1) AS last_offer_by_user_id,
+       (SELECT count(*) FROM booking_offers o WHERE o.booking_id = b.id)::int AS offer_count
 FROM bookings b
 JOIN booking_statuses bs ON bs.id = b.booking_status_id
 JOIN talent_profiles tp ON tp.id = b.talent_profile_id
@@ -295,6 +478,8 @@ type ListMyBookingsAsOrganizerRow struct {
 	TalentProfileID   pgtype.UUID        `json:"talent_profile_id"`
 	EventTypeName     *string            `json:"event_type_name"`
 	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	LastOfferByUserID pgtype.UUID        `json:"last_offer_by_user_id"`
+	OfferCount        int32              `json:"offer_count"`
 }
 
 func (q *Queries) ListMyBookingsAsOrganizer(ctx context.Context, organizerUserID pgtype.UUID) ([]ListMyBookingsAsOrganizerRow, error) {
@@ -319,6 +504,8 @@ func (q *Queries) ListMyBookingsAsOrganizer(ctx context.Context, organizerUserID
 			&i.TalentProfileID,
 			&i.EventTypeName,
 			&i.CreatedAt,
+			&i.LastOfferByUserID,
+			&i.OfferCount,
 		); err != nil {
 			return nil, err
 		}
@@ -334,7 +521,9 @@ const listMyBookingsAsTalent = `-- name: ListMyBookingsAsTalent :many
 SELECT b.id, b.starts_at, b.ends_at, b.venue_text, b.quoted_amount::text AS quoted_amount, b.currency_code,
        bs.code AS status_code, bs.name AS status_name,
        pr.display_name AS organizer_display_name, b.organizer_user_id,
-       et.name AS event_type_name, b.created_at
+       et.name AS event_type_name, b.created_at,
+       (SELECT o.offered_by_user_id FROM booking_offers o WHERE o.booking_id = b.id ORDER BY o.round DESC LIMIT 1) AS last_offer_by_user_id,
+       (SELECT count(*) FROM booking_offers o WHERE o.booking_id = b.id)::int AS offer_count
 FROM bookings b
 JOIN booking_statuses bs ON bs.id = b.booking_status_id
 JOIN profiles pr ON pr.user_id = b.organizer_user_id
@@ -356,6 +545,8 @@ type ListMyBookingsAsTalentRow struct {
 	OrganizerUserID      pgtype.UUID        `json:"organizer_user_id"`
 	EventTypeName        *string            `json:"event_type_name"`
 	CreatedAt            pgtype.Timestamptz `json:"created_at"`
+	LastOfferByUserID    pgtype.UUID        `json:"last_offer_by_user_id"`
+	OfferCount           int32              `json:"offer_count"`
 }
 
 func (q *Queries) ListMyBookingsAsTalent(ctx context.Context, talentProfileID pgtype.UUID) ([]ListMyBookingsAsTalentRow, error) {
@@ -380,6 +571,8 @@ func (q *Queries) ListMyBookingsAsTalent(ctx context.Context, talentProfileID pg
 			&i.OrganizerUserID,
 			&i.EventTypeName,
 			&i.CreatedAt,
+			&i.LastOfferByUserID,
+			&i.OfferCount,
 		); err != nil {
 			return nil, err
 		}
@@ -389,6 +582,18 @@ func (q *Queries) ListMyBookingsAsTalent(ctx context.Context, talentProfileID pg
 		return nil, err
 	}
 	return items, nil
+}
+
+const lockBookingForCounter = `-- name: LockBookingForCounter :one
+SELECT b.id FROM bookings b WHERE b.id = $1 FOR UPDATE
+`
+
+// Serialises concurrent counters/accepts on one booking.
+func (q *Queries) LockBookingForCounter(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, lockBookingForCounter, id)
+	var id_2 pgtype.UUID
+	err := row.Scan(&id_2)
+	return id_2, err
 }
 
 const updateBookingStatus = `-- name: UpdateBookingStatus :execrows
