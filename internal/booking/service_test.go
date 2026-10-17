@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -536,5 +537,230 @@ func TestCompleteBookingAllowsEitherPartyOnceEventIsOver(t *testing.T) {
 
 	if _, err := svc.CompleteBooking(context.Background(), organizer, b.ID); !errors.Is(err, booking.ErrNotPending) {
 		t.Fatalf("re-completing: got %v, want ErrNotPending", err)
+	}
+}
+
+// ---- counter-offer negotiation ----
+
+type negoFixture struct {
+	svc                        *booking.Service
+	tx                         pgx.Tx
+	organizer, talentUser, bID string
+}
+
+func newNego(t *testing.T) negoFixture {
+	t.Helper()
+	tx := newTx(t)
+	svc := newService(tx)
+	organizer := newUser(t, tx, "Organizer")
+	talentUser, profileID := newBookableTalent(t, tx, "Talent")
+	makeAvailable(t, tx, talentUser, day(0), day(30))
+	b, err := svc.RequestBooking(context.Background(), organizer, validInput(profileID))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return negoFixture{svc: svc, tx: tx, organizer: organizer, talentUser: talentUser, bID: b.ID}
+}
+
+func (f negoFixture) counter(t *testing.T, caller string, pesewas int64) (*booking.Booking, error) {
+	t.Helper()
+	return f.svc.CounterBooking(context.Background(), caller, booking.CounterInput{BookingID: f.bID, AmountPesewas: pesewas})
+}
+
+func TestCounterTurnTakingAndAcceptLocksLatestTerms(t *testing.T) {
+	f := newNego(t)
+	ctx := context.Background()
+
+	// Organizer made the last move, so only the talent may counter.
+	if _, err := f.counter(t, f.organizer, 45000); !errors.Is(err, booking.ErrNotYourTurn) {
+		t.Fatalf("organizer countering own inquiry: got %v, want ErrNotYourTurn", err)
+	}
+	note := "  Includes sound system  "
+	b, err := f.svc.CounterBooking(ctx, f.talentUser, booking.CounterInput{BookingID: f.bID, AmountPesewas: 65000, Note: &note})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b.StatusCode != "countered" || b.QuotedAmount != "650.00" || b.AwaitingMyResponse {
+		t.Fatalf("after talent counter: %+v", b)
+	}
+	if _, err := f.counter(t, f.talentUser, 60000); !errors.Is(err, booking.ErrNotYourTurn) {
+		t.Fatalf("talent countering twice: got %v, want ErrNotYourTurn", err)
+	}
+	// Talent cannot accept/decline their own counter either.
+	if _, err := f.svc.AcceptBooking(ctx, f.talentUser, f.bID); !errors.Is(err, booking.ErrNotYourTurn) {
+		t.Fatalf("talent accepting own counter: got %v, want ErrNotYourTurn", err)
+	}
+	if _, err := f.svc.DeclineBooking(ctx, f.talentUser, f.bID); !errors.Is(err, booking.ErrNotYourTurn) {
+		t.Fatalf("talent declining own counter: got %v, want ErrNotYourTurn", err)
+	}
+	// Organizer counters back, then talent accepts.
+	if _, err := f.counter(t, f.organizer, 55000); err != nil {
+		t.Fatal(err)
+	}
+	d, err := f.svc.GetDetail(ctx, f.talentUser, f.bID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !d.AwaitingMyResponse || d.CounterCount != 2 || d.LastOfferByRole != "organizer" || len(d.Offers) != 3 {
+		t.Fatalf("detail: %+v", d)
+	}
+	if d.Offers[1].Note == nil || *d.Offers[1].Note != "Includes sound system" || d.Offers[1].ByRole != "talent" || d.Offers[1].AmountPesewas != 65000 {
+		t.Fatalf("offer 2: %+v", d.Offers[1])
+	}
+	out, err := f.svc.AcceptBooking(ctx, f.talentUser, f.bID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.StatusCode != "agreed" {
+		t.Fatalf("status %q", out.StatusCode)
+	}
+	d, _ = f.svc.GetDetail(ctx, f.organizer, f.bID)
+	if d.QuotedAmount != "550.00" || d.TermsText == nil || !strings.Contains(*d.TermsText, "GHS 550.00") || d.AwaitingMyResponse {
+		t.Fatalf("agreed detail: %+v terms=%v", d, d.TermsText)
+	}
+}
+
+func TestOrganizerCanAcceptTalentCounter(t *testing.T) {
+	f := newNego(t)
+	if _, err := f.counter(t, f.talentUser, 70000); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.svc.AcceptBooking(context.Background(), f.organizer, f.bID); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestCounterTalentDeclinesCounteredBookingOnTheirTurn(t *testing.T) {
+	f := newNego(t)
+	ctx := context.Background()
+	f.counter(t, f.talentUser, 70000)
+	f.counter(t, f.organizer, 40000)
+	if out, err := f.svc.DeclineBooking(ctx, f.talentUser, f.bID); err != nil || out.StatusCode != "cancelled" {
+		t.Fatalf("decline: %v %+v", err, out)
+	}
+}
+
+func TestOrganizerCanCancelCounteredBookingAnyTurn(t *testing.T) {
+	f := newNego(t)
+	f.counter(t, f.talentUser, 70000)
+	if out, err := f.svc.CancelBooking(context.Background(), f.organizer, f.bID); err != nil || out.StatusCode != "cancelled" {
+		t.Fatalf("cancel: %v %+v", err, out)
+	}
+}
+
+func TestCounterRejectsInvalidAmountsAndCurrency(t *testing.T) {
+	f := newNego(t)
+	for _, p := range []int64{0, -5, booking.MaxAmountPesewas + 1} {
+		if _, err := f.counter(t, f.talentUser, p); !errors.Is(err, booking.ErrInvalidInput) {
+			t.Fatalf("amount %d: got %v, want ErrInvalidInput", p, err)
+		}
+	}
+	usd := "USD"
+	_, err := f.svc.CounterBooking(context.Background(), f.talentUser, booking.CounterInput{BookingID: f.bID, AmountPesewas: 1000, CurrencyCode: &usd})
+	if !errors.Is(err, booking.ErrInvalidInput) {
+		t.Fatalf("wrong currency: got %v", err)
+	}
+	ghs := "ghs"
+	if _, err := f.svc.CounterBooking(context.Background(), f.talentUser, booking.CounterInput{BookingID: f.bID, AmountPesewas: 1000, CurrencyCode: &ghs}); err != nil {
+		t.Fatalf("GHS counter: %v", err)
+	}
+}
+
+func TestCounterRejectsNonPartiesAndTerminalStatuses(t *testing.T) {
+	f := newNego(t)
+	ctx := context.Background()
+	stranger := newUser(t, f.tx, "Stranger")
+	if _, err := f.counter(t, stranger, 1000); !errors.Is(err, booking.ErrForbidden) {
+		t.Fatalf("stranger: got %v", err)
+	}
+	if _, err := f.svc.GetDetail(ctx, stranger, f.bID); !errors.Is(err, booking.ErrForbidden) {
+		t.Fatalf("stranger detail: got %v", err)
+	}
+	if _, err := f.counter(t, f.talentUser, 40000); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.svc.AcceptBooking(ctx, f.organizer, f.bID); err != nil {
+		t.Fatal(err)
+	}
+	// agreed is terminal for negotiation
+	if _, err := f.counter(t, f.organizer, 30000); !errors.Is(err, booking.ErrNotPending) {
+		t.Fatalf("counter on agreed: got %v, want ErrNotPending", err)
+	}
+	if _, err := f.svc.AcceptBooking(ctx, f.organizer, f.bID); !errors.Is(err, booking.ErrNotPending) {
+		t.Fatalf("re-accept: got %v", err)
+	}
+	// cancelled too
+	g := newNego(t)
+	if _, err := g.svc.CancelBooking(ctx, g.organizer, g.bID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := g.counter(t, g.talentUser, 40000); !errors.Is(err, booking.ErrNotPending) {
+		t.Fatalf("counter on cancelled: got %v, want ErrNotPending", err)
+	}
+	if _, err := g.counter(t, g.talentUser, 40000); err == nil {
+		t.Fatal("expected error")
+	}
+	missing := booking.CounterInput{BookingID: "00000000-0000-0000-0000-000000000000", AmountPesewas: 100}
+	if _, err := g.svc.CounterBooking(ctx, g.talentUser, missing); !errors.Is(err, booking.ErrNotFound) {
+		t.Fatalf("missing: got %v", err)
+	}
+}
+
+func TestCounterMaxRounds(t *testing.T) {
+	f := newNego(t)
+	callers := []string{f.talentUser, f.organizer}
+	for i := 0; i < booking.MaxCounterRounds; i++ {
+		if _, err := f.counter(t, callers[i%2], int64(50000+i*1000)); err != nil {
+			t.Fatalf("round %d: %v", i+1, err)
+		}
+	}
+	if _, err := f.counter(t, callers[booking.MaxCounterRounds%2], 90000); !errors.Is(err, booking.ErrMaxRounds) {
+		t.Fatalf("round %d: got %v, want ErrMaxRounds", booking.MaxCounterRounds+1, err)
+	}
+	// ...but the receiving party can still accept.
+	if _, err := f.svc.AcceptBooking(context.Background(), callers[booking.MaxCounterRounds%2], f.bID); err != nil {
+		t.Fatalf("accept after max rounds: %v", err)
+	}
+}
+
+func TestCounterCanChangeDatesAndChecksAvailabilityAndConflicts(t *testing.T) {
+	f := newNego(t)
+	ctx := context.Background()
+	s, e := day(12), day(13)
+	b, err := f.svc.CounterBooking(ctx, f.talentUser, booking.CounterInput{BookingID: f.bID, AmountPesewas: 60000, StartsAt: &s, EndsAt: &e})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !b.StartsAt.Equal(s) || !b.EndsAt.Equal(e) {
+		t.Fatalf("dates not applied: %+v", b)
+	}
+	// only one of the two dates
+	if _, err := f.svc.CounterBooking(ctx, f.organizer, booking.CounterInput{BookingID: f.bID, AmountPesewas: 60000, StartsAt: &s}); !errors.Is(err, booking.ErrInvalidInput) {
+		t.Fatalf("half range: got %v", err)
+	}
+	// outside published availability
+	far1, far2 := day(60), day(61)
+	if _, err := f.svc.CounterBooking(ctx, f.organizer, booking.CounterInput{BookingID: f.bID, AmountPesewas: 60000, StartsAt: &far1, EndsAt: &far2}); !errors.Is(err, booking.ErrNotAvailable) {
+		t.Fatalf("unavailable: got %v", err)
+	}
+	// inverted
+	if _, err := f.svc.CounterBooking(ctx, f.organizer, booking.CounterInput{BookingID: f.bID, AmountPesewas: 60000, StartsAt: &e, EndsAt: &s}); !errors.Is(err, booking.ErrInvalidInput) {
+		t.Fatalf("inverted: got %v", err)
+	}
+}
+
+func TestListsExposeAwaitingMyResponse(t *testing.T) {
+	f := newNego(t)
+	ctx := context.Background()
+	tl, _ := f.svc.ListMyBookingsAsTalent(ctx, f.talentUser)
+	ol, _ := f.svc.ListMyBookingsAsOrganizer(ctx, f.organizer)
+	if len(tl) != 1 || !tl[0].AwaitingMyResponse || len(ol) != 1 || ol[0].AwaitingMyResponse {
+		t.Fatalf("inquiry: talent=%+v organizer=%+v", tl, ol)
+	}
+	f.counter(t, f.talentUser, 70000)
+	tl, _ = f.svc.ListMyBookingsAsTalent(ctx, f.talentUser)
+	ol, _ = f.svc.ListMyBookingsAsOrganizer(ctx, f.organizer)
+	if tl[0].AwaitingMyResponse || !ol[0].AwaitingMyResponse || ol[0].StatusCode != "countered" || ol[0].LastOfferByRole != "talent" || ol[0].CounterCount != 1 {
+		t.Fatalf("countered: talent=%+v organizer=%+v", tl[0], ol[0])
 	}
 }
