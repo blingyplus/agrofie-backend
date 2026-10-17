@@ -82,7 +82,7 @@ func TestListSettlementBanksSelectsMobileMoneyType(t *testing.T) {
 			"status": true,
 			"data": []map[string]any{
 				{"name": "MTN Mobile Money", "code": "MTN"},
-				{"name": "Telecel Cash", "code": "TCL"},
+				{"name": "Telecel Cash", "code": "VOD"},
 			},
 		})
 	})

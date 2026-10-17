@@ -114,7 +114,7 @@ func FakeSignature(body []byte) string {
 
 func (FakeProvider) ListSettlementBanks(_ context.Context, _ string, t SettlementType) ([]Bank, error) {
 	if t == SettlementMobileMoney {
-		return []Bank{{Name: "MTN Mobile Money", Code: "MTN"}, {Name: "Telecel Cash", Code: "TCL"}, {Name: "AirtelTigo Money", Code: "ATL"}}, nil
+		return []Bank{{Name: "MTN Mobile Money", Code: "MTN"}, {Name: "Telecel Cash", Code: "VOD"}, {Name: "AirtelTigo Money", Code: "ATL"}}, nil
 	}
 	return []Bank{{Name: "Fake Test Bank", Code: "999"}}, nil
 }
