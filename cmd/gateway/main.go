@@ -7,10 +7,13 @@ import (
 	"errors"
 	"fmt"
 	"html"
+	"html/template"
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -191,13 +194,46 @@ button.f{background:#dc2626}</style></head><body>
 <form method="POST"><button name="outcome" value="success">Pay (simulate success)</button>
 <button class="f" name="outcome" value="failed">Simulate failure</button></form></body></html>`
 
-// payReturnPage is the Paystack callback_url target: a static back-to-the-app
-// page. It carries no authority; payment status comes only from the signed
-// webhook or verifyPayment.
+// payReturnPage is the Paystack callback_url target. It carries no authority:
+// payment status comes only from the signed webhook or verifyPayment. It
+// hands the payer back to the app via the agrofie:// deep link (auto-try plus
+// a big button, since browsers may block a scripted custom-scheme jump).
 func payReturnPage(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	ref := q.Get("reference")
+	if ref == "" {
+		ref = q.Get("trxref")
+	}
+	v := url.Values{}
+	if safeToken.MatchString(ref) {
+		v.Set("reference", ref)
+	}
+	if b := q.Get("booking"); safeToken.MatchString(b) {
+		v.Set("booking", b)
+	}
+	v.Set("status", "return")
+	link := "agrofie://pay/return?" + v.Encode()
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	_, _ = fmt.Fprint(w, `<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><body style="font-family:system-ui;text-align:center;margin-top:60px"><h2>Thanks, returning to Agrofie</h2><p>Go back to the Agrofie app and tap "I've paid" to confirm.</p><p><a href="agrofie://" style="display:inline-block;background:#7a1f3d;color:#fff;padding:16px 28px;border-radius:14px;text-decoration:none;font-size:18px;font-weight:700">Back to Agrofie</a></p>`)
+	w.Header().Set("Cache-Control", "no-store")
+	_, _ = fmt.Fprintf(w, payReturnHTML, html.EscapeString(link), template.JSEscapeString(link))
 }
+
+var safeToken = regexp.MustCompile(`^[A-Za-z0-9_-]{1,80}$`)
+
+const payReturnHTML = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Back to Agrofie</title>
+<style>
+:root{--bg:#fbf8f1;--ink:#2a1a20;--ink2:#6b5a60;--brand:#7a1f3d;--tint:#f6e3e8}
+@media(prefers-color-scheme:dark){:root{--bg:#1a1114;--ink:#f3ecee;--ink2:#b9aab0;--brand:#b8325a;--tint:#3a1c27}}
+body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,sans-serif;text-align:center}
+main{max-width:360px;padding:32px 24px}
+.dot{width:72px;height:72px;border-radius:50%%;background:var(--tint);color:var(--brand);display:flex;align-items:center;justify-content:center;font-size:36px;margin:0 auto 20px}
+h1{font-size:24px;margin:0 0 8px}p{color:var(--ink2);font-size:17px;line-height:1.45;margin:0 0 28px}
+a.btn{display:block;background:var(--brand);color:#fff;padding:18px 24px;border-radius:16px;text-decoration:none;font-size:18px;font-weight:700}
+small{display:block;margin-top:18px;color:var(--ink2)}
+</style></head><body><main><div class="dot">&#10003;</div><h1>Back to Agrofie</h1>
+<p>Tap the button to return to the app. It will confirm your payment and show your booking.</p>
+<a class="btn" href="%s">Return to Agrofie</a><small>If nothing happens, switch back to the Agrofie app.</small>
+<script>setTimeout(function(){location.replace('%s')},300)</script></main></body></html>`
 
 func fakePayPage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

@@ -431,3 +431,39 @@ func TestVerifyPaymentAppliesPaystackFallbackStatus(t *testing.T) {
 		t.Fatalf("booking status = %q, want paid", detail.StatusCode)
 	}
 }
+
+func TestInitiateCheckoutReusesRecentPendingCheckout(t *testing.T) {
+	tx := newTx(t)
+	provider := &stubProvider{}
+	svc, _ := newServices(tx, provider)
+	organizer, bookingID := newAgreedBooking(t, tx)
+	ctx := context.Background()
+
+	first, err := svc.InitiateCheckout(ctx, organizer, bookingID)
+	if err != nil {
+		t.Fatalf("first: %v", err)
+	}
+	second, err := svc.InitiateCheckout(ctx, organizer, bookingID)
+	if err != nil {
+		t.Fatalf("second: %v", err)
+	}
+	if second.Reference != first.Reference || second.CheckoutURL != first.CheckoutURL {
+		t.Fatalf("expected reuse of %s, got %s", first.Reference, second.Reference)
+	}
+	var n int
+	if err := tx.QueryRow(ctx, `SELECT count(*) FROM payments WHERE booking_id = $1`, bookingID).Scan(&n); err != nil || n != 1 {
+		t.Fatalf("payments rows = %d (err %v), want 1", n, err)
+	}
+
+	// An old pending checkout is not reused.
+	if _, err := tx.Exec(ctx, `UPDATE payments SET created_at = now() - interval '2 hours' WHERE booking_id = $1`, bookingID); err != nil {
+		t.Fatalf("age payment: %v", err)
+	}
+	third, err := svc.InitiateCheckout(ctx, organizer, bookingID)
+	if err != nil {
+		t.Fatalf("third: %v", err)
+	}
+	if third.Reference == first.Reference {
+		t.Fatalf("expected a fresh checkout after the window")
+	}
+}

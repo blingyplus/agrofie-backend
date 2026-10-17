@@ -236,9 +236,11 @@ type ComplexityRoot struct {
 
 	Payment struct {
 		AmountPesewas     func(childComplexity int) int
+		BookingID         func(childComplexity int) int
 		CheckoutURL       func(childComplexity int) int
 		CommissionPesewas func(childComplexity int) int
 		CurrencyCode      func(childComplexity int) int
+		PaidAt            func(childComplexity int) int
 		Reference         func(childComplexity int) int
 		StatusCode        func(childComplexity int) int
 		StatusName        func(childComplexity int) int
@@ -1577,6 +1579,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Payment.AmountPesewas(childComplexity), true
+	case "Payment.bookingId":
+		if e.ComplexityRoot.Payment.BookingID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Payment.BookingID(childComplexity), true
 	case "Payment.checkoutUrl":
 		if e.ComplexityRoot.Payment.CheckoutURL == nil {
 			break
@@ -1595,6 +1603,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Payment.CurrencyCode(childComplexity), true
+	case "Payment.paidAt":
+		if e.ComplexityRoot.Payment.PaidAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Payment.PaidAt(childComplexity), true
 	case "Payment.reference":
 		if e.ComplexityRoot.Payment.Reference == nil {
 			break
@@ -2978,6 +2992,10 @@ func (ec *executionContext) childFields_Payment(ctx context.Context, field graph
 		return ec.fieldContext_Payment_currencyCode(ctx, field)
 	case "checkoutUrl":
 		return ec.fieldContext_Payment_checkoutUrl(ctx, field)
+	case "bookingId":
+		return ec.fieldContext_Payment_bookingId(ctx, field)
+	case "paidAt":
+		return ec.fieldContext_Payment_paidAt(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Payment", field.Name)
 }
@@ -9129,6 +9147,52 @@ func (ec *executionContext) _Payment_checkoutUrl(ctx context.Context, field grap
 	)
 }
 func (ec *executionContext) fieldContext_Payment_checkoutUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Payment", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Payment_bookingId(ctx context.Context, field graphql.CollectedField, obj *model.Payment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Payment_bookingId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.BookingID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Payment_bookingId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Payment", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _Payment_paidAt(ctx context.Context, field graphql.CollectedField, obj *model.Payment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Payment_paidAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.PaidAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Payment_paidAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("Payment", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
@@ -16357,6 +16421,16 @@ func (ec *executionContext) _Payment(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "checkoutUrl":
 			out.Values[i] = ec._Payment_checkoutUrl(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "bookingId":
+			out.Values[i] = ec._Payment_bookingId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "paidAt":
+			out.Values[i] = ec._Payment_paidAt(ctx, field, obj)
 			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}

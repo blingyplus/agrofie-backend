@@ -614,6 +614,9 @@ type Payment {
   commissionPesewas: Int!
   currencyCode: String!
   checkoutUrl: String
+  bookingId: ID!
+  "ISO timestamp the payment succeeded; null while pending or failed."
+  paidAt: String
 }
 
 type Checkout {

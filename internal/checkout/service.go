@@ -14,6 +14,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/blingyplus/agrofie-backend/internal/booking"
 	"github.com/blingyplus/agrofie-backend/internal/db"
@@ -45,7 +46,23 @@ type Service struct {
 }
 
 // WithCallbackURL sets the page Paystack returns the payer to after checkout.
+// The booking id is appended per checkout so the return page can hand it to the app.
 func (s *Service) WithCallbackURL(u string) *Service { s.callbackURL = u; return s }
+
+// pendingReuseWindow is how long an unpaid checkout is reused instead of
+// opening a new Paystack transaction when the organizer taps Pay now again.
+const pendingReuseWindow = 30 * time.Minute
+
+func (s *Service) callbackFor(bookingID string) string {
+	if s.callbackURL == "" {
+		return ""
+	}
+	sep := "?"
+	if strings.Contains(s.callbackURL, "?") {
+		sep = "&"
+	}
+	return s.callbackURL + sep + "booking=" + bookingID
+}
 
 func NewService(conn beginner, provider payments.Provider, bookings *booking.Service, commissionPercent float64) *Service {
 	return &Service{db: conn, provider: provider, bookings: bookings, commissionPercent: commissionPercent}
@@ -112,6 +129,20 @@ func (s *Service) InitiateCheckout(ctx context.Context, organizerUserID, booking
 		}
 		commissionPesewas := int64(math.Round(float64(amountPesewas) * s.commissionPercent / 100))
 		currency := strOr(row.CurrencyCode)
+
+		// Reuse a recent, still-pending checkout for the same amount instead
+		// of creating a duplicate Paystack transaction and payments row.
+		if prev, err := q.GetLatestPaymentForBooking(ctx, bID); err == nil {
+			if prev.StatusCode == "pending" && prev.CheckoutUrl != nil && *prev.CheckoutUrl != "" &&
+				prev.AmountPesewas == amountPesewas && prev.CurrencyCode == currency &&
+				prev.CreatedAt.Valid && time.Since(prev.CreatedAt.Time) < pendingReuseWindow {
+				out = &Checkout{CheckoutURL: *prev.CheckoutUrl, Reference: prev.ProviderReference, AmountPesewas: prev.AmountPesewas, CommissionPesewas: prev.CommissionPesewas}
+				return nil
+			}
+		} else if !errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("get latest payment: %w", err)
+		}
+
 		reference := "agrofie_" + uuid.NewString()
 
 		checkout, err := s.provider.InitializeCheckout(ctx, payments.CheckoutInput{
@@ -121,7 +152,7 @@ func (s *Service) InitiateCheckout(ctx context.Context, organizerUserID, booking
 			CommissionPesewas: commissionPesewas,
 			SubaccountCode:    *row.ProviderSubaccountCode,
 			CurrencyCode:      currency,
-			CallbackURL:       s.callbackURL,
+			CallbackURL:       s.callbackFor(bookingID),
 		})
 		if err != nil {
 			return fmt.Errorf("initialize checkout: %w", err)
@@ -159,6 +190,22 @@ type PaymentStatus struct {
 	CommissionPesewas int64
 	CurrencyCode      string
 	CheckoutURL       *string
+	BookingID         string
+	// PaidAt is when the payment succeeded (nil while pending/failed).
+	PaidAt *time.Time
+}
+
+func paymentStatusOf(bookingID string, p db.GetLatestPaymentForBookingRow) *PaymentStatus {
+	out := &PaymentStatus{
+		Reference: p.ProviderReference, StatusCode: p.StatusCode, StatusName: p.StatusName,
+		AmountPesewas: p.AmountPesewas, CommissionPesewas: p.CommissionPesewas,
+		CurrencyCode: p.CurrencyCode, CheckoutURL: p.CheckoutUrl, BookingID: bookingID,
+	}
+	if p.StatusCode == "succeeded" && p.UpdatedAt.Valid {
+		t := p.UpdatedAt.Time
+		out.PaidAt = &t
+	}
+	return out
 }
 
 // LatestPayment reads the latest payment attempt for a booking without
@@ -188,11 +235,7 @@ func (s *Service) LatestPayment(ctx context.Context, callerUserID, bookingID str
 		if err != nil {
 			return fmt.Errorf("get payment: %w", err)
 		}
-		out = &PaymentStatus{
-			Reference: payment.ProviderReference, StatusCode: payment.StatusCode, StatusName: payment.StatusName,
-			AmountPesewas: payment.AmountPesewas, CommissionPesewas: payment.CommissionPesewas,
-			CurrencyCode: payment.CurrencyCode, CheckoutURL: payment.CheckoutUrl,
-		}
+		out = paymentStatusOf(bookingID, payment)
 		return nil
 	})
 	return out, err
@@ -228,11 +271,7 @@ func (s *Service) VerifyPayment(ctx context.Context, callerUserID, bookingID str
 			return fmt.Errorf("get payment: %w", err)
 		}
 		reference = payment.ProviderReference
-		out = &PaymentStatus{
-			Reference: payment.ProviderReference, StatusCode: payment.StatusCode, StatusName: payment.StatusName,
-			AmountPesewas: payment.AmountPesewas, CommissionPesewas: payment.CommissionPesewas,
-			CurrencyCode: payment.CurrencyCode, CheckoutURL: payment.CheckoutUrl,
-		}
+		out = paymentStatusOf(bookingID, payment)
 		return nil
 	})
 	if err != nil {
@@ -248,6 +287,10 @@ func (s *Service) VerifyPayment(ctx context.Context, callerUserID, bookingID str
 			return out, err
 		}
 		out.StatusCode, out.StatusName = "succeeded", "Succeeded"
+		if out.PaidAt == nil {
+			now := time.Now()
+			out.PaidAt = &now
+		}
 	} else if status == "failed" {
 		// "abandoned" is Paystack status for a checkout not paid yet; keep it pending.
 		if err := s.applyFailure(ctx, reference, []byte(`{"source":"verify"}`)); err != nil {

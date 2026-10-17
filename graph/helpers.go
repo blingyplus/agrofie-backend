@@ -466,11 +466,16 @@ func toModelCheckout(c *checkout.Checkout) *model.Checkout {
 }
 
 func toModelPayment(p *checkout.PaymentStatus) *model.Payment {
-	return &model.Payment{
+	m := &model.Payment{
 		Reference: p.Reference, StatusCode: p.StatusCode, StatusName: p.StatusName,
 		AmountPesewas: int(p.AmountPesewas), CommissionPesewas: int(p.CommissionPesewas),
-		CurrencyCode: p.CurrencyCode, CheckoutURL: p.CheckoutURL,
+		CurrencyCode: p.CurrencyCode, CheckoutURL: p.CheckoutURL, BookingID: p.BookingID,
 	}
+	if p.PaidAt != nil {
+		t := p.PaidAt.UTC().Format(time.RFC3339)
+		m.PaidAt = &t
+	}
+	return m
 }
 
 func mapReviewErr(err error) error {

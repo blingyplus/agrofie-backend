@@ -238,6 +238,9 @@ type Payment struct {
 	CommissionPesewas int     `json:"commissionPesewas"`
 	CurrencyCode      string  `json:"currencyCode"`
 	CheckoutURL       *string `json:"checkoutUrl,omitempty"`
+	BookingID         string  `json:"bookingId"`
+	// ISO timestamp the payment succeeded; null while pending or failed.
+	PaidAt *string `json:"paidAt,omitempty"`
 }
 
 type PayoutAccount struct {
