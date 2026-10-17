@@ -150,11 +150,12 @@ type ComplexityRoot struct {
 	}
 
 	Health struct {
-		Auth     func(childComplexity int) int
-		Booking  func(childComplexity int) int
-		Payments func(childComplexity int) int
-		Service  func(childComplexity int) int
-		Status   func(childComplexity int) int
+		Auth             func(childComplexity int) int
+		Booking          func(childComplexity int) int
+		Payments         func(childComplexity int) int
+		PaymentsProvider func(childComplexity int) int
+		Service          func(childComplexity int) int
+		Status           func(childComplexity int) int
 	}
 
 	Lookup struct {
@@ -1020,6 +1021,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Health.Payments(childComplexity), true
+	case "Health.paymentsProvider":
+		if e.ComplexityRoot.Health.PaymentsProvider == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Health.PaymentsProvider(childComplexity), true
 	case "Health.service":
 		if e.ComplexityRoot.Health.Service == nil {
 			break
@@ -2869,6 +2876,8 @@ func (ec *executionContext) childFields_Health(ctx context.Context, field graphq
 		return ec.fieldContext_Health_booking(ctx, field)
 	case "payments":
 		return ec.fieldContext_Health_payments(ctx, field)
+	case "paymentsProvider":
+		return ec.fieldContext_Health_paymentsProvider(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Health", field.Name)
 }
@@ -6360,6 +6369,29 @@ func (ec *executionContext) _Health_payments(ctx context.Context, field graphql.
 	)
 }
 func (ec *executionContext) fieldContext_Health_payments(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Health", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Health_paymentsProvider(ctx context.Context, field graphql.CollectedField, obj *model.Health) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Health_paymentsProvider(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.PaymentsProvider, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Health_paymentsProvider(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("Health", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
@@ -15708,6 +15740,11 @@ func (ec *executionContext) _Health(ctx context.Context, sel ast.SelectionSet, o
 			}
 		case "payments":
 			out.Values[i] = ec._Health_payments(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "paymentsProvider":
+			out.Values[i] = ec._Health_paymentsProvider(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

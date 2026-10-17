@@ -208,6 +208,8 @@ type Health {
   auth: String!
   booking: String!
   payments: String!
+  "Active payment provider: fake | paystack-test (name only)."
+  paymentsProvider: String!
 }
 
 type Lookup {

@@ -12,7 +12,8 @@ import (
 
 func main() {
 	cfg := config.Load("payments")
-	_ = payments.FakeProvider{} // wire real Paystack adapter in application layer later
+	_ = payments.FakeProvider{} // checkout runs in the gateway today; this service is a Connect stub
+	slog.Info("payments provider", "provider", cfg.PaymentsProviderName())
 
 	handler := httpsvc.PaymentsHandler(cfg.ServiceName)
 	slog.Info("payments service listening", "addr", cfg.Addr())

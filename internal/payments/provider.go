@@ -51,6 +51,9 @@ type CheckoutInput struct {
 	CommissionPesewas int64
 	SubaccountCode    string
 	CurrencyCode      string
+	// CallbackURL is where Paystack sends the browser after checkout
+	// (optional; a back-to-the-app page). Never used for payment status.
+	CallbackURL string
 }
 
 // Checkout is what Paystack returns to start a transaction.

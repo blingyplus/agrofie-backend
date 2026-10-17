@@ -35,7 +35,9 @@ type Resolver struct {
 	OrganizerProfiles *organizerprofile.Service
 	Media             *media.Service
 	Prober            HealthProber
-	AuthClient        agrofierv1connect.AuthServiceClient
+	// PaymentsProvider is the active provider's name ("fake" | "paystack-test").
+	PaymentsProvider string
+	AuthClient       agrofierv1connect.AuthServiceClient
 }
 
 // HealthProber aggregates downstream service health.

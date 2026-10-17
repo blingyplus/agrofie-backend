@@ -41,7 +41,11 @@ type Service struct {
 	provider          payments.Provider
 	bookings          *booking.Service
 	commissionPercent float64
+	callbackURL       string
 }
+
+// WithCallbackURL sets the page Paystack returns the payer to after checkout.
+func (s *Service) WithCallbackURL(u string) *Service { s.callbackURL = u; return s }
 
 func NewService(conn beginner, provider payments.Provider, bookings *booking.Service, commissionPercent float64) *Service {
 	return &Service{db: conn, provider: provider, bookings: bookings, commissionPercent: commissionPercent}
@@ -117,6 +121,7 @@ func (s *Service) InitiateCheckout(ctx context.Context, organizerUserID, booking
 			CommissionPesewas: commissionPesewas,
 			SubaccountCode:    *row.ProviderSubaccountCode,
 			CurrencyCode:      currency,
+			CallbackURL:       s.callbackURL,
 		})
 		if err != nil {
 			return fmt.Errorf("initialize checkout: %w", err)
@@ -239,11 +244,12 @@ func (s *Service) VerifyPayment(ctx context.Context, callerUserID, bookingID str
 		return out, fmt.Errorf("verify transaction: %w", err)
 	}
 	if status == "success" {
-		if err := s.applySuccess(ctx, reference, []byte(`{"source":"verify"}`)); err != nil {
+		if err := s.applySuccess(ctx, reference, []byte(`{"source":"verify"}`), 0, ""); err != nil {
 			return out, err
 		}
 		out.StatusCode, out.StatusName = "succeeded", "Succeeded"
-	} else if status == "failed" || status == "abandoned" {
+	} else if status == "failed" {
+		// "abandoned" is Paystack status for a checkout not paid yet; keep it pending.
 		if err := s.applyFailure(ctx, reference, []byte(`{"source":"verify"}`)); err != nil {
 			return out, err
 		}
@@ -260,6 +266,8 @@ type webhookPayload struct {
 	Data  struct {
 		Reference string `json:"reference"`
 		Status    string `json:"status"`
+		Amount    int64  `json:"amount"`
+		Currency  string `json:"currency"`
 	} `json:"data"`
 }
 
@@ -297,27 +305,47 @@ func (s *Service) HandleWebhookEvent(ctx context.Context, rawBody []byte, signat
 		return nil // already processed this exact event; no-op
 	}
 
+	var applyErr error
 	switch payload.Event {
 	case "charge.success":
-		return s.applySuccess(ctx, payload.Data.Reference, rawBody)
+		applyErr = s.applySuccess(ctx, payload.Data.Reference, rawBody, payload.Data.Amount, payload.Data.Currency)
 	case "charge.failed":
-		return s.applyFailure(ctx, payload.Data.Reference, rawBody)
-	default:
-		return nil // recorded, nothing else to do for this event type
+		applyErr = s.applyFailure(ctx, payload.Data.Reference, rawBody)
 	}
+	if applyErr != nil {
+		// The event row is the idempotency guard and is already committed. If
+		// applying it failed, drop the row so Paystack's retry is processed
+		// rather than swallowed as "already handled" (which would leave a paid
+		// charge unrecorded).
+		if derr := s.withTx(ctx, func(q *db.Queries) error {
+			return q.DeletePaymentEvent(ctx, db.DeletePaymentEventParams{
+				ProviderReference: payload.Data.Reference, EventType: payload.Event,
+			})
+		}); derr != nil {
+			return errors.Join(applyErr, fmt.Errorf("release event for retry: %w", derr))
+		}
+		return applyErr
+	}
+	return nil
 }
 
-func (s *Service) applySuccess(ctx context.Context, reference string, _ []byte) error {
+// applySuccess marks the payment succeeded and the booking paid. When the event
+// carries an amount/currency (real Paystack webhooks do) they must match what
+// we charged; a mismatch is rejected rather than trusted. 0/"" means "not given".
+func (s *Service) applySuccess(ctx context.Context, reference string, _ []byte, paidPesewas int64, paidCurrency string) error {
 	var bookingID string
 	err := s.withTx(ctx, func(q *db.Queries) error {
+		p, err := q.GetPaymentByReference(ctx, reference)
+		if err != nil {
+			return fmt.Errorf("get payment: %w", err)
+		}
+		if (paidPesewas != 0 && paidPesewas != p.AmountPesewas) || (paidCurrency != "" && paidCurrency != p.CurrencyCode) {
+			return fmt.Errorf("%w: paid %d %s but expected %d %s", ErrInvalidInput, paidPesewas, paidCurrency, p.AmountPesewas, p.CurrencyCode)
+		}
 		if _, err := q.UpdatePaymentStatusByReference(ctx, db.UpdatePaymentStatusByReferenceParams{
 			StatusCode: "succeeded", ProviderReference: reference,
 		}); err != nil {
 			return fmt.Errorf("update payment status: %w", err)
-		}
-		p, err := q.GetPaymentByReference(ctx, reference)
-		if err != nil {
-			return fmt.Errorf("get payment: %w", err)
 		}
 		bookingID = uuidString(p.BookingID)
 		return nil

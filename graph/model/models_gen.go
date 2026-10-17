@@ -164,6 +164,8 @@ type Health struct {
 	Auth     string `json:"auth"`
 	Booking  string `json:"booking"`
 	Payments string `json:"payments"`
+	// Active payment provider: fake | paystack-test (name only).
+	PaymentsProvider string `json:"paymentsProvider"`
 }
 
 type LoginInput struct {

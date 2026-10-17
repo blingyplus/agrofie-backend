@@ -32,7 +32,7 @@ ORDER BY p.created_at DESC
 LIMIT 1;
 
 -- name: GetPaymentByReference :one
-SELECT p.id, p.booking_id, p.provider_reference, ps.code AS status_code
+SELECT p.id, p.booking_id, p.provider_reference, p.amount_pesewas, p.currency_code, ps.code AS status_code
 FROM payments p
 JOIN payment_statuses ps ON ps.id = p.payment_status_id
 WHERE p.provider_reference = $1;
@@ -50,3 +50,8 @@ WHERE provider_reference = sqlc.arg(provider_reference)::text;
 INSERT INTO payment_events (provider_reference, event_type, payload)
 VALUES ($1, $2, $3)
 ON CONFLICT (provider_reference, event_type) DO NOTHING;
+
+-- name: DeletePaymentEvent :exec
+-- Compensation: if applying an event fails after InsertPaymentEvent committed, drop
+-- the idempotency row so Paystack's retry is processed instead of swallowed.
+DELETE FROM payment_events WHERE provider_reference = $1 AND event_type = $2;

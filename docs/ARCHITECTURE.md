@@ -56,7 +56,7 @@ Generate: `make sqlc`, `make gqlgen`, `make proto`.
 Agrofie never holds client funds. See `PRODUCT.md` (Money model). Paystack facts, checked against Paystack's docs and the account dashboard:
 
 - **Subaccount per talent** (`POST /subaccount`): business name, settlement account, GHS. The dashboard offers **Bank** and **Mobile Money** types. Paystack verifies the account number.
-- **Split at payment time**: `POST /transaction/initialize` with `subaccount`, a flat `transaction_charge` (Agrofie's commission, in pesewas) and `bearer: "subaccount"` (decided: the talent bears Paystack's processing fee; `account` would make Agrofie absorb it).
+- **Split at payment time**: `POST /transaction/initialize` with `subaccount`, a flat `transaction_charge` (Agrofie's commission, in pesewas) and `bearer: "subaccount"` (decided: the talent bears Paystack's processing fee; `account` would make Agrofie absorb it). Net: Agrofie receives exactly `transaction_charge` (COMMISSION_PERCENT of the amount, rounded to the pesewa); the talent receives amount - commission - Paystack fee. Paystack returns 400 if the talent share cannot cover the fee. Checkout also sends `callback_url` (`<PUBLIC_BASE_URL>/pay/return`); webhooks verify amount/currency against the stored payment.
 - **Settlement**: Paystack settles each party to its own account on the normal cycle. Not delayed on purpose.
 - **Payment channels** (enabled on the account): card, mobile money, bank transfer.
 - **Webhooks**: verify `x-paystack-signature` (HMAC-SHA512 of the raw body with the secret key) **before** trusting the event. Return 200 fast; Paystack retries failures (live: every 3 min for 4 attempts, then hourly for 72 h). Process idempotently by event/reference.

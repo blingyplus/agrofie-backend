@@ -58,6 +58,21 @@ func Load(serviceName string) Config {
 	}
 }
 
+// UsesFakePayments reports whether the fake (no money) provider is active:
+// no Paystack key, or PAYMENTS_PROVIDER=fake forcing it.
+func (c Config) UsesFakePayments() bool {
+	return c.PaystackSecretKey == "" || c.PaymentsProvider == "fake"
+}
+
+// PaymentsProviderName is the active provider's label ("fake" or
+// "paystack-test"). Name only; never the key.
+func (c Config) PaymentsProviderName() string {
+	if c.UsesFakePayments() {
+		return "fake"
+	}
+	return "paystack-test"
+}
+
 func (c Config) Addr() string {
 	return fmt.Sprintf(":%d", c.HTTPPort)
 }

@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/99designs/gqlgen/graphql/handler"
@@ -54,13 +55,20 @@ func main() {
 	discoverySvc := discovery.NewService(db.New(pool))
 
 	var paymentsProvider payments.Provider
-	fakePayments := cfg.PaystackSecretKey == "" || cfg.PaymentsProvider == "fake"
+	fakePayments := cfg.UsesFakePayments()
 	if fakePayments {
 		paymentsProvider = payments.FakeProvider{BaseURL: cfg.PublicBaseURL}
 		slog.Warn("no PAYSTACK_SECRET_KEY (or PAYMENTS_PROVIDER=fake): using FAKE test payment provider (no real money). Checkout pages at /pay/fake/{reference}", "publicBaseURL", cfg.PublicBaseURL)
 	} else {
+		// Test mode only until launch review: refuse anything but sk_test_ keys.
+		if !strings.HasPrefix(cfg.PaystackSecretKey, "sk_test_") {
+			slog.Error("PAYSTACK_SECRET_KEY must be a Paystack TEST key (sk_test_...); live keys are not allowed yet")
+			os.Exit(1)
+		}
 		paymentsProvider = payments.NewPaystack(cfg.PaystackSecretKey)
+		slog.Warn("using REAL Paystack TEST-mode payment provider (test cards only, no real money). Webhook: POST /webhooks/paystack")
 	}
+	slog.Info("payments provider", "provider", cfg.PaymentsProviderName())
 	talentProfiles := talentprofile.NewService(pool, paymentsProvider, cfg.CommissionPercent)
 	verifications := verification.NewService(pool)
 	availabilitySvc := availability.NewService(pool)
@@ -68,7 +76,7 @@ func main() {
 	if cfg.DevAllowEarlyComplete {
 		slog.Warn("DEV_ALLOW_EARLY_COMPLETE on: bookings may be completed before the event ends")
 	}
-	checkoutSvc := checkout.NewService(pool, paymentsProvider, bookings, cfg.CommissionPercent)
+	checkoutSvc := checkout.NewService(pool, paymentsProvider, bookings, cfg.CommissionPercent).WithCallbackURL(strings.TrimRight(cfg.PublicBaseURL, "/") + "/pay/return")
 	reviewsSvc := review.NewService(pool)
 	disputesSvc := dispute.NewService(pool)
 
@@ -105,6 +113,7 @@ func main() {
 		OrganizerProfiles: organizerprofile.NewService(pool),
 		Media:             mediaSvc,
 		Prober:            prober,
+		PaymentsProvider:  cfg.PaymentsProviderName(),
 		AuthClient:        authClient,
 	}
 
@@ -122,6 +131,7 @@ func main() {
 	mux.Handle("/media", mediaHandler)
 	mux.Handle("/media/", mediaHandler)
 	mux.HandleFunc("POST /webhooks/paystack", paystackWebhookHandler(checkoutSvc))
+	mux.HandleFunc("GET /pay/return", payReturnPage)
 	if fakePayments {
 		mux.HandleFunc("GET /pay/fake/{reference}", fakePayPage)
 		mux.HandleFunc("POST /pay/fake/{reference}", fakePayComplete(checkoutSvc))
@@ -180,6 +190,14 @@ button.f{background:#dc2626}</style></head><body>
 <h2>Pay for booking</h2><p>Reference<br><code>%s</code></p>
 <form method="POST"><button name="outcome" value="success">Pay (simulate success)</button>
 <button class="f" name="outcome" value="failed">Simulate failure</button></form></body></html>`
+
+// payReturnPage is the Paystack callback_url target: a static back-to-the-app
+// page. It carries no authority; payment status comes only from the signed
+// webhook or verifyPayment.
+func payReturnPage(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	_, _ = fmt.Fprint(w, `<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><body style="font-family:system-ui;text-align:center;margin-top:60px"><h2>Thanks, returning to Agrofie</h2><p>Go back to the Agrofie app and tap "I've paid" to confirm.</p><p><a href="agrofie://" style="display:inline-block;background:#7a1f3d;color:#fff;padding:16px 28px;border-radius:14px;text-decoration:none;font-size:18px;font-weight:700">Back to Agrofie</a></p>`)
+}
 
 func fakePayPage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

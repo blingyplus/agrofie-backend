@@ -149,6 +149,7 @@ type initializeBody struct {
 	Subaccount        string `json:"subaccount,omitempty"`
 	TransactionCharge int64  `json:"transaction_charge,omitempty"`
 	Bearer            string `json:"bearer,omitempty"`
+	CallbackURL       string `json:"callback_url,omitempty"`
 }
 
 type initializeDTO struct {
@@ -166,6 +167,7 @@ func (p *Paystack) InitializeCheckout(ctx context.Context, in CheckoutInput) (Ch
 		Subaccount:        in.SubaccountCode,
 		TransactionCharge: in.CommissionPesewas,
 		Bearer:            "subaccount",
+		CallbackURL:       in.CallbackURL,
 	}, &res)
 	if err != nil {
 		return Checkout{}, err

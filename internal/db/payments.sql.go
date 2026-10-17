@@ -11,6 +11,22 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const deletePaymentEvent = `-- name: DeletePaymentEvent :exec
+DELETE FROM payment_events WHERE provider_reference = $1 AND event_type = $2
+`
+
+type DeletePaymentEventParams struct {
+	ProviderReference string `json:"provider_reference"`
+	EventType         string `json:"event_type"`
+}
+
+// Compensation: if applying an event fails after InsertPaymentEvent committed, drop
+// the idempotency row so Paystack's retry is processed instead of swallowed.
+func (q *Queries) DeletePaymentEvent(ctx context.Context, arg DeletePaymentEventParams) error {
+	_, err := q.db.Exec(ctx, deletePaymentEvent, arg.ProviderReference, arg.EventType)
+	return err
+}
+
 const getBookingForCheckout = `-- name: GetBookingForCheckout :one
 SELECT b.id, b.organizer_user_id, u.email AS organizer_email,
        b.talent_profile_id, bs.code AS status_code,
@@ -97,7 +113,7 @@ func (q *Queries) GetLatestPaymentForBooking(ctx context.Context, bookingID pgty
 }
 
 const getPaymentByReference = `-- name: GetPaymentByReference :one
-SELECT p.id, p.booking_id, p.provider_reference, ps.code AS status_code
+SELECT p.id, p.booking_id, p.provider_reference, p.amount_pesewas, p.currency_code, ps.code AS status_code
 FROM payments p
 JOIN payment_statuses ps ON ps.id = p.payment_status_id
 WHERE p.provider_reference = $1
@@ -107,6 +123,8 @@ type GetPaymentByReferenceRow struct {
 	ID                pgtype.UUID `json:"id"`
 	BookingID         pgtype.UUID `json:"booking_id"`
 	ProviderReference string      `json:"provider_reference"`
+	AmountPesewas     int64       `json:"amount_pesewas"`
+	CurrencyCode      string      `json:"currency_code"`
 	StatusCode        string      `json:"status_code"`
 }
 
@@ -117,6 +135,8 @@ func (q *Queries) GetPaymentByReference(ctx context.Context, providerReference s
 		&i.ID,
 		&i.BookingID,
 		&i.ProviderReference,
+		&i.AmountPesewas,
+		&i.CurrencyCode,
 		&i.StatusCode,
 	)
 	return i, err

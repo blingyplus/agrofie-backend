@@ -1,4 +1,4 @@
-.PHONY: up down migrate proto sqlc gqlgen test vuln tidy seed-admin seed-talent seed-demo media-gc
+.PHONY: payments-real payments-fake up down migrate proto sqlc gqlgen test vuln tidy seed-admin seed-talent seed-demo media-gc
 
 DATABASE_URL ?= postgres://agrofie:agrofie@localhost:5432/agrofie?sslmode=disable
 
@@ -44,6 +44,14 @@ seed-talent:
 seed-demo:
 	ADMIN_PASSWORD=$${ADMIN_PASSWORD:-changeme-admin} go run ./cmd/seed-admin
 	go run ./cmd/seed-talent
+
+# Flip PAYMENTS_PROVIDER in .env and recreate gateway+payments. real = Paystack TEST API
+# (needs PAYSTACK_SECRET_KEY=sk_test_... in .env); fake = no-money test page. See README.
+payments-real:
+	scripts/payments-mode.sh real
+
+payments-fake:
+	scripts/payments-mode.sh fake
 
 run-gateway:
 	go run ./cmd/gateway

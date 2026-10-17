@@ -388,11 +388,12 @@ func (r *queryResolver) Health(ctx context.Context) (*model.Health, error) {
 		status = "degraded"
 	}
 	return &model.Health{
-		Status:   status,
-		Service:  "gateway",
-		Auth:     authStatus,
-		Booking:  booking,
-		Payments: payments,
+		Status:           status,
+		Service:          "gateway",
+		Auth:             authStatus,
+		Booking:          booking,
+		Payments:         payments,
+		PaymentsProvider: r.PaymentsProvider,
 	}, nil
 }
 
