@@ -26,6 +26,13 @@ step() { echo; echo "== $1"; }
 # Always remove the users/bookings this run created (@e2e.test) so Discover stays clean.
 trap '"$(dirname "$0")/e2e-cleanup.sh"' EXIT
 
+step "public app config (GET /config)"
+R=$(curl -sS -i "$GW/config"); echo "$R" | grep -qi '^cache-control:' && ok "config cache-control" || fail "config cache-control missing"
+R=$(curl -sS "$GW/config"); expect "config version" "$R" .version 1
+expect "config invite derives from base" "$R" '(.inviteUrl|startswith(.webBaseUrl))' true
+expect "config profile template" "$R" '.profileUrlTemplate|contains("{id}")' true
+expect "config has flags + maintenance" "$R" '(.featureFlags|type)+(.maintenance.enabled|tostring)' objectfalse
+
 step "register + login (no email verification needed)"
 R=$(gql "" 'mutation($i:RegisterInput!){register(input:$i){sessionToken user{id roleCodes}}}' "{\"i\":{\"email\":\"org$RUN@e2e.test\",\"password\":\"$PW\",\"displayName\":\"E2E Organizer\",\"roleCode\":\"organizer\"}}")
 ORG=$(val "$R" .data.register.sessionToken); expect "organizer registered" "$R" '.data.register.user.roleCodes[0]' organizer

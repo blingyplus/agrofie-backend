@@ -16,6 +16,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/blingyplus/agrofie-backend/graph"
 	"github.com/blingyplus/agrofie-backend/graph/gqlauth"
+	"github.com/blingyplus/agrofie-backend/internal/appconfig"
 	"github.com/blingyplus/agrofie-backend/internal/availability"
 	"github.com/blingyplus/agrofie-backend/internal/booking"
 	"github.com/blingyplus/agrofie-backend/internal/checkout"
@@ -94,6 +95,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", health.Handler(cfg.ServiceName))
+	mux.HandleFunc("GET /config", appconfig.Handler(appconfig.Load()))
 	mux.Handle("/graphql", gqlauth.Middleware(authClient)(gql))
 	mux.Handle("/playground", playground.Handler("Agrofie GraphQL", "/graphql"))
 	mux.HandleFunc("POST /webhooks/paystack", paystackWebhookHandler(checkoutSvc))

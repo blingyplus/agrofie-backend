@@ -154,6 +154,15 @@ services:
       PAYMENTS_PROVIDER: ${PAYMENTS_PROVIDER:-}
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8080}
       DEV_ALLOW_EARLY_COMPLETE: ${DEV_ALLOW_EARLY_COMPLETE:-true}
+      # Public app config served at GET /config (see .env.example).
+      WEB_BASE_URL: ${WEB_BASE_URL:-}
+      INVITE_URL: ${INVITE_URL:-}
+      PROFILE_URL_TEMPLATE: ${PROFILE_URL_TEMPLATE:-}
+      SUPPORT_EMAIL: ${SUPPORT_EMAIL:-}
+      MIN_APP_VERSION: ${MIN_APP_VERSION:-}
+      FEATURE_FLAGS: ${FEATURE_FLAGS:-}
+      MAINTENANCE_ENABLED: ${MAINTENANCE_ENABLED:-}
+      MAINTENANCE_MESSAGE: ${MAINTENANCE_MESSAGE:-}
     command: ["gateway"]
     ports:
       - "8080:8080"
