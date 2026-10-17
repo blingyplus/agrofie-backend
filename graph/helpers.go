@@ -201,6 +201,7 @@ func toTalentProfile(p *discovery.Profile) *model.TalentProfile {
 		DisplayName:   p.DisplayName,
 		Headline:      p.Headline,
 		HomePlaceName: p.HomePlaceName,
+		HomePlaceCode: p.HomePlaceCode,
 		Bio:           p.Bio,
 		Featured:      p.Featured,
 		RatingAverage: p.RatingAverage,

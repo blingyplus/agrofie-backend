@@ -70,7 +70,8 @@ type UpdateBasicsInput struct {
 
 // UpdateBasics replaces the talent's headline, bio, home place, and every tag
 // list given. A nil slice leaves that tag list unchanged; pass an empty slice
-// to clear it. HomePlaceCode, if non-nil, must resolve to a real geo place.
+// to clear it. HomePlaceCode nil leaves the home place unchanged, "" clears it,
+// anything else must resolve to a real geo place.
 func (s *Service) UpdateBasics(ctx context.Context, userID string, in UpdateBasicsInput) error {
 	return s.withTx(ctx, func(q *db.Queries) error {
 		profileID, err := profileIDForUser(ctx, q, userID)
@@ -79,7 +80,8 @@ func (s *Service) UpdateBasics(ctx context.Context, userID string, in UpdateBasi
 		}
 
 		var homePlaceID pgtype.UUID
-		if in.HomePlaceCode != nil {
+		clearHome := in.HomePlaceCode != nil && *in.HomePlaceCode == ""
+		if in.HomePlaceCode != nil && !clearHome {
 			id, err := q.GeoPlaceIDByCode(ctx, *in.HomePlaceCode)
 			if errors.Is(err, pgx.ErrNoRows) {
 				return fmt.Errorf("%w: home place %q", ErrUnknownCode, *in.HomePlaceCode)
@@ -91,7 +93,7 @@ func (s *Service) UpdateBasics(ctx context.Context, userID string, in UpdateBasi
 		}
 
 		if err := q.UpdateTalentProfileBasics(ctx, db.UpdateTalentProfileBasicsParams{
-			ID: profileID, Headline: in.Headline, Bio: in.Bio, HomeGeoPlaceID: homePlaceID,
+			ID: profileID, Headline: in.Headline, Bio: in.Bio, HomeGeoPlaceID: homePlaceID, ClearHomePlace: clearHome,
 		}); err != nil {
 			return fmt.Errorf("update basics: %w", err)
 		}
@@ -279,7 +281,7 @@ func (s *Service) OwnProfile(ctx context.Context, userID string) (*discovery.Pro
 		ids := []pgtype.UUID{row.ID}
 		p := &discovery.Profile{Card: discovery.Card{
 			ID: uuidString(row.ID), DisplayName: row.DisplayName, Headline: row.Headline, HomePlaceName: row.HomePlaceName,
-		}, Bio: row.Bio}
+		}, Bio: row.Bio, HomePlaceCode: row.HomePlaceCode}
 
 		genres, err := q.ListGenresForTalent(ctx, ids)
 		if err != nil {

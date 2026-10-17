@@ -10,9 +10,13 @@ WHERE c.code = 'GH' AND g.code = $1;
 
 -- name: UpdateTalentProfileBasics :exec
 -- home_geo_place_id: pass a resolved UUID (looked up via GeoPlaceIDByCode) or
--- NULL to clear it. Never pass an unvalidated code straight into this query.
+-- NULL to leave it unchanged (set clear_home_place to wipe it). Never pass an
+-- unvalidated code straight into this query.
 UPDATE talent_profiles
-SET headline = $2, bio = $3, home_geo_place_id = $4, updated_at = now()
+SET headline = $2, bio = $3,
+    home_geo_place_id = CASE WHEN sqlc.arg(clear_home_place)::bool THEN NULL
+                             ELSE COALESCE(sqlc.narg(home_geo_place_id)::uuid, home_geo_place_id) END,
+    updated_at = now()
 WHERE talent_profiles.id = $1;
 
 -- name: ClearTalentGenres :exec
@@ -71,7 +75,7 @@ FROM payout_accounts WHERE talent_profile_id = $1 AND is_active;
 -- name: GetOwnTalentProfileBasics :one
 -- Unlike discovery's GetSearchableTalent, this has no is_searchable gate: a
 -- talent must be able to see and edit their own profile before verification.
-SELECT tp.id, tp.headline, tp.bio, pr.display_name, hp.name AS home_place_name
+SELECT tp.id, tp.headline, tp.bio, pr.display_name, hp.name AS home_place_name, hp.code AS home_place_code
 FROM talent_profiles tp
 JOIN profiles pr ON pr.user_id = tp.user_id
 LEFT JOIN geo_places hp ON hp.id = tp.home_geo_place_id

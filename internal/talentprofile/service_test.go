@@ -334,3 +334,38 @@ func TestListSettlementBanksDelegatesToProvider(t *testing.T) {
 		t.Fatal("expected at least one mobile money provider from the fake")
 	}
 }
+
+func TestUpdateBasicsNilHomePlaceLeavesItUnchangedAndEmptyClears(t *testing.T) {
+	ctx := context.Background()
+	tx := newTx(t)
+	svc := newService(tx, payments.FakeProvider{})
+	userID := newTalentUser(t, tx)
+	place := newPlace(t, tx)
+	if err := svc.UpdateBasics(ctx, userID, talentprofile.UpdateBasicsInput{HomePlaceCode: &place}); err != nil {
+		t.Fatal(err)
+	}
+
+	headline := "Only the headline"
+	if err := svc.UpdateBasics(ctx, userID, talentprofile.UpdateBasicsInput{Headline: &headline}); err != nil {
+		t.Fatal(err)
+	}
+	p, err := svc.OwnProfile(ctx, userID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.HomePlaceCode == nil || *p.HomePlaceCode != place {
+		t.Fatalf("homePlaceCode = %v, want %q kept after omitting it", p.HomePlaceCode, place)
+	}
+
+	empty := ""
+	if err := svc.UpdateBasics(ctx, userID, talentprofile.UpdateBasicsInput{HomePlaceCode: &empty}); err != nil {
+		t.Fatal(err)
+	}
+	p, err = svc.OwnProfile(ctx, userID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.HomePlaceCode != nil {
+		t.Fatalf("homePlaceCode = %q, want cleared", *p.HomePlaceCode)
+	}
+}

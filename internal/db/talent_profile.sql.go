@@ -139,7 +139,7 @@ func (q *Queries) GeoPlaceIDByCode(ctx context.Context, code string) (pgtype.UUI
 }
 
 const getOwnTalentProfileBasics = `-- name: GetOwnTalentProfileBasics :one
-SELECT tp.id, tp.headline, tp.bio, pr.display_name, hp.name AS home_place_name
+SELECT tp.id, tp.headline, tp.bio, pr.display_name, hp.name AS home_place_name, hp.code AS home_place_code
 FROM talent_profiles tp
 JOIN profiles pr ON pr.user_id = tp.user_id
 LEFT JOIN geo_places hp ON hp.id = tp.home_geo_place_id
@@ -152,6 +152,7 @@ type GetOwnTalentProfileBasicsRow struct {
 	Bio           *string     `json:"bio"`
 	DisplayName   string      `json:"display_name"`
 	HomePlaceName *string     `json:"home_place_name"`
+	HomePlaceCode *string     `json:"home_place_code"`
 }
 
 // Unlike discovery's GetSearchableTalent, this has no is_searchable gate: a
@@ -165,6 +166,7 @@ func (q *Queries) GetOwnTalentProfileBasics(ctx context.Context, userID pgtype.U
 		&i.Bio,
 		&i.DisplayName,
 		&i.HomePlaceName,
+		&i.HomePlaceCode,
 	)
 	return i, err
 }
@@ -244,7 +246,10 @@ func (q *Queries) InsertTalentRate(ctx context.Context, arg InsertTalentRatePara
 
 const updateTalentProfileBasics = `-- name: UpdateTalentProfileBasics :exec
 UPDATE talent_profiles
-SET headline = $2, bio = $3, home_geo_place_id = $4, updated_at = now()
+SET headline = $2, bio = $3,
+    home_geo_place_id = CASE WHEN $4::bool THEN NULL
+                             ELSE COALESCE($5::uuid, home_geo_place_id) END,
+    updated_at = now()
 WHERE talent_profiles.id = $1
 `
 
@@ -252,16 +257,19 @@ type UpdateTalentProfileBasicsParams struct {
 	ID             pgtype.UUID `json:"id"`
 	Headline       *string     `json:"headline"`
 	Bio            *string     `json:"bio"`
+	ClearHomePlace bool        `json:"clear_home_place"`
 	HomeGeoPlaceID pgtype.UUID `json:"home_geo_place_id"`
 }
 
 // home_geo_place_id: pass a resolved UUID (looked up via GeoPlaceIDByCode) or
-// NULL to clear it. Never pass an unvalidated code straight into this query.
+// NULL to leave it unchanged (set clear_home_place to wipe it). Never pass an
+// unvalidated code straight into this query.
 func (q *Queries) UpdateTalentProfileBasics(ctx context.Context, arg UpdateTalentProfileBasicsParams) error {
 	_, err := q.db.Exec(ctx, updateTalentProfileBasics,
 		arg.ID,
 		arg.Headline,
 		arg.Bio,
+		arg.ClearHomePlace,
 		arg.HomeGeoPlaceID,
 	)
 	return err

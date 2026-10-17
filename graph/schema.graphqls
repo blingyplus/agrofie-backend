@@ -295,6 +295,8 @@ type TalentProfile {
   displayName: String!
   headline: String
   homePlaceName: String
+  """Code of the home place. Only populated on the caller's own profile (myTalentProfile)."""
+  homePlaceCode: String
   bio: String
   """Admin-curated placement for the Discover hero."""
   featured: Boolean!
@@ -323,7 +325,7 @@ type TalentPage {
 input UpdateTalentProfileInput {
   headline: String
   bio: String
-  """A geo place code; matches that place and everything beneath it is NOT implied here — this is the talent's home base, an exact place."""
+  """A geo place code; this is the talent's home base, an exact place. Null or omitted leaves it unchanged; an empty string clears it."""
   homePlaceCode: String
   genreCodes: [String!]
   typeCodes: [String!]

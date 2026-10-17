@@ -404,6 +404,8 @@ type TalentProfile struct {
 	DisplayName   string  `json:"displayName"`
 	Headline      *string `json:"headline,omitempty"`
 	HomePlaceName *string `json:"homePlaceName,omitempty"`
+	// Code of the home place. Only populated on the caller's own profile (myTalentProfile).
+	HomePlaceCode *string `json:"homePlaceCode,omitempty"`
 	Bio           *string `json:"bio,omitempty"`
 	// Admin-curated placement for the Discover hero.
 	Featured bool `json:"featured"`
@@ -466,7 +468,7 @@ type UpdateOrganizerProfileInput struct {
 type UpdateTalentProfileInput struct {
 	Headline *string `json:"headline,omitempty"`
 	Bio      *string `json:"bio,omitempty"`
-	// A geo place code; matches that place and everything beneath it is NOT implied here — this is the talent's home base, an exact place.
+	// A geo place code; this is the talent's home base, an exact place. Null or omitted leaves it unchanged; an empty string clears it.
 	HomePlaceCode    *string  `json:"homePlaceCode,omitempty"`
 	GenreCodes       []string `json:"genreCodes,omitempty"`
 	TypeCodes        []string `json:"typeCodes,omitempty"`

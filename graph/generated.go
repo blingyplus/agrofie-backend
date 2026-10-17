@@ -371,6 +371,7 @@ type ComplexityRoot struct {
 		Featured      func(childComplexity int) int
 		Genres        func(childComplexity int) int
 		Headline      func(childComplexity int) int
+		HomePlaceCode func(childComplexity int) int
 		HomePlaceName func(childComplexity int) int
 		ID            func(childComplexity int) int
 		Languages     func(childComplexity int) int
@@ -2282,6 +2283,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.TalentProfile.Headline(childComplexity), true
+	case "TalentProfile.homePlaceCode":
+		if e.ComplexityRoot.TalentProfile.HomePlaceCode == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TalentProfile.HomePlaceCode(childComplexity), true
 	case "TalentProfile.homePlaceName":
 		if e.ComplexityRoot.TalentProfile.HomePlaceName == nil {
 			break
@@ -3150,6 +3157,8 @@ func (ec *executionContext) childFields_TalentProfile(ctx context.Context, field
 		return ec.fieldContext_TalentProfile_headline(ctx, field)
 	case "homePlaceName":
 		return ec.fieldContext_TalentProfile_homePlaceName(ctx, field)
+	case "homePlaceCode":
+		return ec.fieldContext_TalentProfile_homePlaceCode(ctx, field)
 	case "bio":
 		return ec.fieldContext_TalentProfile_bio(ctx, field)
 	case "featured":
@@ -12057,6 +12066,29 @@ func (ec *executionContext) fieldContext_TalentProfile_homePlaceName(_ context.C
 	return graphql.NewScalarFieldContext("TalentProfile", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
+func (ec *executionContext) _TalentProfile_homePlaceCode(ctx context.Context, field graphql.CollectedField, obj *model.TalentProfile) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TalentProfile_homePlaceCode(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.HomePlaceCode, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_TalentProfile_homePlaceCode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TalentProfile", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
 func (ec *executionContext) _TalentProfile_bio(ctx context.Context, field graphql.CollectedField, obj *model.TalentProfile) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -17671,6 +17703,11 @@ func (ec *executionContext) _TalentProfile(ctx context.Context, sel ast.Selectio
 			}
 		case "homePlaceName":
 			out.Values[i] = ec._TalentProfile_homePlaceName(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "homePlaceCode":
+			out.Values[i] = ec._TalentProfile_homePlaceCode(ctx, field, obj)
 			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}

@@ -92,10 +92,11 @@ type Card struct {
 
 type Profile struct {
 	Card
-	Bio          *string
-	Languages    []Tag
-	ServiceAreas []Tag
-	Rates        []Rate
+	Bio           *string
+	HomePlaceCode *string // only set on a talent's own profile
+	Languages     []Tag
+	ServiceAreas  []Tag
+	Rates         []Rate
 }
 
 type Page struct {

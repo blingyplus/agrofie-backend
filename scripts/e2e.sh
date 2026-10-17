@@ -46,6 +46,8 @@ ADM=$(val "$R" .data.login.sessionToken); expect "admin login" "$R" '.data.login
 step "talent profile, rates, payout, availability"
 R=$(gql "$TAL" 'mutation{updateMyTalentProfile(input:{headline:"E2E headline",bio:"bio",homePlaceCode:"greater_accra",genreCodes:["highlife"],typeCodes:["musician"],languageCodes:["en"],serviceAreaCodes:["greater_accra"]}){id displayName}}')
 TID=$(val "$R" .data.updateMyTalentProfile.id); expect "profile updated" "$R" '.data.updateMyTalentProfile.id|length>10' true
+R=$(gql "$TAL" 'mutation{updateMyTalentProfile(input:{headline:"E2E headline"}){homePlaceCode}}'); expect "omitted home place is unchanged" "$R" '.data.updateMyTalentProfile.homePlaceCode' greater_accra
+R=$(gql "$TAL" 'query{myTalentProfile{homePlaceCode homePlaceName}}'); expect "own profile exposes homePlaceCode" "$R" '.data.myTalentProfile.homePlaceCode' greater_accra
 R=$(gql "$TAL" 'mutation{setMyRates(rates:[{amount:"1000.00",currencyCode:"GHS",rateUnitCode:"per_event"}]){rates{amount rateUnitCode}}}')
 expect "rate set" "$R" '.data.setMyRates.rates[0].amount' "1000.00"
 R=$(gql "$TAL" 'query{settlementBanks(type:MOBILE_MONEY){code name}}'); expect "settlement banks" "$R" '.data.settlementBanks|length>0' true
