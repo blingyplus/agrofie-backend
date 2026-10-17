@@ -9,14 +9,24 @@ Stored in `roles` lookup: `talent`, `organizer`, `admin`. Users may hold multipl
 `booking_statuses` codes (order matters for UX):
 
 1. `inquiry` — organizer requested
-2. `agreed` — both sides accepted; quote snapshotted
-3. `paid` — payment confirmed by a **verified Paystack webhook** (or Verify Transaction). Never set from client input.
-4. `completed` — either party confirmed the event happened, once its `ends_at` has passed. (Not gated on payment release — Paystack has already settled both parties directly by the time a booking reaches `paid` — so requiring only the organizer would just be a single point of failure if they forget; either side unlocks reviews for both.)
-5. `cancelled` — with `cancellation_reasons`
+2. `countered` — a counter-offer is on the table (see Negotiation)
+3. `agreed` — both sides accepted; the latest offer is snapshotted as the contract terms
+4. `paid` — payment confirmed by a **verified Paystack webhook** (or Verify Transaction). Never set from client input.
+5. `completed` — either party confirmed the event happened, once its `ends_at` has passed. (Not gated on payment release — Paystack has already settled both parties directly by the time a booking reaches `paid` — so requiring only the organizer would just be a single point of failure if they forget; either side unlocks reviews for both.)
+6. `cancelled` — with `cancellation_reasons`
 
 Talent contact details unlock at `agreed`. Talent must have a verified payout account before they can be booked.
 
 Append-only history in `booking_status_events`.
+
+### Negotiation (counter-offers)
+
+- Every proposal is an immutable `booking_offers` row (round 1 = the organizer's inquiry; price from the talent's published rate). `bookings.quoted_amount` / `starts_at` / `ends_at` always mirror the **latest** offer; accepting locks them as the contract snapshot that checkout uses. The Paystack split and no-escrow design are unchanged.
+- **Turn-taking.** While status is `inquiry` or `countered`, only the party who did NOT make the last move may respond: **accept** (-> `agreed`), **counter** (-> `countered`), or (talent) **decline** (-> `cancelled`). The organizer may also **cancel** at any time while live. You can never counter, accept or decline your own offer.
+- A counter carries a price in **integer pesewas** (1 .. 100,000,000 = GHS 1,000,000), the booking currency only (GHS), optionally new `startsAt`/`endsAt` (both or neither; must be future, inside published availability and not overlap another agreed booking) and a note (<= 500 chars).
+- At most **6 counters** per booking (`MaxCounterRounds`); after that the receiver can still accept, decline or cancel.
+- `agreed`, `paid`, `completed` and `cancelled` are terminal for negotiation. Transitions lock the booking row so a counter and an accept cannot race.
+- GraphQL: `counterBooking`, `acceptCounterOffer` (either party; talents may keep using `acceptBooking`), `declineBooking`, `cancelBooking`; `BookingDetail.offers` is the trail, and `awaitingMyResponse` / `lastOfferByRole` / `counterCount` tell clients whose turn it is. Parties only; contact details stay hidden until `agreed`.
 
 ## Reviews
 

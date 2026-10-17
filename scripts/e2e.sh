@@ -109,6 +109,41 @@ R=$(gql "$ORG" 'query($i:ID!){booking(id:$i){statusCode}}' "{\"i\":\"$B2\"}"); e
 R=$(book 36); B3=$(val "$R" .data.requestBooking.id)
 R=$(gql "$TAL" 'mutation($i:ID!){declineBooking(id:$i){statusCode}}' "{\"i\":\"$B3\"}"); expect "talent declined -> cancelled" "$R" '.data.declineBooking.statusCode' cancelled
 
+step "counter-offers: counter -> counter back -> accept -> pay -> complete"
+DET='id statusCode quotedAmount awaitingMyResponse lastOfferByRole counterCount offers{round byRole byMe amountPesewas note}'
+R=$(book 39); B4=$(val "$R" .data.requestBooking.id)
+R=$(gql "$ORG" 'query{myBookingsAsOrganizer{id awaitingMyResponse}}'); echo "$R" | jq -e --arg b "$B4" '.data.myBookingsAsOrganizer[]|select(.id==$b)|.awaitingMyResponse==false' >/dev/null && ok "organizer waits on inquiry" || fail "organizer awaiting flag $R"
+R=$(gql "$TAL" 'query{myBookingsAsTalent{id awaitingMyResponse}}'); echo "$R" | jq -e --arg b "$B4" '.data.myBookingsAsTalent[]|select(.id==$b)|.awaitingMyResponse==true' >/dev/null && ok "talent owes a response" || fail "talent awaiting flag $R"
+R=$(gql "$ORG" 'mutation($i:ID!){counterBooking(input:{bookingId:$i,amountPesewas:90000}){id}}' "{\"i\":\"$B4\"}"); echo "$R" | jq -e '.errors' >/dev/null && ok "organizer cannot counter own inquiry (not their turn)" || fail "organizer countered own inquiry"
+R=$(gql "$TAL" 'mutation($i:ID!){counterBooking(input:{bookingId:$i,amountPesewas:0}){id}}' "{\"i\":\"$B4\"}"); echo "$R" | jq -e '.errors' >/dev/null && ok "zero amount rejected" || fail "zero amount accepted"
+R=$(gql "$TAL" 'mutation($i:ID!){counterBooking(input:{bookingId:$i,amountPesewas:150000,currencyCode:"USD"}){id}}' "{\"i\":\"$B4\"}"); echo "$R" | jq -e '.errors' >/dev/null && ok "wrong currency rejected" || fail "USD accepted"
+R=$(gql "$TAL" "mutation(\$i:ID!){counterBooking(input:{bookingId:\$i,amountPesewas:130000,note:\"Sound system included\"}){$DET}}" "{\"i\":\"$B4\"}")
+expect "talent countered -> countered" "$R" '.data.counterBooking.statusCode' countered; expect "price updated" "$R" '.data.counterBooking.quotedAmount' "1300.00"
+expect "talent no longer awaiting" "$R" '.data.counterBooking.awaitingMyResponse' false
+R=$(gql "$TAL" 'mutation($i:ID!){counterBooking(input:{bookingId:$i,amountPesewas:125000}){id}}' "{\"i\":\"$B4\"}"); echo "$R" | jq -e '.errors' >/dev/null && ok "talent cannot counter twice in a row" || fail "talent double counter"
+R=$(gql "$TAL" 'mutation($i:ID!){acceptBooking(id:$i){id}}' "{\"i\":\"$B4\"}"); echo "$R" | jq -e '.errors' >/dev/null && ok "talent cannot accept own counter" || fail "talent accepted own counter"
+R=$(gql "$ORG" "mutation(\$i:ID!){counterBooking(input:{bookingId:\$i,amountPesewas:115000,note:\"Meet in the middle?\"}){$DET}}" "{\"i\":\"$B4\"}")
+expect "organizer countered back" "$R" '.data.counterBooking.statusCode' countered; expect "history has 3 offers" "$R" '.data.counterBooking.offers|length' 3
+expect "trail: byRole sequence" "$R" '[.data.counterBooking.offers[].byRole]|join(",")' organizer,talent,organizer; expect "counterCount" "$R" '.data.counterBooking.counterCount' 2
+R=$(gql "$TAL" "query(\$i:ID!){booking(id:\$i){$DET}}" "{\"i\":\"$B4\"}"); expect "talent awaiting response" "$R" '.data.booking.awaitingMyResponse' true; expect "talent sees note in trail" "$R" '.data.booking.offers[1].note' "Sound system included"
+R=$(gql "$ORG" 'mutation($i:ID!){acceptCounterOffer(id:$i){statusCode}}' "{\"i\":\"$B4\"}"); echo "$R" | jq -e '.errors' >/dev/null && ok "organizer cannot accept own counter" || fail "organizer accepted own counter"
+R=$(gql "$TAL" 'mutation($i:ID!){acceptBooking(id:$i){statusCode quotedAmount}}' "{\"i\":\"$B4\"}"); expect "talent accepted -> agreed" "$R" '.data.acceptBooking.statusCode' agreed; expect "agreed at latest counter" "$R" '.data.acceptBooking.quotedAmount' "1150.00"
+R=$(gql "$ORG" 'query($i:ID!){booking(id:$i){termsText}}' "{\"i\":\"$B4\"}"); expect "contract has negotiated price" "$R" '.data.booking.termsText|contains("1150.00")' true
+R=$(gql "$TAL" 'mutation($i:ID!){counterBooking(input:{bookingId:$i,amountPesewas:100000}){id}}' "{\"i\":\"$B4\"}"); echo "$R" | jq -e '.errors' >/dev/null && ok "cannot counter an agreed booking" || fail "countered agreed booking"
+R=$(gql "$ORG" 'mutation($i:ID!){initiateCheckout(bookingId:$i){reference amountPesewas}}' "{\"i\":\"$B4\"}"); REF4=$(val "$R" .data.initiateCheckout.reference); expect "checkout uses negotiated price" "$R" '.data.initiateCheckout.amountPesewas' 115000
+curl -s -o /dev/null -X POST "$GW/pay/fake/$REF4" -d 'outcome=success'
+R=$(gql "$ORG" 'query($i:ID!){booking(id:$i){statusCode}}' "{\"i\":\"$B4\"}"); expect "negotiated booking paid" "$R" '.data.booking.statusCode' paid
+R=$(gql "$TAL" 'mutation($i:ID!){completeBooking(id:$i){statusCode}}' "{\"i\":\"$B4\"}"); expect "negotiated booking completed" "$R" '.data.completeBooking.statusCode' completed
+R=$(book 42); B5=$(val "$R" .data.requestBooking.id)
+gql "$TAL" 'mutation($i:ID!){counterBooking(input:{bookingId:$i,amountPesewas:120000}){id}}' "{\"i\":\"$B5\"}" >/dev/null
+R=$(gql "$ORG" 'mutation($i:ID!){cancelBooking(id:$i){statusCode}}' "{\"i\":\"$B5\"}"); expect "organizer cancels a countered booking" "$R" '.data.cancelBooking.statusCode' cancelled
+R=$(book 45); B6=$(val "$R" .data.requestBooking.id)
+for n in 1 2 3 4 5 6; do
+  if [ $((n%2)) = 1 ]; then T="$TAL"; else T="$ORG"; fi
+  gql "$T" 'mutation($i:ID!,$a:Int!){counterBooking(input:{bookingId:$i,amountPesewas:$a}){id}}' "{\"i\":\"$B6\",\"a\":$((100000+n*1000))}" >/dev/null
+done
+R=$(gql "$TAL" 'mutation($i:ID!){counterBooking(input:{bookingId:$i,amountPesewas:99000}){id}}' "{\"i\":\"$B6\"}"); echo "$R" | jq -e '.errors[0].message|contains("maximum")' >/dev/null && ok "7th counter blocked (max rounds)" || fail "max rounds not enforced $R"
+
 step "discover data: rating, featured, sorts"
 R=$(gql "$ORG" 'query($t:ID!){talent(id:$t){featured ratingAverage reviewCount createdAt}}' "{\"t\":\"$TID\"}")
 expect "detail rating (organizer review only)" "$R" '.data.talent.ratingAverage' 5; expect "detail reviewCount" "$R" '.data.talent.reviewCount' 1

@@ -15,7 +15,7 @@ Rule: if a **name, type, status, or category can change** or needs **admin contr
 | `languages`, `event_types`, `rate_units`, `currencies` | Commercial / profile |
 | `media_types` | avatar, photo, audio, video |
 | `verification_types`, `verification_statuses` | KYC pipeline |
-| `booking_statuses` | inquiry → agreed → paid → completed / cancelled |
+| `booking_statuses` | inquiry → countered* → agreed → paid → completed / cancelled |
 | `payment_statuses` | pending / succeeded / failed |
 | `dispute_reasons`, `dispute_statuses`, `cancellation_reasons` | Ops |
 
@@ -46,6 +46,7 @@ Kratos tables live in Postgres schema `kratos` (same database, `search_path=krat
 | --- | --- |
 | `bookings` | FKs + venue_text + snapshotted quote |
 | `booking_status_events` | Append-only status history |
+| `booking_offers` | Immutable negotiation trail: one row per proposal (round, offered_by_user_id, amount, currency_code, starts_at, ends_at, note); latest row mirrors the booking's quoted terms |
 | `contracts` | Terms document per booking |
 | `payout_accounts` | Talent's Paystack subaccount code, settlement type (bank / mobile money), last-4 account number, active flag |
 | `payments` | One row per checkout attempt: booking, provider_reference (unique), amount_pesewas, commission_pesewas, currency, checkout_url, status |
