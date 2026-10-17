@@ -317,6 +317,15 @@ func (s *Service) OwnProfile(ctx context.Context, userID string) (*discovery.Pro
 			p.Rates = append(p.Rates, discovery.Rate{Amount: r.Amount, CurrencyCode: r.CurrencyCode, RateUnitCode: r.RateUnitCode, EventTypeCode: r.EventTypeCode})
 		}
 
+		mrows, err := q.ListTalentMediaIDs(ctx, ids)
+		if err != nil {
+			return fmt.Errorf("list talent media: %w", err)
+		}
+		for _, m := range mrows {
+			p.PhotoMediaID = discovery.OptUUID(m.PhotoMediaID)
+			p.CoverMediaID = discovery.OptUUID(m.CoverMediaID)
+		}
+
 		out = p
 		return nil
 	})

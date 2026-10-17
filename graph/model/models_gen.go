@@ -179,6 +179,13 @@ type Lookup struct {
 	IsActive  bool   `json:"isActive"`
 }
 
+// An uploaded file. For private media the url is signed and expires after about 10 minutes; re-query for a fresh one.
+type MediaRef struct {
+	ID   string `json:"id"`
+	Mime string `json:"mime"`
+	URL  string `json:"url"`
+}
+
 type Mutation struct {
 }
 
@@ -241,13 +248,15 @@ type PayoutAccount struct {
 
 // One item in the admin review queue.
 type PendingVerification struct {
-	ID                string  `json:"id"`
-	TalentUserID      string  `json:"talentUserId"`
-	TalentDisplayName string  `json:"talentDisplayName"`
-	TypeCode          string  `json:"typeCode"`
-	TypeName          string  `json:"typeName"`
-	EvidenceRef       *string `json:"evidenceRef,omitempty"`
-	Notes             *string `json:"notes,omitempty"`
+	ID string `json:"id"`
+	// The uploaded evidence document (admin view); url is signed and short-lived.
+	EvidenceMedia     *MediaRef `json:"evidenceMedia,omitempty"`
+	TalentUserID      string    `json:"talentUserId"`
+	TalentDisplayName string    `json:"talentDisplayName"`
+	TypeCode          string    `json:"typeCode"`
+	TypeName          string    `json:"typeName"`
+	EvidenceRef       *string   `json:"evidenceRef,omitempty"`
+	Notes             *string   `json:"notes,omitempty"`
 }
 
 type Query struct {
@@ -317,7 +326,10 @@ type SubmitReviewInput struct {
 }
 
 type SubmitVerificationInput struct {
-	TypeCode    string  `json:"typeCode"`
+	TypeCode string `json:"typeCode"`
+	// Id of a verification_document uploaded via POST /media (must be yours).
+	MediaID *string `json:"mediaId,omitempty"`
+	// Pasted link; kept for compatibility. Prefer mediaId.
 	EvidenceRef *string `json:"evidenceRef,omitempty"`
 	Notes       *string `json:"notes,omitempty"`
 }
@@ -363,6 +375,10 @@ type TalentCard struct {
 	ReviewCount   int      `json:"reviewCount"`
 	// When the talent joined Agrofie (RFC 3339). Drives "New on Agrofie".
 	CreatedAt string `json:"createdAt"`
+	// Absolute URL of the talent's photo (medium variant), or null.
+	PhotoURL *string `json:"photoUrl,omitempty"`
+	// Absolute URL of the talent's cover/banner (medium variant), or null.
+	CoverURL *string `json:"coverUrl,omitempty"`
 }
 
 type TalentFilter struct {
@@ -401,6 +417,10 @@ type TalentProfile struct {
 	Languages    []*Tag  `json:"languages"`
 	ServiceAreas []*Tag  `json:"serviceAreas"`
 	Rates        []*Rate `json:"rates"`
+	// Absolute URL of the talent's photo (medium variant), or null.
+	PhotoURL *string `json:"photoUrl,omitempty"`
+	// Absolute URL of the talent's cover/banner (medium variant), or null.
+	CoverURL *string `json:"coverUrl,omitempty"`
 }
 
 // An organizer's "Tell us what you need" pitch. Visible only to its organizer and admins; talent are never shown these.
@@ -463,14 +483,15 @@ type User struct {
 }
 
 type Verification struct {
-	ID          string  `json:"id"`
-	TypeCode    string  `json:"typeCode"`
-	TypeName    string  `json:"typeName"`
-	StatusCode  string  `json:"statusCode"`
-	StatusName  string  `json:"statusName"`
-	EvidenceRef *string `json:"evidenceRef,omitempty"`
-	Notes       *string `json:"notes,omitempty"`
-	ReviewNotes *string `json:"reviewNotes,omitempty"`
+	ID            string    `json:"id"`
+	EvidenceMedia *MediaRef `json:"evidenceMedia,omitempty"`
+	TypeCode      string    `json:"typeCode"`
+	TypeName      string    `json:"typeName"`
+	StatusCode    string    `json:"statusCode"`
+	StatusName    string    `json:"statusName"`
+	EvidenceRef   *string   `json:"evidenceRef,omitempty"`
+	Notes         *string   `json:"notes,omitempty"`
+	ReviewNotes   *string   `json:"reviewNotes,omitempty"`
 }
 
 type LookupTable string

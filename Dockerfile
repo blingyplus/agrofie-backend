@@ -11,12 +11,13 @@ RUN CGO_ENABLED=0 go build -o /out/gateway ./cmd/gateway \
  && CGO_ENABLED=0 go build -o /out/auth ./cmd/auth \
  && CGO_ENABLED=0 go build -o /out/booking ./cmd/booking \
  && CGO_ENABLED=0 go build -o /out/payments ./cmd/payments \
+ && CGO_ENABLED=0 go build -o /out/media-gc ./cmd/media-gc \
  && CGO_ENABLED=0 go build -o /out/migrate ./cmd/migrate
 
 FROM alpine:3.21 AS runtime
 RUN apk add --no-cache ca-certificates
 WORKDIR /app
-COPY --from=build /out/gateway /out/auth /out/booking /out/payments /usr/local/bin/
+COPY --from=build /out/gateway /out/auth /out/booking /out/payments /out/media-gc /usr/local/bin/
 COPY db/migrations /app/db/migrations
 ENTRYPOINT []
 

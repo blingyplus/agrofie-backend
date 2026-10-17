@@ -6,3 +6,6 @@ dist/
 .idea/
 .vscode/
 coverage.out
+
+# local uploads (MEDIA_DIR default)
+data/

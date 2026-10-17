@@ -19,6 +19,8 @@ var (
 	ErrUnknownCode = errors.New("unknown lookup code")
 	ErrNotFound    = errors.New("verification not found")
 	ErrNotPending  = errors.New("verification already reviewed")
+
+	ErrEvidenceInvalid = errors.New("evidence document not found or not yours")
 )
 
 // identityTypeCode is the one verification type that gates search
@@ -59,6 +61,9 @@ type SubmitInput struct {
 	TypeCode    string
 	EvidenceRef *string
 	Notes       *string
+	// EvidenceMediaID is an uploaded document (kind verification_document)
+	// owned by the submitter. Either this or EvidenceRef may be given.
+	EvidenceMediaID *string
 }
 
 type Verification struct {
@@ -70,6 +75,9 @@ type Verification struct {
 	EvidenceRef *string
 	Notes       *string
 	ReviewNotes *string
+	// EvidenceMediaID/EvidenceMime describe the uploaded document, if any.
+	EvidenceMediaID *string
+	EvidenceMime    *string
 }
 
 type PendingItem struct {
@@ -80,6 +88,8 @@ type PendingItem struct {
 	TypeName          string
 	EvidenceRef       *string
 	Notes             *string
+	EvidenceMediaID   *string
+	EvidenceMime      *string
 }
 
 // Submit records a new pending verification request for userID.
@@ -88,10 +98,25 @@ func (s *Service) Submit(ctx context.Context, userID string, in SubmitInput) (*V
 	if err != nil {
 		return nil, err
 	}
+	var mediaID pgtype.UUID
+	if in.EvidenceMediaID != nil && *in.EvidenceMediaID != "" {
+		mu, err := uuid.Parse(*in.EvidenceMediaID)
+		if err != nil {
+			return nil, ErrEvidenceInvalid
+		}
+		mediaID = pgtype.UUID{Bytes: mu, Valid: true}
+	}
 	var out *Verification
 	err = s.withTx(ctx, func(q *db.Queries) error {
+		if mediaID.Valid {
+			// Users can only attach their own, active verification documents.
+			m, err := q.GetMedia(ctx, mediaID)
+			if err != nil || m.Status != "active" || m.OwnerUserID != uid || m.KindCode != "verification_document" {
+				return ErrEvidenceInvalid
+			}
+		}
 		id, err := q.InsertVerification(ctx, db.InsertVerificationParams{
-			UserID: uid, Code: in.TypeCode, EvidenceRef: in.EvidenceRef, Notes: in.Notes,
+			UserID: uid, Code: in.TypeCode, EvidenceRef: in.EvidenceRef, Notes: in.Notes, EvidenceMediaID: mediaID,
 		})
 		if errors.Is(err, pgx.ErrNoRows) {
 			return fmt.Errorf("%w: verification type %q", ErrUnknownCode, in.TypeCode)
@@ -123,6 +148,7 @@ func (s *Service) ListPending(ctx context.Context) ([]PendingItem, error) {
 			out = append(out, PendingItem{
 				ID: uuidString(r.ID), TalentUserID: uuidString(r.UserID), TalentDisplayName: r.TalentDisplayName,
 				TypeCode: r.TypeCode, TypeName: r.TypeName, EvidenceRef: r.EvidenceRef, Notes: r.Notes,
+				EvidenceMediaID: uuidPtr(r.EvidenceMediaID), EvidenceMime: r.EvidenceMime,
 			})
 		}
 		return nil
@@ -148,6 +174,7 @@ func (s *Service) ListMine(ctx context.Context, userID string) ([]Verification, 
 				ID: uuidString(r.ID), TypeCode: r.TypeCode, TypeName: r.TypeName,
 				StatusCode: r.StatusCode, StatusName: r.StatusName,
 				EvidenceRef: r.EvidenceRef, Notes: r.Notes, ReviewNotes: r.ReviewNotes,
+				EvidenceMediaID: uuidPtr(r.EvidenceMediaID), EvidenceMime: r.EvidenceMime,
 			})
 		}
 		return nil
@@ -221,7 +248,16 @@ func fromGetRow(r db.GetVerificationByIDRow) *Verification {
 		ID: uuidString(r.ID), TypeCode: r.TypeCode, TypeName: r.TypeName,
 		StatusCode: r.StatusCode, StatusName: r.StatusName,
 		EvidenceRef: r.EvidenceRef, Notes: r.Notes, ReviewNotes: r.ReviewNotes,
+		EvidenceMediaID: uuidPtr(r.EvidenceMediaID), EvidenceMime: r.EvidenceMime,
 	}
+}
+
+func uuidPtr(u pgtype.UUID) *string {
+	if !u.Valid {
+		return nil
+	}
+	s := uuidString(u)
+	return &s
 }
 
 func parseUUID(s string) (pgtype.UUID, error) {

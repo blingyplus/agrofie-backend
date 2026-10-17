@@ -27,6 +27,11 @@ type Config struct {
 	// DevAllowEarlyComplete lets a booking be completed before its event ends.
 	// Local testing only; never set in production.
 	DevAllowEarlyComplete bool
+	// MediaDir is the local-disk root for uploads (default ./data/media).
+	MediaDir string
+	// MediaSigningSecret signs short-lived private-media URLs. If empty a random
+	// per-process secret is used (links die on restart; set it in any multi-instance deploy).
+	MediaSigningSecret string
 }
 
 func Load(serviceName string) Config {
@@ -48,6 +53,8 @@ func Load(serviceName string) Config {
 		PaymentsProvider:      env("PAYMENTS_PROVIDER", ""),
 		PublicBaseURL:         env("PUBLIC_BASE_URL", "http://localhost:8080"),
 		DevAllowEarlyComplete: env("DEV_ALLOW_EARLY_COMPLETE", "") == "true",
+		MediaDir:              env("MEDIA_DIR", "./data/media"),
+		MediaSigningSecret:    env("MEDIA_SIGNING_SECRET", ""),
 	}
 }
 

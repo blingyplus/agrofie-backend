@@ -204,6 +204,18 @@ type MediaAsset struct {
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 }
 
+type MediaKind struct {
+	ID                pgtype.UUID        `json:"id"`
+	Code              string             `json:"code"`
+	Name              string             `json:"name"`
+	DefaultVisibility string             `json:"default_visibility"`
+	SortOrder         int32              `json:"sort_order"`
+	IsActive          bool               `json:"is_active"`
+	Metadata          []byte             `json:"metadata"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
+}
+
 type MediaType struct {
 	ID        pgtype.UUID        `json:"id"`
 	Code      string             `json:"code"`
@@ -213,6 +225,23 @@ type MediaType struct {
 	Metadata  []byte             `json:"metadata"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+type Medium struct {
+	ID          pgtype.UUID        `json:"id"`
+	OwnerUserID pgtype.UUID        `json:"owner_user_id"`
+	KindID      pgtype.UUID        `json:"kind_id"`
+	Mime        string             `json:"mime"`
+	SizeBytes   int64              `json:"size_bytes"`
+	Width       *int32             `json:"width"`
+	Height      *int32             `json:"height"`
+	StorageKey  string             `json:"storage_key"`
+	Sha256      string             `json:"sha256"`
+	Visibility  string             `json:"visibility"`
+	Status      string             `json:"status"`
+	Variants    []string           `json:"variants"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
 }
 
 type OrganizerEventType struct {
@@ -362,6 +391,8 @@ type TalentProfile struct {
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
 	Featured       bool               `json:"featured"`
 	FeaturedRank   *int32             `json:"featured_rank"`
+	PhotoMediaID   pgtype.UUID        `json:"photo_media_id"`
+	CoverMediaID   pgtype.UUID        `json:"cover_media_id"`
 }
 
 type TalentRate struct {
@@ -463,6 +494,7 @@ type Verification struct {
 	CreatedAt            pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
 	ReviewNotes          *string            `json:"review_notes"`
+	EvidenceMediaID      pgtype.UUID        `json:"evidence_media_id"`
 }
 
 type VerificationStatus struct {

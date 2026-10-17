@@ -165,6 +165,12 @@ type ComplexityRoot struct {
 		SortOrder func(childComplexity int) int
 	}
 
+	MediaRef struct {
+		ID   func(childComplexity int) int
+		Mime func(childComplexity int) int
+		URL  func(childComplexity int) int
+	}
+
 	Mutation struct {
 		AcceptBooking             func(childComplexity int, id string) int
 		AcceptCounterOffer        func(childComplexity int, id string) int
@@ -189,7 +195,9 @@ type ComplexityRoot struct {
 		ResolveDispute            func(childComplexity int, id string, statusCode string, resolutionNote *string) int
 		SetLookupActive           func(childComplexity int, table model.LookupTable, code string, isActive bool) int
 		SetMyRates                func(childComplexity int, rates []*model.RateInput) int
+		SetTalentCover            func(childComplexity int, mediaID *string) int
 		SetTalentFeatured         func(childComplexity int, talentID string, featured bool, rank *int) int
+		SetTalentPhoto            func(childComplexity int, mediaID *string) int
 		SetTalentRequestStatus    func(childComplexity int, id string, statusCode string) int
 		SubmitReview              func(childComplexity int, input model.SubmitReviewInput) int
 		SubmitVerification        func(childComplexity int, input model.SubmitVerificationInput) int
@@ -243,6 +251,7 @@ type ComplexityRoot struct {
 	}
 
 	PendingVerification struct {
+		EvidenceMedia     func(childComplexity int) int
 		EvidenceRef       func(childComplexity int) int
 		ID                func(childComplexity int) int
 		Notes             func(childComplexity int) int
@@ -334,6 +343,7 @@ type ComplexityRoot struct {
 	}
 
 	TalentCard struct {
+		CoverURL      func(childComplexity int) int
 		CreatedAt     func(childComplexity int) int
 		DisplayName   func(childComplexity int) int
 		Featured      func(childComplexity int) int
@@ -342,6 +352,7 @@ type ComplexityRoot struct {
 		Headline      func(childComplexity int) int
 		HomePlaceName func(childComplexity int) int
 		ID            func(childComplexity int) int
+		PhotoURL      func(childComplexity int) int
 		RatingAverage func(childComplexity int) int
 		ReviewCount   func(childComplexity int) int
 		Types         func(childComplexity int) int
@@ -354,6 +365,7 @@ type ComplexityRoot struct {
 
 	TalentProfile struct {
 		Bio           func(childComplexity int) int
+		CoverURL      func(childComplexity int) int
 		CreatedAt     func(childComplexity int) int
 		DisplayName   func(childComplexity int) int
 		Featured      func(childComplexity int) int
@@ -362,6 +374,7 @@ type ComplexityRoot struct {
 		HomePlaceName func(childComplexity int) int
 		ID            func(childComplexity int) int
 		Languages     func(childComplexity int) int
+		PhotoURL      func(childComplexity int) int
 		Rates         func(childComplexity int) int
 		RatingAverage func(childComplexity int) int
 		ReviewCount   func(childComplexity int) int
@@ -396,14 +409,15 @@ type ComplexityRoot struct {
 	}
 
 	Verification struct {
-		EvidenceRef func(childComplexity int) int
-		ID          func(childComplexity int) int
-		Notes       func(childComplexity int) int
-		ReviewNotes func(childComplexity int) int
-		StatusCode  func(childComplexity int) int
-		StatusName  func(childComplexity int) int
-		TypeCode    func(childComplexity int) int
-		TypeName    func(childComplexity int) int
+		EvidenceMedia func(childComplexity int) int
+		EvidenceRef   func(childComplexity int) int
+		ID            func(childComplexity int) int
+		Notes         func(childComplexity int) int
+		ReviewNotes   func(childComplexity int) int
+		StatusCode    func(childComplexity int) int
+		StatusName    func(childComplexity int) int
+		TypeCode      func(childComplexity int) int
+		TypeName      func(childComplexity int) int
 	}
 }
 
@@ -424,6 +438,8 @@ type MutationResolver interface {
 	ConnectMyPayoutAccount(ctx context.Context, input model.ConnectPayoutInput) (*model.PayoutAccount, error)
 	SetTalentFeatured(ctx context.Context, talentID string, featured bool, rank *int) (*model.TalentProfile, error)
 	SubmitVerification(ctx context.Context, input model.SubmitVerificationInput) (*model.Verification, error)
+	SetTalentPhoto(ctx context.Context, mediaID *string) (*model.TalentProfile, error)
+	SetTalentCover(ctx context.Context, mediaID *string) (*model.TalentProfile, error)
 	ApproveVerification(ctx context.Context, id string, reviewNotes *string) (*model.Verification, error)
 	RejectVerification(ctx context.Context, id string, reviewNotes *string) (*model.Verification, error)
 	AddMyAvailabilityBlock(ctx context.Context, input model.AddAvailabilityBlockInput) (*model.AvailabilityBlock, error)
@@ -1047,6 +1063,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Lookup.SortOrder(childComplexity), true
 
+	case "MediaRef.id":
+		if e.ComplexityRoot.MediaRef.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MediaRef.ID(childComplexity), true
+	case "MediaRef.mime":
+		if e.ComplexityRoot.MediaRef.Mime == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MediaRef.Mime(childComplexity), true
+	case "MediaRef.url":
+		if e.ComplexityRoot.MediaRef.URL == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MediaRef.URL(childComplexity), true
+
 	case "Mutation.acceptBooking":
 		if e.ComplexityRoot.Mutation.AcceptBooking == nil {
 			break
@@ -1295,6 +1330,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.SetMyRates(childComplexity, args["rates"].([]*model.RateInput)), true
+	case "Mutation.setTalentCover":
+		if e.ComplexityRoot.Mutation.SetTalentCover == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setTalentCover_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.SetTalentCover(childComplexity, args["mediaId"].(*string)), true
 	case "Mutation.setTalentFeatured":
 		if e.ComplexityRoot.Mutation.SetTalentFeatured == nil {
 			break
@@ -1306,6 +1352,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.SetTalentFeatured(childComplexity, args["talentId"].(string), args["featured"].(bool), args["rank"].(*int)), true
+	case "Mutation.setTalentPhoto":
+		if e.ComplexityRoot.Mutation.SetTalentPhoto == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setTalentPhoto_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.SetTalentPhoto(childComplexity, args["mediaId"].(*string)), true
 	case "Mutation.setTalentRequestStatus":
 		if e.ComplexityRoot.Mutation.SetTalentRequestStatus == nil {
 			break
@@ -1574,6 +1631,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.PayoutAccount.SettlementType(childComplexity), true
 
+	case "PendingVerification.evidenceMedia":
+		if e.ComplexityRoot.PendingVerification.EvidenceMedia == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PendingVerification.EvidenceMedia(childComplexity), true
 	case "PendingVerification.evidenceRef":
 		if e.ComplexityRoot.PendingVerification.EvidenceRef == nil {
 			break
@@ -2085,6 +2148,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.TalentBooking.VenueText(childComplexity), true
 
+	case "TalentCard.coverUrl":
+		if e.ComplexityRoot.TalentCard.CoverURL == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TalentCard.CoverURL(childComplexity), true
 	case "TalentCard.createdAt":
 		if e.ComplexityRoot.TalentCard.CreatedAt == nil {
 			break
@@ -2133,6 +2202,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.TalentCard.ID(childComplexity), true
+	case "TalentCard.photoUrl":
+		if e.ComplexityRoot.TalentCard.PhotoURL == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TalentCard.PhotoURL(childComplexity), true
 	case "TalentCard.ratingAverage":
 		if e.ComplexityRoot.TalentCard.RatingAverage == nil {
 			break
@@ -2171,6 +2246,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.TalentProfile.Bio(childComplexity), true
+	case "TalentProfile.coverUrl":
+		if e.ComplexityRoot.TalentProfile.CoverURL == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TalentProfile.CoverURL(childComplexity), true
 	case "TalentProfile.createdAt":
 		if e.ComplexityRoot.TalentProfile.CreatedAt == nil {
 			break
@@ -2219,6 +2300,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.TalentProfile.Languages(childComplexity), true
+	case "TalentProfile.photoUrl":
+		if e.ComplexityRoot.TalentProfile.PhotoURL == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TalentProfile.PhotoURL(childComplexity), true
 	case "TalentProfile.rates":
 		if e.ComplexityRoot.TalentProfile.Rates == nil {
 			break
@@ -2372,6 +2459,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.User.RoleCodes(childComplexity), true
 
+	case "Verification.evidenceMedia":
+		if e.ComplexityRoot.Verification.EvidenceMedia == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Verification.EvidenceMedia(childComplexity), true
 	case "Verification.evidenceRef":
 		if e.ComplexityRoot.Verification.EvidenceRef == nil {
 			break
@@ -2789,6 +2882,18 @@ func (ec *executionContext) childFields_Lookup(ctx context.Context, field graphq
 	return nil, fmt.Errorf("no field named %q was found under type Lookup", field.Name)
 }
 
+func (ec *executionContext) childFields_MediaRef(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "id":
+		return ec.fieldContext_MediaRef_id(ctx, field)
+	case "mime":
+		return ec.fieldContext_MediaRef_mime(ctx, field)
+	case "url":
+		return ec.fieldContext_MediaRef_url(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type MediaRef", field.Name)
+}
+
 func (ec *executionContext) childFields_OrganizerBooking(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "id":
@@ -2879,6 +2984,8 @@ func (ec *executionContext) childFields_PendingVerification(ctx context.Context,
 	switch field.Name {
 	case "id":
 		return ec.fieldContext_PendingVerification_id(ctx, field)
+	case "evidenceMedia":
+		return ec.fieldContext_PendingVerification_evidenceMedia(ctx, field)
 	case "talentUserId":
 		return ec.fieldContext_PendingVerification_talentUserId(ctx, field)
 	case "talentDisplayName":
@@ -3015,6 +3122,10 @@ func (ec *executionContext) childFields_TalentCard(ctx context.Context, field gr
 		return ec.fieldContext_TalentCard_reviewCount(ctx, field)
 	case "createdAt":
 		return ec.fieldContext_TalentCard_createdAt(ctx, field)
+	case "photoUrl":
+		return ec.fieldContext_TalentCard_photoUrl(ctx, field)
+	case "coverUrl":
+		return ec.fieldContext_TalentCard_coverUrl(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type TalentCard", field.Name)
 }
@@ -3059,6 +3170,10 @@ func (ec *executionContext) childFields_TalentProfile(ctx context.Context, field
 		return ec.fieldContext_TalentProfile_serviceAreas(ctx, field)
 	case "rates":
 		return ec.fieldContext_TalentProfile_rates(ctx, field)
+	case "photoUrl":
+		return ec.fieldContext_TalentProfile_photoUrl(ctx, field)
+	case "coverUrl":
+		return ec.fieldContext_TalentProfile_coverUrl(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type TalentProfile", field.Name)
 }
@@ -3119,6 +3234,8 @@ func (ec *executionContext) childFields_Verification(ctx context.Context, field 
 	switch field.Name {
 	case "id":
 		return ec.fieldContext_Verification_id(ctx, field)
+	case "evidenceMedia":
+		return ec.fieldContext_Verification_evidenceMedia(ctx, field)
 	case "typeCode":
 		return ec.fieldContext_Verification_typeCode(ctx, field)
 	case "typeName":
@@ -3639,6 +3756,20 @@ func (ec *executionContext) field_Mutation_setMyRates_args(ctx context.Context, 
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_setTalentCover_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "mediaId",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOID2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["mediaId"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_setTalentFeatured_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -3666,6 +3797,20 @@ func (ec *executionContext) field_Mutation_setTalentFeatured_args(ctx context.Co
 		return nil, err
 	}
 	args["rank"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_setTalentPhoto_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "mediaId",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOID2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["mediaId"] = arg0
 	return args, nil
 }
 
@@ -6324,6 +6469,75 @@ func (ec *executionContext) fieldContext_Lookup_isActive(_ context.Context, fiel
 	return graphql.NewScalarFieldContext("Lookup", field, false, false, errors.New("field of type Boolean does not have child fields"))
 }
 
+func (ec *executionContext) _MediaRef_id(ctx context.Context, field graphql.CollectedField, obj *model.MediaRef) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_MediaRef_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_MediaRef_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("MediaRef", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _MediaRef_mime(ctx context.Context, field graphql.CollectedField, obj *model.MediaRef) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_MediaRef_mime(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Mime, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_MediaRef_mime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("MediaRef", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _MediaRef_url(ctx context.Context, field graphql.CollectedField, obj *model.MediaRef) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_MediaRef_url(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.URL, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_MediaRef_url(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("MediaRef", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
 func (ec *executionContext) _Mutation_register(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -6964,6 +7178,130 @@ func (ec *executionContext) fieldContext_Mutation_submitVerification(ctx context
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_submitVerification_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_setTalentPhoto(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_setTalentPhoto(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().SetTalentPhoto(ctx, fc.Args["mediaId"].(*string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				code, err := ec.unmarshalNString2string(ctx, "talent")
+				if err != nil {
+					var zeroVal *model.TalentProfile
+					return zeroVal, err
+				}
+				if ec.Directives.HasRole == nil {
+					var zeroVal *model.TalentProfile
+					return zeroVal, errors.New("directive hasRole is not implemented")
+				}
+				return ec.Directives.HasRole(ctx, nil, directive0, code)
+			}
+
+			next = directive1
+			return next
+		},
+		func(ctx context.Context, selections ast.SelectionSet, v *model.TalentProfile) graphql.Marshaler {
+			return ec.marshalNTalentProfile2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐTalentProfile(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_setTalentPhoto(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_TalentProfile(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setTalentPhoto_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_setTalentCover(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_setTalentCover(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().SetTalentCover(ctx, fc.Args["mediaId"].(*string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				code, err := ec.unmarshalNString2string(ctx, "talent")
+				if err != nil {
+					var zeroVal *model.TalentProfile
+					return zeroVal, err
+				}
+				if ec.Directives.HasRole == nil {
+					var zeroVal *model.TalentProfile
+					return zeroVal, errors.New("directive hasRole is not implemented")
+				}
+				return ec.Directives.HasRole(ctx, nil, directive0, code)
+			}
+
+			next = directive1
+			return next
+		},
+		func(ctx context.Context, selections ast.SelectionSet, v *model.TalentProfile) graphql.Marshaler {
+			return ec.marshalNTalentProfile2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐTalentProfile(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_setTalentCover(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_TalentProfile(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setTalentCover_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -8866,6 +9204,38 @@ func (ec *executionContext) _PendingVerification_id(ctx context.Context, field g
 }
 func (ec *executionContext) fieldContext_PendingVerification_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("PendingVerification", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _PendingVerification_evidenceMedia(ctx context.Context, field graphql.CollectedField, obj *model.PendingVerification) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PendingVerification_evidenceMedia(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.EvidenceMedia, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.MediaRef) graphql.Marshaler {
+			return ec.marshalOMediaRef2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐMediaRef(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_PendingVerification_evidenceMedia(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PendingVerification",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_MediaRef(ctx, field)
+		},
+	}
+	return fc, nil
 }
 
 func (ec *executionContext) _PendingVerification_talentUserId(ctx context.Context, field graphql.CollectedField, obj *model.PendingVerification) (ret graphql.Marshaler) {
@@ -11494,6 +11864,52 @@ func (ec *executionContext) fieldContext_TalentCard_createdAt(_ context.Context,
 	return graphql.NewScalarFieldContext("TalentCard", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
+func (ec *executionContext) _TalentCard_photoUrl(ctx context.Context, field graphql.CollectedField, obj *model.TalentCard) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TalentCard_photoUrl(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.PhotoURL, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_TalentCard_photoUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TalentCard", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _TalentCard_coverUrl(ctx context.Context, field graphql.CollectedField, obj *model.TalentCard) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TalentCard_coverUrl(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CoverURL, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_TalentCard_coverUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TalentCard", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
 func (ec *executionContext) _TalentPage_items(ctx context.Context, field graphql.CollectedField, obj *model.TalentPage) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -11914,6 +12330,52 @@ func (ec *executionContext) fieldContext_TalentProfile_rates(_ context.Context, 
 		},
 	}
 	return fc, nil
+}
+
+func (ec *executionContext) _TalentProfile_photoUrl(ctx context.Context, field graphql.CollectedField, obj *model.TalentProfile) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TalentProfile_photoUrl(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.PhotoURL, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_TalentProfile_photoUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TalentProfile", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _TalentProfile_coverUrl(ctx context.Context, field graphql.CollectedField, obj *model.TalentProfile) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TalentProfile_coverUrl(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CoverURL, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_TalentProfile_coverUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TalentProfile", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) _TalentRequest_id(ctx context.Context, field graphql.CollectedField, obj *model.TalentRequest) (ret graphql.Marshaler) {
@@ -12397,6 +12859,38 @@ func (ec *executionContext) _Verification_id(ctx context.Context, field graphql.
 }
 func (ec *executionContext) fieldContext_Verification_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("Verification", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _Verification_evidenceMedia(ctx context.Context, field graphql.CollectedField, obj *model.Verification) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Verification_evidenceMedia(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.EvidenceMedia, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.MediaRef) graphql.Marshaler {
+			return ec.marshalOMediaRef2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐMediaRef(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Verification_evidenceMedia(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Verification",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_MediaRef(ctx, field)
+		},
+	}
+	return fc, nil
 }
 
 func (ec *executionContext) _Verification_typeCode(ctx context.Context, field graphql.CollectedField, obj *model.Verification) (ret graphql.Marshaler) {
@@ -14110,7 +14604,7 @@ func (ec *executionContext) unmarshalInputSubmitVerificationInput(ctx context.Co
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"typeCode", "evidenceRef", "notes"}
+	fieldsInOrder := [...]string{"typeCode", "mediaId", "evidenceRef", "notes"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -14124,6 +14618,13 @@ func (ec *executionContext) unmarshalInputSubmitVerificationInput(ctx context.Co
 				return it, err
 			}
 			it.TypeCode = data
+		case "mediaId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("mediaId"))
+			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MediaID = data
 		case "evidenceRef":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("evidenceRef"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -15257,6 +15758,54 @@ func (ec *executionContext) _Lookup(ctx context.Context, sel ast.SelectionSet, o
 	return out
 }
 
+var mediaRefImplementors = []string{"MediaRef"}
+
+func (ec *executionContext) _MediaRef(ctx context.Context, sel ast.SelectionSet, obj *model.MediaRef) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, mediaRefImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("MediaRef")
+		case "id":
+			out.Values[i] = ec._MediaRef_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "mime":
+			out.Values[i] = ec._MediaRef_mime(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "url":
+			out.Values[i] = ec._MediaRef_url(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
 var mutationImplementors = []string{"Mutation"}
 
 func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
@@ -15357,6 +15906,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "submitVerification":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_submitVerification(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "setTalentPhoto":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setTalentPhoto(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "setTalentCover":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setTalentCover(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -15817,6 +16380,11 @@ func (ec *executionContext) _PendingVerification(ctx context.Context, sel ast.Se
 		case "id":
 			out.Values[i] = ec._PendingVerification_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "evidenceMedia":
+			out.Values[i] = ec._PendingVerification_evidenceMedia(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
 		case "talentUserId":
@@ -17000,6 +17568,16 @@ func (ec *executionContext) _TalentCard(ctx context.Context, sel ast.SelectionSe
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "photoUrl":
+			out.Values[i] = ec._TalentCard_photoUrl(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "coverUrl":
+			out.Values[i] = ec._TalentCard_coverUrl(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -17144,6 +17722,16 @@ func (ec *executionContext) _TalentProfile(ctx context.Context, sel ast.Selectio
 		case "rates":
 			out.Values[i] = ec._TalentProfile_rates(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "photoUrl":
+			out.Values[i] = ec._TalentProfile_photoUrl(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "coverUrl":
+			out.Values[i] = ec._TalentProfile_coverUrl(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
 		default:
@@ -17348,6 +17936,11 @@ func (ec *executionContext) _Verification(ctx context.Context, sel ast.Selection
 		case "id":
 			out.Values[i] = ec._Verification_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "evidenceMedia":
+			out.Values[i] = ec._Verification_evidenceMedia(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
 		case "typeCode":
@@ -18778,6 +19371,24 @@ func (ec *executionContext) marshalOFloat2ᚖfloat64(ctx context.Context, sel as
 	return graphql.WrapContextMarshaler(ctx, res)
 }
 
+func (ec *executionContext) unmarshalOID2ᚖstring(ctx context.Context, v any) (*string, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalID(v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOID2ᚖstring(ctx context.Context, sel ast.SelectionSet, v *string) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	_ = sel
+	_ = ctx
+	res := graphql.MarshalID(*v)
+	return res
+}
+
 func (ec *executionContext) unmarshalOInt2ᚖint(ctx context.Context, v any) (*int, error) {
 	if v == nil {
 		return nil, nil
@@ -18794,6 +19405,13 @@ func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.Sele
 	_ = ctx
 	res := graphql.MarshalInt(*v)
 	return res
+}
+
+func (ec *executionContext) marshalOMediaRef2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐMediaRef(ctx context.Context, sel ast.SelectionSet, v *model.MediaRef) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._MediaRef(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOPayment2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐPayment(ctx context.Context, sel ast.SelectionSet, v *model.Payment) graphql.Marshaler {

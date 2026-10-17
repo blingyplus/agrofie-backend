@@ -1,4 +1,4 @@
-.PHONY: up down migrate proto sqlc gqlgen test vuln tidy seed-admin seed-talent seed-demo
+.PHONY: up down migrate proto sqlc gqlgen test vuln tidy seed-admin seed-talent seed-demo media-gc
 
 DATABASE_URL ?= postgres://agrofie:agrofie@localhost:5432/agrofie?sslmode=disable
 
@@ -56,3 +56,7 @@ run-booking:
 
 run-payments:
 	go run ./cmd/payments
+
+# Remove uploads never attached to a profile/verification (default: older than 24h).
+media-gc:
+	go run ./cmd/media-gc $(ARGS)

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -27,6 +28,7 @@ import (
 	"github.com/blingyplus/agrofie-backend/internal/gateway/probe"
 	"github.com/blingyplus/agrofie-backend/internal/health"
 	"github.com/blingyplus/agrofie-backend/internal/lookup"
+	"github.com/blingyplus/agrofie-backend/internal/media"
 	"github.com/blingyplus/agrofie-backend/internal/organizerprofile"
 	"github.com/blingyplus/agrofie-backend/internal/payments"
 	"github.com/blingyplus/agrofie-backend/internal/review"
@@ -70,6 +72,23 @@ func main() {
 	reviewsSvc := review.NewService(pool)
 	disputesSvc := dispute.NewService(pool)
 
+	mediaStore, err := media.NewLocalDisk(cfg.MediaDir)
+	if err != nil {
+		slog.Error("media dir unavailable", "dir", cfg.MediaDir, "err", err)
+		os.Exit(1)
+	}
+	mediaSecret := []byte(cfg.MediaSigningSecret)
+	if len(mediaSecret) == 0 {
+		mediaSecret = make([]byte, 32)
+		if _, err := rand.Read(mediaSecret); err != nil {
+			slog.Error("media secret", "err", err)
+			os.Exit(1)
+		}
+		slog.Warn("MEDIA_SIGNING_SECRET unset: private media links use a per-process secret and expire on restart")
+	}
+	mediaSvc := media.NewService(pool, mediaStore, cfg.PublicBaseURL, mediaSecret)
+	graph.PublicMediaURL = mediaSvc.URL
+
 	prober := probe.NewConnectProber(cfg.AuthURL, cfg.BookingURL, cfg.PaymentsURL)
 	authClient := graph.NewAuthClient(cfg.AuthURL)
 	resolver := &graph.Resolver{
@@ -84,6 +103,7 @@ func main() {
 		Disputes:          disputesSvc,
 		TalentRequests:    talentrequest.NewService(pool),
 		OrganizerProfiles: organizerprofile.NewService(pool),
+		Media:             mediaSvc,
 		Prober:            prober,
 		AuthClient:        authClient,
 	}
@@ -98,6 +118,9 @@ func main() {
 	mux.HandleFunc("GET /config", appconfig.Handler(appconfig.Load()))
 	mux.Handle("/graphql", gqlauth.Middleware(authClient)(gql))
 	mux.Handle("/playground", playground.Handler("Agrofie GraphQL", "/graphql"))
+	mediaHandler := gqlauth.Middleware(authClient)(media.Handler(mediaSvc))
+	mux.Handle("/media", mediaHandler)
+	mux.Handle("/media/", mediaHandler)
 	mux.HandleFunc("POST /webhooks/paystack", paystackWebhookHandler(checkoutSvc))
 	if fakePayments {
 		mux.HandleFunc("GET /pay/fake/{reference}", fakePayPage)
@@ -140,7 +163,7 @@ func withCORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
 			return

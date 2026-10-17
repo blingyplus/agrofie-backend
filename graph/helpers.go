@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/blingyplus/agrofie-backend/internal/media"
 	"time"
 
 	"connectrpc.com/connect"
@@ -168,6 +169,8 @@ func toTalentCard(c discovery.Card) *model.TalentCard {
 		RatingAverage: c.RatingAverage,
 		ReviewCount:   c.ReviewCount,
 		CreatedAt:     c.CreatedAt.UTC().Format(time.RFC3339),
+		PhotoURL:      mediaURL(c.PhotoMediaID, "medium"),
+		CoverURL:      mediaURL(c.CoverMediaID, "medium"),
 	}
 	if c.FromRate != nil {
 		card.FromRate = toRate(*c.FromRate)
@@ -208,6 +211,8 @@ func toTalentProfile(p *discovery.Profile) *model.TalentProfile {
 		Languages:     toTags(p.Languages),
 		ServiceAreas:  toTags(p.ServiceAreas),
 		Rates:         rates,
+		PhotoURL:      mediaURL(p.PhotoMediaID, "medium"),
+		CoverURL:      mediaURL(p.CoverMediaID, "medium"),
 	}
 }
 
@@ -288,6 +293,8 @@ func toModelPayoutAccount(a *talentprofile.PayoutAccount) *model.PayoutAccount {
 
 func mapVerificationErr(err error) error {
 	switch {
+	case errors.Is(err, verification.ErrEvidenceInvalid):
+		return &gqlerror.Error{Message: err.Error(), Extensions: map[string]any{"code": "BAD_USER_INPUT"}}
 	case errors.Is(err, verification.ErrUnknownCode):
 		return &gqlerror.Error{Message: err.Error(), Extensions: map[string]any{"code": "BAD_USER_INPUT"}}
 	case errors.Is(err, verification.ErrNotFound):
@@ -299,9 +306,10 @@ func mapVerificationErr(err error) error {
 	}
 }
 
-func toModelVerification(v *verification.Verification) *model.Verification {
+func (r *Resolver) toModelVerification(v *verification.Verification) *model.Verification {
 	return &model.Verification{
-		ID: v.ID, TypeCode: v.TypeCode, TypeName: v.TypeName,
+		EvidenceMedia: r.mediaRef(v.EvidenceMediaID, v.EvidenceMime),
+		ID:            v.ID, TypeCode: v.TypeCode, TypeName: v.TypeName,
 		StatusCode: v.StatusCode, StatusName: v.StatusName,
 		EvidenceRef: v.EvidenceRef, Notes: v.Notes, ReviewNotes: v.ReviewNotes,
 	}
@@ -678,5 +686,37 @@ func toModelOrganizerProfile(p *organizerprofile.Profile) *model.OrganizerProfil
 	return &model.OrganizerProfile{
 		DisplayName: p.DisplayName, Organization: p.Organization, Phone: p.Phone,
 		HomePlaceCode: p.HomePlaceCode, HomePlaceName: p.HomePlaceName, EventTypes: tags,
+	}
+}
+
+// PublicMediaURL builds an absolute URL for a public media id (set in main from PUBLIC_BASE_URL).
+var PublicMediaURL = func(id, variant string) string { return "" }
+
+func mediaURL(id *string, variant string) *string {
+	if id == nil || *id == "" {
+		return nil
+	}
+	u := PublicMediaURL(*id, variant)
+	return &u
+}
+
+// mediaRef describes an uploaded evidence document. Evidence is private, so
+// the URL is signed and short-lived; callers were authorized by @hasRole /
+// ownership at the query level.
+func (r *Resolver) mediaRef(id, mime *string) *model.MediaRef {
+	if id == nil || mime == nil {
+		return nil
+	}
+	return &model.MediaRef{ID: *id, Mime: *mime, URL: r.Media.SignedURL(*id, "", media.SignedURLTTL)}
+}
+
+func mapMediaErr(err error) error {
+	switch {
+	case errors.Is(err, media.ErrNotFound), errors.Is(err, media.ErrWrongKind):
+		return &gqlerror.Error{Message: "media not found or wrong kind", Extensions: map[string]any{"code": "BAD_USER_INPUT"}}
+	case errors.Is(err, media.ErrForbidden):
+		return &gqlerror.Error{Message: "forbidden", Extensions: map[string]any{"code": "FORBIDDEN"}}
+	default:
+		return err
 	}
 }

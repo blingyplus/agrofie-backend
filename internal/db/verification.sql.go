@@ -14,23 +14,27 @@ import (
 const getVerificationByID = `-- name: GetVerificationByID :one
 SELECT v.id, vt.code AS type_code, vt.name AS type_name,
        vs.code AS status_code, vs.name AS status_name,
-       v.evidence_ref, v.notes, v.review_notes, v.created_at
+       v.evidence_ref, v.notes, v.review_notes, v.created_at,
+       v.evidence_media_id, em.mime AS evidence_mime
 FROM verifications v
 JOIN verification_types vt ON vt.id = v.verification_type_id
 JOIN verification_statuses vs ON vs.id = v.verification_status_id
+LEFT JOIN media em ON em.id = v.evidence_media_id AND em.status = 'active'
 WHERE v.id = $1
 `
 
 type GetVerificationByIDRow struct {
-	ID          pgtype.UUID        `json:"id"`
-	TypeCode    string             `json:"type_code"`
-	TypeName    string             `json:"type_name"`
-	StatusCode  string             `json:"status_code"`
-	StatusName  string             `json:"status_name"`
-	EvidenceRef *string            `json:"evidence_ref"`
-	Notes       *string            `json:"notes"`
-	ReviewNotes *string            `json:"review_notes"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	ID              pgtype.UUID        `json:"id"`
+	TypeCode        string             `json:"type_code"`
+	TypeName        string             `json:"type_name"`
+	StatusCode      string             `json:"status_code"`
+	StatusName      string             `json:"status_name"`
+	EvidenceRef     *string            `json:"evidence_ref"`
+	Notes           *string            `json:"notes"`
+	ReviewNotes     *string            `json:"review_notes"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	EvidenceMediaID pgtype.UUID        `json:"evidence_media_id"`
+	EvidenceMime    *string            `json:"evidence_mime"`
 }
 
 func (q *Queries) GetVerificationByID(ctx context.Context, id pgtype.UUID) (GetVerificationByIDRow, error) {
@@ -46,6 +50,8 @@ func (q *Queries) GetVerificationByID(ctx context.Context, id pgtype.UUID) (GetV
 		&i.Notes,
 		&i.ReviewNotes,
 		&i.CreatedAt,
+		&i.EvidenceMediaID,
+		&i.EvidenceMime,
 	)
 	return i, err
 }
@@ -78,18 +84,19 @@ func (q *Queries) GetVerificationForReview(ctx context.Context, id pgtype.UUID) 
 }
 
 const insertVerification = `-- name: InsertVerification :one
-INSERT INTO verifications (user_id, verification_type_id, verification_status_id, evidence_ref, notes)
-SELECT $1, vt.id, vs.id, $3, $4
+INSERT INTO verifications (user_id, verification_type_id, verification_status_id, evidence_ref, notes, evidence_media_id)
+SELECT $1, vt.id, vs.id, $3, $4, $5
 FROM verification_types vt, verification_statuses vs
 WHERE vt.code = $2 AND vs.code = 'pending'
 RETURNING id
 `
 
 type InsertVerificationParams struct {
-	UserID      pgtype.UUID `json:"user_id"`
-	Code        string      `json:"code"`
-	EvidenceRef *string     `json:"evidence_ref"`
-	Notes       *string     `json:"notes"`
+	UserID          pgtype.UUID `json:"user_id"`
+	Code            string      `json:"code"`
+	EvidenceRef     *string     `json:"evidence_ref"`
+	Notes           *string     `json:"notes"`
+	EvidenceMediaID pgtype.UUID `json:"evidence_media_id"`
 }
 
 func (q *Queries) InsertVerification(ctx context.Context, arg InsertVerificationParams) (pgtype.UUID, error) {
@@ -98,6 +105,7 @@ func (q *Queries) InsertVerification(ctx context.Context, arg InsertVerification
 		arg.Code,
 		arg.EvidenceRef,
 		arg.Notes,
+		arg.EvidenceMediaID,
 	)
 	var id pgtype.UUID
 	err := row.Scan(&id)
@@ -107,24 +115,28 @@ func (q *Queries) InsertVerification(ctx context.Context, arg InsertVerification
 const listMyVerifications = `-- name: ListMyVerifications :many
 SELECT v.id, vt.code AS type_code, vt.name AS type_name,
        vs.code AS status_code, vs.name AS status_name,
-       v.evidence_ref, v.notes, v.review_notes, v.created_at
+       v.evidence_ref, v.notes, v.review_notes, v.created_at,
+       v.evidence_media_id, em.mime AS evidence_mime
 FROM verifications v
 JOIN verification_types vt ON vt.id = v.verification_type_id
 JOIN verification_statuses vs ON vs.id = v.verification_status_id
+LEFT JOIN media em ON em.id = v.evidence_media_id AND em.status = 'active'
 WHERE v.user_id = $1
 ORDER BY v.created_at DESC
 `
 
 type ListMyVerificationsRow struct {
-	ID          pgtype.UUID        `json:"id"`
-	TypeCode    string             `json:"type_code"`
-	TypeName    string             `json:"type_name"`
-	StatusCode  string             `json:"status_code"`
-	StatusName  string             `json:"status_name"`
-	EvidenceRef *string            `json:"evidence_ref"`
-	Notes       *string            `json:"notes"`
-	ReviewNotes *string            `json:"review_notes"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	ID              pgtype.UUID        `json:"id"`
+	TypeCode        string             `json:"type_code"`
+	TypeName        string             `json:"type_name"`
+	StatusCode      string             `json:"status_code"`
+	StatusName      string             `json:"status_name"`
+	EvidenceRef     *string            `json:"evidence_ref"`
+	Notes           *string            `json:"notes"`
+	ReviewNotes     *string            `json:"review_notes"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	EvidenceMediaID pgtype.UUID        `json:"evidence_media_id"`
+	EvidenceMime    *string            `json:"evidence_mime"`
 }
 
 func (q *Queries) ListMyVerifications(ctx context.Context, userID pgtype.UUID) ([]ListMyVerificationsRow, error) {
@@ -146,6 +158,8 @@ func (q *Queries) ListMyVerifications(ctx context.Context, userID pgtype.UUID) (
 			&i.Notes,
 			&i.ReviewNotes,
 			&i.CreatedAt,
+			&i.EvidenceMediaID,
+			&i.EvidenceMime,
 		); err != nil {
 			return nil, err
 		}
@@ -160,10 +174,12 @@ func (q *Queries) ListMyVerifications(ctx context.Context, userID pgtype.UUID) (
 const listPendingVerifications = `-- name: ListPendingVerifications :many
 SELECT v.id, v.user_id, pr.display_name AS talent_display_name,
        vt.code AS type_code, vt.name AS type_name,
-       v.evidence_ref, v.notes, v.created_at
+       v.evidence_ref, v.notes, v.created_at,
+       v.evidence_media_id, em.mime AS evidence_mime
 FROM verifications v
 JOIN verification_types vt ON vt.id = v.verification_type_id
 JOIN verification_statuses vs ON vs.id = v.verification_status_id
+LEFT JOIN media em ON em.id = v.evidence_media_id AND em.status = 'active'
 JOIN profiles pr ON pr.user_id = v.user_id
 WHERE vs.code = 'pending'
 ORDER BY v.created_at ASC
@@ -178,6 +194,8 @@ type ListPendingVerificationsRow struct {
 	EvidenceRef       *string            `json:"evidence_ref"`
 	Notes             *string            `json:"notes"`
 	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	EvidenceMediaID   pgtype.UUID        `json:"evidence_media_id"`
+	EvidenceMime      *string            `json:"evidence_mime"`
 }
 
 func (q *Queries) ListPendingVerifications(ctx context.Context) ([]ListPendingVerificationsRow, error) {
@@ -198,6 +216,8 @@ func (q *Queries) ListPendingVerifications(ctx context.Context) ([]ListPendingVe
 			&i.EvidenceRef,
 			&i.Notes,
 			&i.CreatedAt,
+			&i.EvidenceMediaID,
+			&i.EvidenceMime,
 		); err != nil {
 			return nil, err
 		}

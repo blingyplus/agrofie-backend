@@ -153,12 +153,30 @@ func (r *mutationResolver) SetTalentFeatured(ctx context.Context, talentID strin
 func (r *mutationResolver) SubmitVerification(ctx context.Context, input model.SubmitVerificationInput) (*model.Verification, error) {
 	p, _ := gqlauth.FromContext(ctx)
 	v, err := r.Verifications.Submit(ctx, p.UserID, verification.SubmitInput{
-		TypeCode: input.TypeCode, EvidenceRef: input.EvidenceRef, Notes: input.Notes,
+		TypeCode: input.TypeCode, EvidenceRef: input.EvidenceRef, Notes: input.Notes, EvidenceMediaID: input.MediaID,
 	})
 	if err != nil {
 		return nil, mapVerificationErr(err)
 	}
-	return toModelVerification(v), nil
+	return r.toModelVerification(v), nil
+}
+
+// SetTalentPhoto is the resolver for the setTalentPhoto field.
+func (r *mutationResolver) SetTalentPhoto(ctx context.Context, mediaID *string) (*model.TalentProfile, error) {
+	p, _ := gqlauth.FromContext(ctx)
+	if err := r.Media.AttachTalentPhoto(ctx, p.UserID, mediaID); err != nil {
+		return nil, mapMediaErr(err)
+	}
+	return r.ownProfile(ctx, p.UserID)
+}
+
+// SetTalentCover is the resolver for the setTalentCover field.
+func (r *mutationResolver) SetTalentCover(ctx context.Context, mediaID *string) (*model.TalentProfile, error) {
+	p, _ := gqlauth.FromContext(ctx)
+	if err := r.Media.AttachTalentCover(ctx, p.UserID, mediaID); err != nil {
+		return nil, mapMediaErr(err)
+	}
+	return r.ownProfile(ctx, p.UserID)
 }
 
 // ApproveVerification is the resolver for the approveVerification field.
@@ -168,7 +186,7 @@ func (r *mutationResolver) ApproveVerification(ctx context.Context, id string, r
 	if err != nil {
 		return nil, mapVerificationErr(err)
 	}
-	return toModelVerification(v), nil
+	return r.toModelVerification(v), nil
 }
 
 // RejectVerification is the resolver for the rejectVerification field.
@@ -178,7 +196,7 @@ func (r *mutationResolver) RejectVerification(ctx context.Context, id string, re
 	if err != nil {
 		return nil, mapVerificationErr(err)
 	}
-	return toModelVerification(v), nil
+	return r.toModelVerification(v), nil
 }
 
 // AddMyAvailabilityBlock is the resolver for the addMyAvailabilityBlock field.
@@ -494,7 +512,7 @@ func (r *queryResolver) MyVerifications(ctx context.Context) ([]*model.Verificat
 	out := make([]*model.Verification, 0, len(rows))
 	for _, v := range rows {
 		v := v
-		out = append(out, toModelVerification(&v))
+		out = append(out, r.toModelVerification(&v))
 	}
 	return out, nil
 }
@@ -510,6 +528,7 @@ func (r *queryResolver) PendingVerifications(ctx context.Context) ([]*model.Pend
 		out = append(out, &model.PendingVerification{
 			ID: item.ID, TalentUserID: item.TalentUserID, TalentDisplayName: item.TalentDisplayName,
 			TypeCode: item.TypeCode, TypeName: item.TypeName, EvidenceRef: item.EvidenceRef, Notes: item.Notes,
+			EvidenceMedia: r.mediaRef(item.EvidenceMediaID, item.EvidenceMime),
 		})
 	}
 	return out, nil

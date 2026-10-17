@@ -2,6 +2,7 @@ package graph
 
 import (
 	"context"
+	"github.com/blingyplus/agrofie-backend/internal/media"
 	"net/http"
 	"time"
 
@@ -32,6 +33,7 @@ type Resolver struct {
 	Disputes          *dispute.Service
 	TalentRequests    *talentrequest.Service
 	OrganizerProfiles *organizerprofile.Service
+	Media             *media.Service
 	Prober            HealthProber
 	AuthClient        agrofierv1connect.AuthServiceClient
 }

@@ -14,6 +14,10 @@ psql_() { docker compose exec -T postgres psql -U agrofie -d agrofie -v ON_ERROR
 
 IDS=$(psql_ -c "SELECT kratos_identity_id FROM users WHERE email LIKE ANY($ARR)") || { echo "cleanup: postgres unavailable, skipping"; exit 0; }
 
+# Uploaded files belong to the gateway container's media volume; DB rows cascade with the user.
+KEYS=$(psql_ -c "SELECT storage_key FROM media WHERE owner_user_id IN (SELECT id FROM users WHERE email LIKE ANY($ARR))" 2>/dev/null)
+for k in $KEYS; do docker compose exec -T gateway rm -rf "/data/media/$k" >/dev/null 2>&1; done
+
 psql_ <<SQL >/dev/null
 BEGIN;
 CREATE TEMP TABLE _u ON COMMIT DROP AS SELECT id FROM users WHERE email LIKE ANY($ARR);

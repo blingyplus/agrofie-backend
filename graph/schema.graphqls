@@ -101,6 +101,12 @@ type Mutation {
   """Submit evidence for review. Approving an identity verification is what makes a talent searchable."""
   submitVerification(input: SubmitVerificationInput!): Verification! @hasRole(code: "talent")
 
+  """Set (or clear with null) the caller's talent photo to a profile_photo they uploaded. Requires the talent role."""
+  setTalentPhoto(mediaId: ID): TalentProfile! @hasRole(code: "talent")
+
+  """Set (or clear with null) the caller's cover/banner to a cover_image they uploaded. Requires the talent role."""
+  setTalentCover(mediaId: ID): TalentProfile! @hasRole(code: "talent")
+
   """Approve a pending verification. Requires the admin role."""
   approveVerification(id: ID!, reviewNotes: String): Verification! @hasRole(code: "admin")
 
@@ -278,6 +284,10 @@ type TalentCard {
   reviewCount: Int!
   """When the talent joined Agrofie (RFC 3339). Drives "New on Agrofie"."""
   createdAt: String!
+  """Absolute URL of the talent's photo (medium variant), or null."""
+  photoUrl: String
+  """Absolute URL of the talent's cover/banner (medium variant), or null."""
+  coverUrl: String
 }
 
 type TalentProfile {
@@ -298,6 +308,10 @@ type TalentProfile {
   languages: [Tag!]!
   serviceAreas: [Tag!]!
   rates: [Rate!]!
+  """Absolute URL of the talent's photo (medium variant), or null."""
+  photoUrl: String
+  """Absolute URL of the talent's cover/banner (medium variant), or null."""
+  coverUrl: String
 }
 
 type TalentPage {
@@ -352,12 +366,23 @@ type PayoutAccount {
 
 input SubmitVerificationInput {
   typeCode: String!
+  """Id of a verification_document uploaded via POST /media (must be yours)."""
+  mediaId: ID
+  """Pasted link; kept for compatibility. Prefer mediaId."""
   evidenceRef: String
   notes: String
 }
 
+"""An uploaded file. For private media the url is signed and expires after about 10 minutes; re-query for a fresh one."""
+type MediaRef {
+  id: ID!
+  mime: String!
+  url: String!
+}
+
 type Verification {
   id: ID!
+  evidenceMedia: MediaRef
   typeCode: String!
   typeName: String!
   statusCode: String!
@@ -370,6 +395,8 @@ type Verification {
 """One item in the admin review queue."""
 type PendingVerification {
   id: ID!
+  """The uploaded evidence document (admin view); url is signed and short-lived."""
+  evidenceMedia: MediaRef
   talentUserId: ID!
   talentDisplayName: String!
   typeCode: String!

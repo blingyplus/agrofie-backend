@@ -65,9 +65,52 @@ echo "$R" | jq -e --arg t "$TID" '[.data.searchTalent.items[].id]|index($t)==nul
 R=$(gql "$ORG" 'mutation($t:ID!,$s:String!,$e:String!){requestBooking(input:{talentId:$t,startsAt:$s,endsAt:$e,rateUnitCode:"per_event"}){id}}' "{\"t\":\"$TID\",\"s\":\"$START\",\"e\":\"$END\"}")
 echo "$R" | jq -e '.errors' >/dev/null && ok "booking an unverified talent rejected: $(val "$R" '.errors[0].message')" || fail "unverified talent was bookable"
 
+step "media: upload, attach, public vs private access"
+TMPD=$(mktemp -d); trap 'rm -rf "$TMPD"; "$(dirname "$0")/e2e-cleanup.sh"' EXIT
+# 8x8 PNG and a minimal PDF, generated here (no fixtures on disk).
+PNG_B64='iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEUlEQVR4nGM4YROFFTEMLQkATEZXgWfmY7oAAAAASUVORK5CYII='
+printf '%s' "$PNG_B64" | { base64 -d 2>/dev/null || base64 -D; } > "$TMPD/p.png"
+printf '%%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%%%EOF\n' > "$TMPD/d.pdf"
+printf 'MZ\x90\x00 not an image' > "$TMPD/evil.png"
+up() { curl -sS -o "$TMPD/out.json" -w '%{http_code}' "$GW/media" ${1:+-H "Authorization: Bearer $1"} -F "kind=$2" -F "file=@$3${4:+;type=$4}"; }
+code() { curl -sS -o /dev/null -w '%{http_code}' "$@"; }
+C=$(up "" profile_photo "$TMPD/p.png"); [ "$C" = 401 ] && ok "anonymous upload rejected (401)" || fail "anonymous upload got $C"
+C=$(up "$TAL" profile_photo "$TMPD/evil.png" image/png); [ "$C" = 415 ] && ok "disguised non-image rejected (415)" || fail "evil.png got $C"
+C=$(up "$TAL" profile_photo "$TMPD/d.pdf" application/pdf); [ "$C" = 400 ] && ok "PDF refused for profile photo (400)" || fail "pdf as photo got $C"
+C=$(up "$TAL" bogus_kind "$TMPD/p.png"); [ "$C" = 400 ] && ok "unknown kind rejected (400)" || fail "bogus kind got $C"
+C=$(up "$TAL" profile_photo "$TMPD/p.png"); PHOTO=$(jq -r .id "$TMPD/out.json")
+[ "$C" = 201 ] && ok "photo uploaded ($PHOTO)" || fail "photo upload got $C $(cat "$TMPD/out.json")"
+jq -e '.variants.thumb and .variants.medium and (.url|startswith("http"))' "$TMPD/out.json" >/dev/null && ok "response has url + variants" || fail "bad upload response"
+C=$(up "$TAL" cover_image "$TMPD/p.png"); COVER=$(jq -r .id "$TMPD/out.json"); [ "$C" = 201 ] && ok "cover uploaded" || fail "cover upload got $C"
+C=$(up "$TAL" verification_document "$TMPD/d.pdf" application/pdf); DOC=$(jq -r .id "$TMPD/out.json"); DOCURL=$(jq -r .url "$TMPD/out.json")
+[ "$C" = 201 ] && ok "verification PDF uploaded" || fail "pdf upload got $C $(cat "$TMPD/out.json")"
+C=$(up "$ORG" verification_document "$TMPD/d.pdf" application/pdf); ORGDOC=$(jq -r .id "$TMPD/out.json")
+
+R=$(gql "$ORG" 'mutation($m:ID){setTalentPhoto(mediaId:$m){id}}' "{\"m\":\"$PHOTO\"}"); echo "$R" | jq -e '.errors' >/dev/null && ok "organizer cannot set talent photo (role)" || fail "organizer set photo"
+R=$(gql "$ADM" 'mutation($m:ID){setTalentPhoto(mediaId:$m){id}}' "{\"m\":\"$PHOTO\"}"); echo "$R" | jq -e '.errors' >/dev/null && ok "admin cannot set talent photo (role)" || fail "admin set photo"
+R=$(gql "$TAL" 'mutation($m:ID){setTalentPhoto(mediaId:$m){id}}' "{\"m\":\"$DOC\"}"); echo "$R" | jq -e '.errors' >/dev/null && ok "document cannot be used as photo" || fail "doc used as photo"
+R=$(gql "$TAL" 'mutation($m:ID){setTalentPhoto(mediaId:$m){id photoUrl}}' "{\"m\":\"$PHOTO\"}"); expect "photo attached" "$R" '.data.setTalentPhoto.photoUrl|contains("/media/'"$PHOTO"'")' true
+R=$(gql "$TAL" 'mutation($m:ID){setTalentCover(mediaId:$m){coverUrl}}' "{\"m\":\"$COVER\"}"); expect "cover attached" "$R" '.data.setTalentCover.coverUrl|contains("/media/'"$COVER"'")' true
+
+[ "$(code "$GW/media/$PHOTO?v=thumb")" = 200 ] && ok "public photo served without auth" || fail "public photo not served"
+curl -sSI "$GW/media/$PHOTO?v=medium" | grep -qi 'cache-control: public, max-age=31536000' && ok "public photo has long cache headers" || fail "no cache header"
+[ "$(curl -sS "$GW/media/$PHOTO?v=thumb" | file - | grep -ci jpeg)" = 1 ] && ok "served variant is JPEG" || fail "variant not jpeg"
+[ "$(code "$GW/media/$DOC")" = 401 ] && ok "private doc: anonymous -> 401" || fail "private doc open to anonymous"
+[ "$(code -H "Authorization: Bearer $ORG" "$GW/media/$DOC")" = 404 ] && ok "private doc: other user -> 404" || fail "private doc visible to other user"
+[ "$(code -H "Authorization: Bearer $TAL" "$GW/media/$DOC")" = 200 ] && ok "private doc: owner -> 200" || fail "owner cannot open own doc"
+[ "$(code -H "Authorization: Bearer $ADM" "$GW/media/$DOC")" = 200 ] && ok "private doc: admin -> 200" || fail "admin cannot open doc"
+[ "$(code "$DOCURL")" = 200 ] && ok "signed URL opens private doc" || fail "signed url failed"
+[ "$(code "${DOCURL%sig=*}sig=deadbeef")" = 401 ] && ok "tampered signature rejected" || fail "tampered signature accepted"
+[ "$(code "$GW/media/..%2f..%2fetc%2fpasswd")" = 404 ] && ok "path traversal -> 404" || fail "traversal not 404"
+R=$(gql "$TAL" 'mutation($i:SubmitVerificationInput!){submitVerification(input:$i){id}}' "{\"i\":{\"typeCode\":\"identity\",\"mediaId\":\"$ORGDOC\"}}"); echo "$R" | jq -e '.errors' >/dev/null && ok "cannot attach someone else's document" || fail "attached foreign document"
+
 step "verification + admin approval"
-R=$(gql "$TAL" 'mutation{submitVerification(input:{typeCode:"identity",evidenceRef:"ghana-card-demo",notes:"e2e"}){id statusCode}}')
+R=$(gql "$TAL" 'mutation($m:ID){submitVerification(input:{typeCode:"identity",mediaId:$m,notes:"e2e"}){id statusCode evidenceMedia{id mime}}}' "{\"m\":\"$DOC\"}")
+expect "evidence media on verification" "$R" '.data.submitVerification.evidenceMedia.mime' application/pdf
+R2=$(gql "$TAL" 'mutation{submitVerification(input:{typeCode:"business",evidenceRef:"https://example.com/legacy-link"}){statusCode evidenceRef}}'); expect "legacy evidenceRef still works" "$R2" '.data.submitVerification.evidenceRef' https://example.com/legacy-link
 VID=$(val "$R" .data.submitVerification.id); expect "verification pending" "$R" '.data.submitVerification.statusCode' pending
+R=$(gql "$ADM" 'query{pendingVerifications{id evidenceMedia{id mime url}}}'); echo "$R" | jq -r --arg v "$VID" '.data.pendingVerifications[]|select(.id==$v)|.evidenceMedia.url' > "$TMPD/evurl"
+[ "$(code "$(cat "$TMPD/evurl")")" = 200 ] && ok "admin queue exposes openable evidence url" || fail "evidence url not openable"
 R=$(gql "$ADM" 'query{pendingVerifications{id}}'); echo "$R" | jq -e --arg v "$VID" '[.data.pendingVerifications[].id]|index($v)!=null' >/dev/null && ok "appears in admin queue" || fail "not in admin queue $R"
 R=$(gql "$ORG" 'query{pendingVerifications{id}}'); echo "$R" | jq -e '.errors' >/dev/null && ok "organizer cannot see admin queue" || fail "organizer saw admin queue"
 R=$(gql "$ADM" 'mutation($i:ID!){approveVerification(id:$i,reviewNotes:"ok"){statusCode}}' "{\"i\":\"$VID\"}"); expect "approved" "$R" '.data.approveVerification.statusCode' verified
@@ -76,6 +119,13 @@ step "discovery"
 R=$(gql "$ORG" 'query{searchTalent(first:100,filter:{genreCodes:["highlife"]}){items{id displayName fromRate{amount}}}}')
 echo "$R" | jq -e --arg t "$TID" '[.data.searchTalent.items[].id]|index($t)!=null' >/dev/null && ok "verified talent discoverable" || fail "not discoverable $R"
 R=$(gql "$ORG" 'query($t:ID!){talent(id:$t){displayName rates{amount}}}' "{\"t\":\"$TID\"}"); expect "talent detail" "$R" '.data.talent.rates[0].amount' "1000.00"
+R=$(gql "$ORG" 'query{searchTalent(first:100){items{id photoUrl coverUrl}}}')
+echo "$R" | jq -e --arg t "$TID" '.data.searchTalent.items[]|select(.id==$t)|.photoUrl!=null' >/dev/null && ok "Discover card carries photoUrl" || fail "no photoUrl on Discover card"
+R=$(gql "$ORG" 'query($t:ID!){talent(id:$t){photoUrl coverUrl}}' "{\"t\":\"$TID\"}"); expect "detail has coverUrl" "$R" '.data.talent.coverUrl|length>0' true
+[ "$(code -X DELETE -H "Authorization: Bearer $ORG" "$GW/media/$COVER")" = 404 ] && ok "other user cannot delete media" || fail "foreign delete allowed"
+[ "$(code -X DELETE -H "Authorization: Bearer $TAL" "$GW/media/$COVER")" = 204 ] && ok "owner deleted cover" || fail "owner delete failed"
+[ "$(code "$GW/media/$COVER")" = 404 ] && ok "deleted media -> 404" || fail "deleted media still served"
+[ "$(code -X DELETE -H "Authorization: Bearer $TAL" "$GW/media/$DOC")" = 409 ] && ok "evidence doc cannot be deleted while attached" || fail "evidence doc deleted"
 
 book() { # book -> echoes booking id, creating a new inquiry at a distinct slot ($1 = day offset)
   local d="$1" s e

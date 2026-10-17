@@ -154,6 +154,9 @@ services:
       PAYMENTS_PROVIDER: ${PAYMENTS_PROVIDER:-}
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8080}
       DEV_ALLOW_EARLY_COMPLETE: ${DEV_ALLOW_EARLY_COMPLETE:-true}
+      # Uploads live on a named volume (swap for R2/S3 later behind media.Storage).
+      MEDIA_DIR: /data/media
+      MEDIA_SIGNING_SECRET: ${MEDIA_SIGNING_SECRET:-dev-only-media-signing-secret-change-me}
       # Public app config served at GET /config (see .env.example).
       WEB_BASE_URL: ${WEB_BASE_URL:-}
       INVITE_URL: ${INVITE_URL:-}
@@ -164,6 +167,8 @@ services:
       MAINTENANCE_ENABLED: ${MAINTENANCE_ENABLED:-}
       MAINTENANCE_MESSAGE: ${MAINTENANCE_MESSAGE:-}
     command: ["gateway"]
+    volumes:
+      - media:/data/media
     ports:
       - "8080:8080"
     depends_on:
@@ -176,3 +181,4 @@ services:
 
 volumes:
   pgdata:
+  media:

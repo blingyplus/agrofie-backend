@@ -84,7 +84,10 @@ type Card struct {
 	RatingAverage *float64
 	ReviewCount   int
 	CreatedAt     time.Time
-	score         float64 // keyset score for the active sort mode
+	// PhotoMediaID / CoverMediaID are uploaded media ids (nil when unset).
+	PhotoMediaID *string
+	CoverMediaID *string
+	score        float64 // keyset score for the active sort mode
 }
 
 type Profile struct {
@@ -255,6 +258,15 @@ func (s *Service) attachTags(ctx context.Context, cards []Card, ids []pgtype.UUI
 		i := index[uuidString(t.TalentProfileID)]
 		cards[i].Types = append(cards[i].Types, Tag{Code: t.Code, Name: t.Name})
 	}
+	mediaRows, err := s.q.ListTalentMediaIDs(ctx, ids)
+	if err != nil {
+		return fmt.Errorf("list talent media: %w", err)
+	}
+	for _, m := range mediaRows {
+		i := index[uuidString(m.ID)]
+		cards[i].PhotoMediaID = optUUID(m.PhotoMediaID)
+		cards[i].CoverMediaID = optUUID(m.CoverMediaID)
+	}
 	rates, err := s.q.ListCurrentRatesForTalent(ctx, ids) // ordered cheapest first
 	if err != nil {
 		return fmt.Errorf("list rates: %w", err)
@@ -358,3 +370,14 @@ func decodeCursor(s string) (float64, time.Time, uuid.UUID, error) {
 	}
 	return score, time.UnixMicro(n).UTC(), id, nil
 }
+
+func optUUID(u pgtype.UUID) *string {
+	if !u.Valid {
+		return nil
+	}
+	s := uuidString(u)
+	return &s
+}
+
+// OptUUID is exported for sibling services that read the same media columns.
+func OptUUID(u pgtype.UUID) *string { return optUUID(u) }

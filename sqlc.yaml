@@ -18,6 +18,7 @@ sql:
       - "db/migrations/000014_talent_requests.up.sql"
       - "db/migrations/000015_password_reset.up.sql"
       - "db/migrations/000016_organizer_profile.up.sql"
+      - "db/migrations/000017_media.up.sql"
     gen:
       go:
         package: "db"
