@@ -79,3 +79,12 @@ Interface: `internal/payments.Provider`; `FakeProvider` for tests; a Paystack ad
 - CI builds container images, tests, rolling deploys
 
 Local parity: Docker Compose (`docker compose up`).
+
+## Media uploads
+
+`internal/media` owns uploads behind a `Storage` interface (Put/Open/Stat/Delete). `LocalDisk` (rooted at `MEDIA_DIR`, compose volume `media:/data/media`) is the only implementation; Cloudflare R2 / S3 is a later drop-in. Storage keys are server-generated (`<uuid>/<variant>`), never user filenames.
+
+- Lookup `media_kinds` (`profile_photo`, `cover_image`, `verification_document`, `gallery_image`; immutable `code`, mutable `name`, `default_visibility`). Table `media` holds owner, kind, mime, size, dimensions, sha256, visibility (`public`/`private`, CHECK), status (`active`/`deleted`, CHECK). `talent_profiles.photo_media_id/cover_media_id`, `verifications.evidence_media_id` reference it.
+- HTTP on the gateway: `POST /media` (multipart `file` + `kind`, Bearer session), `GET /media/{id}?v=thumb|medium`, `DELETE /media/{id}`. Images: sniffed by bytes (JPEG/PNG/WebP), EXIF auto-oriented then stripped by re-encoding to JPEG, variants original (<=2048px), medium 1024, thumb 256. HEIC is rejected (client converts to JPEG). PDFs only for `verification_document`. Limits: images 8 MB, PDFs 10 MB, 30 uploads per user per 10 min.
+- Public kinds: no auth, `Cache-Control: public, max-age=31536000, immutable`. Private kinds: owner or admin via Bearer, or a short-lived HMAC-signed URL (`MEDIA_SIGNING_SECRET`, 10 min) returned by GraphQL for the admin queue.
+- Orphans (uploaded, never attached) are removed by `make media-gc ARGS="-older-than 24h"`.
