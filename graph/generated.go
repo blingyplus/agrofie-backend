@@ -174,6 +174,7 @@ type ComplexityRoot struct {
 		CompleteBooking           func(childComplexity int, id string) int
 		ConnectMyPayoutAccount    func(childComplexity int, input model.ConnectPayoutInput) int
 		CounterBooking            func(childComplexity int, input model.CounterBookingInput) int
+		CreateTalentRequest       func(childComplexity int, input model.TalentRequestInput) int
 		DeclineBooking            func(childComplexity int, id string) int
 		InitiateCheckout          func(childComplexity int, bookingID string) int
 		Login                     func(childComplexity int, input model.LoginInput) int
@@ -187,6 +188,7 @@ type ComplexityRoot struct {
 		SetLookupActive           func(childComplexity int, table model.LookupTable, code string, isActive bool) int
 		SetMyRates                func(childComplexity int, rates []*model.RateInput) int
 		SetTalentFeatured         func(childComplexity int, talentID string, featured bool, rank *int) int
+		SetTalentRequestStatus    func(childComplexity int, id string, statusCode string) int
 		SubmitReview              func(childComplexity int, input model.SubmitReviewInput) int
 		SubmitVerification        func(childComplexity int, input model.SubmitVerificationInput) int
 		UpdateLookupName          func(childComplexity int, table model.LookupTable, code string, name string) int
@@ -255,6 +257,7 @@ type ComplexityRoot struct {
 		MyBookingsAsTalent    func(childComplexity int) int
 		MyPayoutAccount       func(childComplexity int) int
 		MyTalentProfile       func(childComplexity int) int
+		MyTalentRequests      func(childComplexity int) int
 		MyVerifications       func(childComplexity int) int
 		PendingVerifications  func(childComplexity int) int
 		RateUnits             func(childComplexity int, activeOnly *bool) int
@@ -263,6 +266,7 @@ type ComplexityRoot struct {
 		SettlementBanks       func(childComplexity int, typeArg model.SettlementType) int
 		Talent                func(childComplexity int, id string) int
 		TalentAvailability    func(childComplexity int, talentID string, from string, to string) int
+		TalentRequests        func(childComplexity int, statusCode *string) int
 		TalentReviewSummary   func(childComplexity int, talentID string) int
 		TalentTypes           func(childComplexity int, activeOnly *bool) int
 		VerificationTypes     func(childComplexity int, activeOnly *bool) int
@@ -352,6 +356,24 @@ type ComplexityRoot struct {
 		Types         func(childComplexity int) int
 	}
 
+	TalentRequest struct {
+		BudgetPesewas        func(childComplexity int) int
+		CreatedAt            func(childComplexity int) int
+		CurrencyCode         func(childComplexity int) int
+		EventDate            func(childComplexity int) int
+		EventTypeCode        func(childComplexity int) int
+		EventTypeName        func(childComplexity int) int
+		GenreCode            func(childComplexity int) int
+		GenreName            func(childComplexity int) int
+		ID                   func(childComplexity int) int
+		Note                 func(childComplexity int) int
+		OrganizerDisplayName func(childComplexity int) int
+		PlaceCode            func(childComplexity int) int
+		PlaceName            func(childComplexity int) int
+		StatusCode           func(childComplexity int) int
+		StatusName           func(childComplexity int) int
+	}
+
 	User struct {
 		DisplayName func(childComplexity int) int
 		Email       func(childComplexity int) int
@@ -403,6 +425,8 @@ type MutationResolver interface {
 	SubmitReview(ctx context.Context, input model.SubmitReviewInput) (*model.Review, error)
 	OpenDispute(ctx context.Context, input model.OpenDisputeInput) (*model.Dispute, error)
 	ResolveDispute(ctx context.Context, id string, statusCode string, resolutionNote *string) (*model.AdminDispute, error)
+	CreateTalentRequest(ctx context.Context, input model.TalentRequestInput) (*model.TalentRequest, error)
+	SetTalentRequestStatus(ctx context.Context, id string, statusCode string) (*model.TalentRequest, error)
 }
 type QueryResolver interface {
 	Health(ctx context.Context) (*model.Health, error)
@@ -432,6 +456,8 @@ type QueryResolver interface {
 	Booking(ctx context.Context, id string) (*model.BookingDetail, error)
 	TalentReviewSummary(ctx context.Context, talentID string) (*model.ReviewSummary, error)
 	Disputes(ctx context.Context, statusCode *string) ([]*model.AdminDispute, error)
+	MyTalentRequests(ctx context.Context) ([]*model.TalentRequest, error)
+	TalentRequests(ctx context.Context, statusCode *string) ([]*model.TalentRequest, error)
 }
 
 // endregion ************************** generated!.gotpl **************************
@@ -1092,6 +1118,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.CounterBooking(childComplexity, args["input"].(model.CounterBookingInput)), true
+	case "Mutation.createTalentRequest":
+		if e.ComplexityRoot.Mutation.CreateTalentRequest == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createTalentRequest_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.CreateTalentRequest(childComplexity, args["input"].(model.TalentRequestInput)), true
 	case "Mutation.declineBooking":
 		if e.ComplexityRoot.Mutation.DeclineBooking == nil {
 			break
@@ -1230,6 +1267,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.SetTalentFeatured(childComplexity, args["talentId"].(string), args["featured"].(bool), args["rank"].(*int)), true
+	case "Mutation.setTalentRequestStatus":
+		if e.ComplexityRoot.Mutation.SetTalentRequestStatus == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setTalentRequestStatus_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.SetTalentRequestStatus(childComplexity, args["id"].(string), args["statusCode"].(string)), true
 	case "Mutation.submitReview":
 		if e.ComplexityRoot.Mutation.SubmitReview == nil {
 			break
@@ -1629,6 +1677,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.MyTalentProfile(childComplexity), true
+	case "Query.myTalentRequests":
+		if e.ComplexityRoot.Query.MyTalentRequests == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.MyTalentRequests(childComplexity), true
 	case "Query.myVerifications":
 		if e.ComplexityRoot.Query.MyVerifications == nil {
 			break
@@ -1707,6 +1761,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.TalentAvailability(childComplexity, args["talentId"].(string), args["from"].(string), args["to"].(string)), true
+	case "Query.talentRequests":
+		if e.ComplexityRoot.Query.TalentRequests == nil {
+			break
+		}
+
+		args, err := ec.field_Query_talentRequests_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.TalentRequests(childComplexity, args["statusCode"].(*string)), true
 	case "Query.talentReviewSummary":
 		if e.ComplexityRoot.Query.TalentReviewSummary == nil {
 			break
@@ -2092,6 +2157,97 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.TalentProfile.Types(childComplexity), true
 
+	case "TalentRequest.budgetPesewas":
+		if e.ComplexityRoot.TalentRequest.BudgetPesewas == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TalentRequest.BudgetPesewas(childComplexity), true
+	case "TalentRequest.createdAt":
+		if e.ComplexityRoot.TalentRequest.CreatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TalentRequest.CreatedAt(childComplexity), true
+	case "TalentRequest.currencyCode":
+		if e.ComplexityRoot.TalentRequest.CurrencyCode == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TalentRequest.CurrencyCode(childComplexity), true
+	case "TalentRequest.eventDate":
+		if e.ComplexityRoot.TalentRequest.EventDate == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TalentRequest.EventDate(childComplexity), true
+	case "TalentRequest.eventTypeCode":
+		if e.ComplexityRoot.TalentRequest.EventTypeCode == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TalentRequest.EventTypeCode(childComplexity), true
+	case "TalentRequest.eventTypeName":
+		if e.ComplexityRoot.TalentRequest.EventTypeName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TalentRequest.EventTypeName(childComplexity), true
+	case "TalentRequest.genreCode":
+		if e.ComplexityRoot.TalentRequest.GenreCode == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TalentRequest.GenreCode(childComplexity), true
+	case "TalentRequest.genreName":
+		if e.ComplexityRoot.TalentRequest.GenreName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TalentRequest.GenreName(childComplexity), true
+	case "TalentRequest.id":
+		if e.ComplexityRoot.TalentRequest.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TalentRequest.ID(childComplexity), true
+	case "TalentRequest.note":
+		if e.ComplexityRoot.TalentRequest.Note == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TalentRequest.Note(childComplexity), true
+	case "TalentRequest.organizerDisplayName":
+		if e.ComplexityRoot.TalentRequest.OrganizerDisplayName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TalentRequest.OrganizerDisplayName(childComplexity), true
+	case "TalentRequest.placeCode":
+		if e.ComplexityRoot.TalentRequest.PlaceCode == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TalentRequest.PlaceCode(childComplexity), true
+	case "TalentRequest.placeName":
+		if e.ComplexityRoot.TalentRequest.PlaceName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TalentRequest.PlaceName(childComplexity), true
+	case "TalentRequest.statusCode":
+		if e.ComplexityRoot.TalentRequest.StatusCode == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TalentRequest.StatusCode(childComplexity), true
+	case "TalentRequest.statusName":
+		if e.ComplexityRoot.TalentRequest.StatusName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TalentRequest.StatusName(childComplexity), true
+
 	case "User.displayName":
 		if e.ComplexityRoot.User.DisplayName == nil {
 			break
@@ -2191,6 +2347,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputSubmitReviewInput,
 		ec.unmarshalInputSubmitVerificationInput,
 		ec.unmarshalInputTalentFilter,
+		ec.unmarshalInputTalentRequestInput,
 		ec.unmarshalInputUpdateTalentProfileInput,
 	)
 	first := true
@@ -2794,6 +2951,42 @@ func (ec *executionContext) childFields_TalentProfile(ctx context.Context, field
 	return nil, fmt.Errorf("no field named %q was found under type TalentProfile", field.Name)
 }
 
+func (ec *executionContext) childFields_TalentRequest(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "id":
+		return ec.fieldContext_TalentRequest_id(ctx, field)
+	case "statusCode":
+		return ec.fieldContext_TalentRequest_statusCode(ctx, field)
+	case "statusName":
+		return ec.fieldContext_TalentRequest_statusName(ctx, field)
+	case "eventTypeCode":
+		return ec.fieldContext_TalentRequest_eventTypeCode(ctx, field)
+	case "eventTypeName":
+		return ec.fieldContext_TalentRequest_eventTypeName(ctx, field)
+	case "genreCode":
+		return ec.fieldContext_TalentRequest_genreCode(ctx, field)
+	case "genreName":
+		return ec.fieldContext_TalentRequest_genreName(ctx, field)
+	case "placeCode":
+		return ec.fieldContext_TalentRequest_placeCode(ctx, field)
+	case "placeName":
+		return ec.fieldContext_TalentRequest_placeName(ctx, field)
+	case "eventDate":
+		return ec.fieldContext_TalentRequest_eventDate(ctx, field)
+	case "budgetPesewas":
+		return ec.fieldContext_TalentRequest_budgetPesewas(ctx, field)
+	case "currencyCode":
+		return ec.fieldContext_TalentRequest_currencyCode(ctx, field)
+	case "note":
+		return ec.fieldContext_TalentRequest_note(ctx, field)
+	case "createdAt":
+		return ec.fieldContext_TalentRequest_createdAt(ctx, field)
+	case "organizerDisplayName":
+		return ec.fieldContext_TalentRequest_organizerDisplayName(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type TalentRequest", field.Name)
+}
+
 func (ec *executionContext) childFields_User(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "id":
@@ -3082,6 +3275,20 @@ func (ec *executionContext) field_Mutation_counterBooking_args(ctx context.Conte
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_createTalentRequest_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
+		func(ctx context.Context, v any) (model.TalentRequestInput, error) {
+			return ec.unmarshalNTalentRequestInput2githubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐTalentRequestInput(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_declineBooking_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -3303,6 +3510,28 @@ func (ec *executionContext) field_Mutation_setTalentFeatured_args(ctx context.Co
 		return nil, err
 	}
 	args["rank"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_setTalentRequestStatus_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "statusCode",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["statusCode"] = arg1
 	return args, nil
 }
 
@@ -3677,6 +3906,20 @@ func (ec *executionContext) field_Query_talentAvailability_args(ctx context.Cont
 		return nil, err
 	}
 	args["to"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_talentRequests_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "statusCode",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["statusCode"] = arg0
 	return args, nil
 }
 
@@ -7436,6 +7679,130 @@ func (ec *executionContext) fieldContext_Mutation_resolveDispute(ctx context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_createTalentRequest(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_createTalentRequest(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().CreateTalentRequest(ctx, fc.Args["input"].(model.TalentRequestInput))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				code, err := ec.unmarshalNString2string(ctx, "organizer")
+				if err != nil {
+					var zeroVal *model.TalentRequest
+					return zeroVal, err
+				}
+				if ec.Directives.HasRole == nil {
+					var zeroVal *model.TalentRequest
+					return zeroVal, errors.New("directive hasRole is not implemented")
+				}
+				return ec.Directives.HasRole(ctx, nil, directive0, code)
+			}
+
+			next = directive1
+			return next
+		},
+		func(ctx context.Context, selections ast.SelectionSet, v *model.TalentRequest) graphql.Marshaler {
+			return ec.marshalNTalentRequest2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐTalentRequest(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_createTalentRequest(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_TalentRequest(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_createTalentRequest_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_setTalentRequestStatus(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_setTalentRequestStatus(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().SetTalentRequestStatus(ctx, fc.Args["id"].(string), fc.Args["statusCode"].(string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				code, err := ec.unmarshalNString2string(ctx, "admin")
+				if err != nil {
+					var zeroVal *model.TalentRequest
+					return zeroVal, err
+				}
+				if ec.Directives.HasRole == nil {
+					var zeroVal *model.TalentRequest
+					return zeroVal, errors.New("directive hasRole is not implemented")
+				}
+				return ec.Directives.HasRole(ctx, nil, directive0, code)
+			}
+
+			next = directive1
+			return next
+		},
+		func(ctx context.Context, selections ast.SelectionSet, v *model.TalentRequest) graphql.Marshaler {
+			return ec.marshalNTalentRequest2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐTalentRequest(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_setTalentRequestStatus(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_TalentRequest(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setTalentRequestStatus_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _OrganizerBooking_id(ctx context.Context, field graphql.CollectedField, obj *model.OrganizerBooking) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -9452,6 +9819,118 @@ func (ec *executionContext) fieldContext_Query_disputes(ctx context.Context, fie
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_myTalentRequests(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_myTalentRequests(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().MyTalentRequests(ctx)
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				code, err := ec.unmarshalNString2string(ctx, "organizer")
+				if err != nil {
+					var zeroVal []*model.TalentRequest
+					return zeroVal, err
+				}
+				if ec.Directives.HasRole == nil {
+					var zeroVal []*model.TalentRequest
+					return zeroVal, errors.New("directive hasRole is not implemented")
+				}
+				return ec.Directives.HasRole(ctx, nil, directive0, code)
+			}
+
+			next = directive1
+			return next
+		},
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.TalentRequest) graphql.Marshaler {
+			return ec.marshalNTalentRequest2ᚕᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐTalentRequestᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_myTalentRequests(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_TalentRequest(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_talentRequests(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_talentRequests(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().TalentRequests(ctx, fc.Args["statusCode"].(*string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				code, err := ec.unmarshalNString2string(ctx, "admin")
+				if err != nil {
+					var zeroVal []*model.TalentRequest
+					return zeroVal, err
+				}
+				if ec.Directives.HasRole == nil {
+					var zeroVal []*model.TalentRequest
+					return zeroVal, errors.New("directive hasRole is not implemented")
+				}
+				return ec.Directives.HasRole(ctx, nil, directive0, code)
+			}
+
+			next = directive1
+			return next
+		},
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.TalentRequest) graphql.Marshaler {
+			return ec.marshalNTalentRequest2ᚕᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐTalentRequestᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_talentRequests(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_TalentRequest(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_talentRequests_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -10918,6 +11397,351 @@ func (ec *executionContext) fieldContext_TalentProfile_rates(_ context.Context, 
 		},
 	}
 	return fc, nil
+}
+
+func (ec *executionContext) _TalentRequest_id(ctx context.Context, field graphql.CollectedField, obj *model.TalentRequest) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TalentRequest_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TalentRequest_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TalentRequest", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _TalentRequest_statusCode(ctx context.Context, field graphql.CollectedField, obj *model.TalentRequest) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TalentRequest_statusCode(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.StatusCode, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TalentRequest_statusCode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TalentRequest", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _TalentRequest_statusName(ctx context.Context, field graphql.CollectedField, obj *model.TalentRequest) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TalentRequest_statusName(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.StatusName, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TalentRequest_statusName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TalentRequest", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _TalentRequest_eventTypeCode(ctx context.Context, field graphql.CollectedField, obj *model.TalentRequest) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TalentRequest_eventTypeCode(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.EventTypeCode, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_TalentRequest_eventTypeCode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TalentRequest", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _TalentRequest_eventTypeName(ctx context.Context, field graphql.CollectedField, obj *model.TalentRequest) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TalentRequest_eventTypeName(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.EventTypeName, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_TalentRequest_eventTypeName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TalentRequest", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _TalentRequest_genreCode(ctx context.Context, field graphql.CollectedField, obj *model.TalentRequest) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TalentRequest_genreCode(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.GenreCode, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_TalentRequest_genreCode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TalentRequest", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _TalentRequest_genreName(ctx context.Context, field graphql.CollectedField, obj *model.TalentRequest) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TalentRequest_genreName(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.GenreName, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_TalentRequest_genreName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TalentRequest", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _TalentRequest_placeCode(ctx context.Context, field graphql.CollectedField, obj *model.TalentRequest) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TalentRequest_placeCode(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.PlaceCode, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_TalentRequest_placeCode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TalentRequest", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _TalentRequest_placeName(ctx context.Context, field graphql.CollectedField, obj *model.TalentRequest) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TalentRequest_placeName(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.PlaceName, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_TalentRequest_placeName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TalentRequest", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _TalentRequest_eventDate(ctx context.Context, field graphql.CollectedField, obj *model.TalentRequest) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TalentRequest_eventDate(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.EventDate, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_TalentRequest_eventDate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TalentRequest", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _TalentRequest_budgetPesewas(ctx context.Context, field graphql.CollectedField, obj *model.TalentRequest) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TalentRequest_budgetPesewas(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.BudgetPesewas, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *int) graphql.Marshaler {
+			return ec.marshalOInt2ᚖint(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_TalentRequest_budgetPesewas(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TalentRequest", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _TalentRequest_currencyCode(ctx context.Context, field graphql.CollectedField, obj *model.TalentRequest) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TalentRequest_currencyCode(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CurrencyCode, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TalentRequest_currencyCode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TalentRequest", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _TalentRequest_note(ctx context.Context, field graphql.CollectedField, obj *model.TalentRequest) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TalentRequest_note(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Note, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TalentRequest_note(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TalentRequest", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _TalentRequest_createdAt(ctx context.Context, field graphql.CollectedField, obj *model.TalentRequest) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TalentRequest_createdAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TalentRequest_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TalentRequest", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _TalentRequest_organizerDisplayName(ctx context.Context, field graphql.CollectedField, obj *model.TalentRequest) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TalentRequest_organizerDisplayName(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.OrganizerDisplayName, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TalentRequest_organizerDisplayName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TalentRequest", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) _User_id(ctx context.Context, field graphql.CollectedField, obj *model.User) (ret graphql.Marshaler) {
@@ -12867,6 +13691,71 @@ func (ec *executionContext) unmarshalInputTalentFilter(ctx context.Context, obj 
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputTalentRequestInput(ctx context.Context, obj any) (model.TalentRequestInput, error) {
+	var it model.TalentRequestInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"eventTypeCode", "genreCode", "placeCode", "eventDate", "budgetPesewas", "note"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "eventTypeCode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("eventTypeCode"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EventTypeCode = data
+		case "genreCode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("genreCode"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.GenreCode = data
+		case "placeCode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("placeCode"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PlaceCode = data
+		case "eventDate":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("eventDate"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EventDate = data
+		case "budgetPesewas":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("budgetPesewas"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BudgetPesewas = data
+		case "note":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("note"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Note = data
+		}
+	}
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputUpdateTalentProfileInput(ctx context.Context, obj any) (model.UpdateTalentProfileInput, error) {
 	var it model.UpdateTalentProfileInput
 	if obj == nil {
@@ -13995,6 +14884,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "createTalentRequest":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_createTalentRequest(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "setTalentRequestStatus":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setTalentRequestStatus(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -14922,6 +15825,50 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "myTalentRequests":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_myTalentRequests(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "talentRequests":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_talentRequests(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "__type":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Query___type(ctx, field)
@@ -15515,6 +16462,114 @@ func (ec *executionContext) _TalentProfile(ctx context.Context, sel ast.Selectio
 			}
 		case "rates":
 			out.Values[i] = ec._TalentProfile_rates(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var talentRequestImplementors = []string{"TalentRequest"}
+
+func (ec *executionContext) _TalentRequest(ctx context.Context, sel ast.SelectionSet, obj *model.TalentRequest) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, talentRequestImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TalentRequest")
+		case "id":
+			out.Values[i] = ec._TalentRequest_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "statusCode":
+			out.Values[i] = ec._TalentRequest_statusCode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "statusName":
+			out.Values[i] = ec._TalentRequest_statusName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "eventTypeCode":
+			out.Values[i] = ec._TalentRequest_eventTypeCode(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "eventTypeName":
+			out.Values[i] = ec._TalentRequest_eventTypeName(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "genreCode":
+			out.Values[i] = ec._TalentRequest_genreCode(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "genreName":
+			out.Values[i] = ec._TalentRequest_genreName(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "placeCode":
+			out.Values[i] = ec._TalentRequest_placeCode(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "placeName":
+			out.Values[i] = ec._TalentRequest_placeName(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "eventDate":
+			out.Values[i] = ec._TalentRequest_eventDate(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "budgetPesewas":
+			out.Values[i] = ec._TalentRequest_budgetPesewas(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "currencyCode":
+			out.Values[i] = ec._TalentRequest_currencyCode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "note":
+			out.Values[i] = ec._TalentRequest_note(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createdAt":
+			out.Values[i] = ec._TalentRequest_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "organizerDisplayName":
+			out.Values[i] = ec._TalentRequest_organizerDisplayName(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -16759,6 +17814,37 @@ func (ec *executionContext) marshalNTalentProfile2ᚖgithubᚗcomᚋblingyplus�
 		return graphql.Null
 	}
 	return ec._TalentProfile(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNTalentRequest2ᚕᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐTalentRequestᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.TalentRequest) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNTalentRequest2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐTalentRequest(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNTalentRequest2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐTalentRequest(ctx context.Context, sel ast.SelectionSet, v *model.TalentRequest) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._TalentRequest(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNTalentRequestInput2githubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐTalentRequestInput(ctx context.Context, v any) (model.TalentRequestInput, error) {
+	res, err := ec.unmarshalInputTalentRequestInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalNUpdateTalentProfileInput2githubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐUpdateTalentProfileInput(ctx context.Context, v any) (model.UpdateTalentProfileInput, error) {

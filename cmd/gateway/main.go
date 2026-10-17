@@ -29,6 +29,7 @@ import (
 	"github.com/blingyplus/agrofie-backend/internal/payments"
 	"github.com/blingyplus/agrofie-backend/internal/review"
 	"github.com/blingyplus/agrofie-backend/internal/talentprofile"
+	"github.com/blingyplus/agrofie-backend/internal/talentrequest"
 	"github.com/blingyplus/agrofie-backend/internal/verification"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -79,6 +80,7 @@ func main() {
 		Checkout:       checkoutSvc,
 		Reviews:        reviewsSvc,
 		Disputes:       disputesSvc,
+		TalentRequests: talentrequest.NewService(pool),
 		Prober:         prober,
 		AuthClient:     authClient,
 	}

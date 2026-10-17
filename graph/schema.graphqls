@@ -60,6 +60,12 @@ type Query {
 
   """The admin dispute queue, newest first, optionally filtered to one status. Requires the admin role."""
   disputes(statusCode: String): [AdminDispute!]! @hasRole(code: "admin")
+
+  """The caller's own talent requests, newest first. Requires the organizer role."""
+  myTalentRequests: [TalentRequest!]! @hasRole(code: "organizer")
+
+  """All talent requests, newest first, optionally filtered to one status (open, matched, closed). Requires the admin role."""
+  talentRequests(statusCode: String): [TalentRequest!]! @hasRole(code: "admin")
 }
 
 type Mutation {
@@ -133,6 +139,12 @@ type Mutation {
 
   """Move a dispute to under_review, resolved, or closed, with an optional note. Never moves money or reopens the booking. Requires the admin role."""
   resolveDispute(id: ID!, statusCode: String!, resolutionNote: String): AdminDispute! @hasRole(code: "admin")
+
+  """Pitch the Agrofie team a request when Discover has nothing suitable. Organizer only; talent are not notified."""
+  createTalentRequest(input: TalentRequestInput!): TalentRequest! @hasRole(code: "organizer")
+
+  """Move a talent request to open, matched or closed. Requires the admin role."""
+  setTalentRequestStatus(id: ID!, statusCode: String!): TalentRequest! @hasRole(code: "admin")
 }
 
 input RegisterInput {
@@ -566,4 +578,34 @@ type Checkout {
   reference: ID!
   amountPesewas: Int!
   commissionPesewas: Int!
+}
+
+"""Prices are integer pesewas (100 = GHS 1.00). eventDate is YYYY-MM-DD. At least one field (or a note) is required."""
+input TalentRequestInput {
+  eventTypeCode: String
+  genreCode: String
+  placeCode: String
+  eventDate: String
+  budgetPesewas: Int
+  note: String
+}
+
+"""An organizer's "Tell us what you need" pitch. Visible only to its organizer and admins; talent are never shown these."""
+type TalentRequest {
+  id: ID!
+  """open, matched or closed."""
+  statusCode: String!
+  statusName: String!
+  eventTypeCode: String
+  eventTypeName: String
+  genreCode: String
+  genreName: String
+  placeCode: String
+  placeName: String
+  eventDate: String
+  budgetPesewas: Int
+  currencyCode: String!
+  note: String!
+  createdAt: String!
+  organizerDisplayName: String!
 }

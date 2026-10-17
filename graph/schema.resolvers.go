@@ -18,6 +18,7 @@ import (
 	"github.com/blingyplus/agrofie-backend/internal/discovery"
 	"github.com/blingyplus/agrofie-backend/internal/lookup"
 	"github.com/blingyplus/agrofie-backend/internal/talentprofile"
+	"github.com/blingyplus/agrofie-backend/internal/talentrequest"
 	"github.com/blingyplus/agrofie-backend/internal/verification"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
@@ -305,6 +306,28 @@ func (r *mutationResolver) ResolveDispute(ctx context.Context, id string, status
 		return nil, mapDisputeErr(err)
 	}
 	return r.adminDisputeByID(ctx, out.ID)
+}
+
+// CreateTalentRequest is the resolver for the createTalentRequest field.
+func (r *mutationResolver) CreateTalentRequest(ctx context.Context, input model.TalentRequestInput) (*model.TalentRequest, error) {
+	p, _ := gqlauth.FromContext(ctx)
+	out, err := r.TalentRequests.Create(ctx, p.UserID, talentrequest.Input{
+		EventTypeCode: input.EventTypeCode, GenreCode: input.GenreCode, PlaceCode: input.PlaceCode,
+		EventDate: input.EventDate, BudgetPesewas: input.BudgetPesewas, Note: derefStr(input.Note),
+	})
+	if err != nil {
+		return nil, mapTalentRequestErr(err)
+	}
+	return toModelTalentRequest(out), nil
+}
+
+// SetTalentRequestStatus is the resolver for the setTalentRequestStatus field.
+func (r *mutationResolver) SetTalentRequestStatus(ctx context.Context, id string, statusCode string) (*model.TalentRequest, error) {
+	out, err := r.TalentRequests.SetStatus(ctx, id, statusCode)
+	if err != nil {
+		return nil, mapTalentRequestErr(err)
+	}
+	return toModelTalentRequest(out), nil
 }
 
 // Health is the resolver for the health field.
@@ -607,6 +630,25 @@ func (r *queryResolver) Disputes(ctx context.Context, statusCode *string) ([]*mo
 		out = append(out, toModelAdminDispute(&rows[i]))
 	}
 	return out, nil
+}
+
+// MyTalentRequests is the resolver for the myTalentRequests field.
+func (r *queryResolver) MyTalentRequests(ctx context.Context) ([]*model.TalentRequest, error) {
+	p, _ := gqlauth.FromContext(ctx)
+	rows, err := r.Resolver.TalentRequests.ListMine(ctx, p.UserID)
+	if err != nil {
+		return nil, mapTalentRequestErr(err)
+	}
+	return toModelTalentRequests(rows), nil
+}
+
+// TalentRequests is the resolver for the talentRequests field.
+func (r *queryResolver) TalentRequests(ctx context.Context, statusCode *string) ([]*model.TalentRequest, error) {
+	rows, err := r.Resolver.TalentRequests.ListForAdmin(ctx, statusCode)
+	if err != nil {
+		return nil, mapTalentRequestErr(err)
+	}
+	return toModelTalentRequests(rows), nil
 }
 
 // Mutation returns MutationResolver implementation.

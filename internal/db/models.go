@@ -356,6 +356,32 @@ type TalentRate struct {
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 }
 
+type TalentRequest struct {
+	ID                    pgtype.UUID        `json:"id"`
+	OrganizerUserID       pgtype.UUID        `json:"organizer_user_id"`
+	EventTypeID           pgtype.UUID        `json:"event_type_id"`
+	GenreID               pgtype.UUID        `json:"genre_id"`
+	GeoPlaceID            pgtype.UUID        `json:"geo_place_id"`
+	EventDate             pgtype.Date        `json:"event_date"`
+	BudgetAmount          pgtype.Numeric     `json:"budget_amount"`
+	CurrencyCode          string             `json:"currency_code"`
+	Note                  string             `json:"note"`
+	TalentRequestStatusID pgtype.UUID        `json:"talent_request_status_id"`
+	CreatedAt             pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt             pgtype.Timestamptz `json:"updated_at"`
+}
+
+type TalentRequestStatus struct {
+	ID        pgtype.UUID        `json:"id"`
+	Code      string             `json:"code"`
+	Name      string             `json:"name"`
+	SortOrder int32              `json:"sort_order"`
+	IsActive  bool               `json:"is_active"`
+	Metadata  []byte             `json:"metadata"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
 type TalentServiceArea struct {
 	TalentProfileID pgtype.UUID `json:"talent_profile_id"`
 	GeoPlaceID      pgtype.UUID `json:"geo_place_id"`

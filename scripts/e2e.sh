@@ -175,6 +175,21 @@ R=$(gql "$ADM" 'mutation($i:ID!){resolveDispute(id:$i,statusCode:"resolved",reso
 R=$(gql "$TAL" 'query($i:ID!){booking(id:$i){disputes{statusCode resolutionNote}}}' "{\"i\":\"$B2\"}"); expect "talent sees resolution" "$R" '.data.booking.disputes[0].resolutionNote|length>0' true
 R=$(gql "$ORG" 'mutation($i:ID!){openDispute(input:{bookingId:$i,reasonCode:"quality"}){statusCode}}' "{\"i\":\"$B2\"}"); expect "new dispute allowed after resolve" "$R" '.data.openDispute.statusCode' open
 
+step "talent requests (\"Tell us what you need\")"
+RD=$(date -u -v+50d +%Y-%m-%d 2>/dev/null || date -u -d '+50 days' +%Y-%m-%d)
+R=$(gql "$TAL" 'mutation{createTalentRequest(input:{note:"x"}){id}}'); echo "$R" | jq -e '.errors' >/dev/null && ok "talent cannot create a request" || fail "talent created a request"
+R=$(gql "$ORG" 'mutation{createTalentRequest(input:{}){id}}'); echo "$R" | jq -e '.errors' >/dev/null && ok "empty request rejected" || fail "empty request accepted"
+R=$(gql "$ORG" 'mutation{createTalentRequest(input:{genreCode:"nope"}){id}}'); echo "$R" | jq -e '.errors' >/dev/null && ok "unknown genre rejected" || fail "unknown genre accepted"
+R=$(gql "$ORG" 'mutation($d:String!){createTalentRequest(input:{eventTypeCode:"wedding",genreCode:"highlife",placeCode:"greater_accra",eventDate:$d,budgetPesewas:250000,note:"Live band for 200 guests"}){id statusCode genreName placeName eventTypeName budgetPesewas eventDate}}' "{\"d\":\"$RD\"}")
+TR=$(val "$R" .data.createTalentRequest.id); expect "request created open" "$R" '.data.createTalentRequest.statusCode' open; expect "request budget (pesewas)" "$R" '.data.createTalentRequest.budgetPesewas' 250000; expect "request place resolved" "$R" '.data.createTalentRequest.placeName|length>0' true
+R=$(gql "$ORG" 'query{myTalentRequests{id statusCode}}'); expect "organizer sees own request" "$R" '.data.myTalentRequests|length' 1
+R=$(gql "$TAL" 'query{myTalentRequests{id}}'); echo "$R" | jq -e '.errors' >/dev/null && ok "talent cannot list requests" || fail "talent listed requests"
+R=$(gql "$ORG" 'query{talentRequests{id}}'); echo "$R" | jq -e '.errors' >/dev/null && ok "organizer cannot see admin requests" || fail "organizer saw admin requests"
+R=$(gql "$ADM" 'query{talentRequests(statusCode:"open"){id organizerDisplayName}}'); echo "$R" | jq -e --arg r "$TR" '[.data.talentRequests[].id]|index($r)!=null' >/dev/null && ok "request in admin queue" || fail "admin requests $R"
+R=$(gql "$ORG" 'mutation($i:ID!){setTalentRequestStatus(id:$i,statusCode:"matched"){id}}' "{\"i\":\"$TR\"}"); echo "$R" | jq -e '.errors' >/dev/null && ok "organizer cannot set status" || fail "organizer set status"
+R=$(gql "$ADM" 'mutation($i:ID!){setTalentRequestStatus(id:$i,statusCode:"matched"){statusCode}}' "{\"i\":\"$TR\"}"); expect "admin marks matched" "$R" '.data.setTalentRequestStatus.statusCode' matched
+R=$(gql "$ADM" 'mutation($i:ID!){setTalentRequestStatus(id:$i,statusCode:"bogus"){statusCode}}' "{\"i\":\"$TR\"}"); echo "$R" | jq -e '.errors' >/dev/null && ok "bad status rejected" || fail "bad status accepted"
+
 step "demo seed (skipped if make seed-demo not run)"
 R=$(gql "" 'mutation($i:LoginInput!){login(input:$i){sessionToken}}' '{"i":{"identifier":"demo.organizer@agrofie.local","password":"changeme-seed-organizer"}}')
 DORG=$(val "$R" .data.login.sessionToken)

@@ -19,6 +19,7 @@ import (
 	"github.com/blingyplus/agrofie-backend/internal/payments"
 	"github.com/blingyplus/agrofie-backend/internal/review"
 	"github.com/blingyplus/agrofie-backend/internal/talentprofile"
+	"github.com/blingyplus/agrofie-backend/internal/talentrequest"
 	"github.com/blingyplus/agrofie-backend/internal/verification"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
@@ -621,4 +622,40 @@ func toDiscoverySort(s *model.TalentSort) discovery.Sort {
 		return discovery.SortFeatured
 	}
 	return discovery.SortNewest
+}
+
+func derefStr(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
+func mapTalentRequestErr(err error) error {
+	switch {
+	case errors.Is(err, talentrequest.ErrInvalidInput):
+		return &gqlerror.Error{Message: err.Error(), Extensions: map[string]any{"code": "BAD_USER_INPUT"}}
+	case errors.Is(err, talentrequest.ErrNotFound):
+		return &gqlerror.Error{Message: "request not found", Extensions: map[string]any{"code": "NOT_FOUND"}}
+	default:
+		return err
+	}
+}
+
+func toModelTalentRequest(r *talentrequest.Request) *model.TalentRequest {
+	return &model.TalentRequest{
+		ID: r.ID, StatusCode: r.StatusCode, StatusName: r.StatusName,
+		EventTypeCode: r.EventTypeCode, EventTypeName: r.EventTypeName,
+		GenreCode: r.GenreCode, GenreName: r.GenreName, PlaceCode: r.PlaceCode, PlaceName: r.PlaceName,
+		EventDate: r.EventDate, BudgetPesewas: r.BudgetPesewas, CurrencyCode: r.CurrencyCode, Note: r.Note,
+		CreatedAt: r.CreatedAt.Format(time.RFC3339), OrganizerDisplayName: r.OrganizerDisplayName,
+	}
+}
+
+func toModelTalentRequests(rs []talentrequest.Request) []*model.TalentRequest {
+	out := make([]*model.TalentRequest, 0, len(rs))
+	for i := range rs {
+		out = append(out, toModelTalentRequest(&rs[i]))
+	}
+	return out
 }

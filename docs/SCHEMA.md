@@ -18,6 +18,7 @@ Rule: if a **name, type, status, or category can change** or needs **admin contr
 | `booking_statuses` | inquiry → countered* → agreed → paid → completed / cancelled |
 | `payment_statuses` | pending / succeeded / failed |
 | `dispute_reasons`, `dispute_statuses`, `cancellation_reasons` | Ops |
+| `talent_request_statuses` | open / matched / closed (talent requests, migration 000014) |
 
 ## Identity vs profile
 
@@ -52,6 +53,7 @@ Kratos tables live in Postgres schema `kratos` (same database, `search_path=krat
 | `payments` | One row per checkout attempt: booking, provider_reference (unique), amount_pesewas, commission_pesewas, currency, checkout_url, status |
 | `payment_events` | Raw webhook log, unique on `(provider_reference, event_type)` — the idempotency guard against Paystack's retried deliveries |
 | `reviews`, `disputes` | Post-event |
+| `talent_requests` | Organizer "Tell us what you need" pitches (event type, genre, region, date, budget, note). Visible to the organizer and admins only; talent are not notified (v2). |
 
 `escrow_ledger` / `ledger_entry_types` / `ledger_statuses` (the original hold/release scaffold) were dropped in migration `000010_payments`, replaced by the tables above. Agrofie never holds funds — see docs/PRODUCT.md (Money model).
 

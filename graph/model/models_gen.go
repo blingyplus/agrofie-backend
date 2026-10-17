@@ -393,6 +393,36 @@ type TalentProfile struct {
 	Rates        []*Rate `json:"rates"`
 }
 
+// An organizer's "Tell us what you need" pitch. Visible only to its organizer and admins; talent are never shown these.
+type TalentRequest struct {
+	ID string `json:"id"`
+	// open, matched or closed.
+	StatusCode           string  `json:"statusCode"`
+	StatusName           string  `json:"statusName"`
+	EventTypeCode        *string `json:"eventTypeCode,omitempty"`
+	EventTypeName        *string `json:"eventTypeName,omitempty"`
+	GenreCode            *string `json:"genreCode,omitempty"`
+	GenreName            *string `json:"genreName,omitempty"`
+	PlaceCode            *string `json:"placeCode,omitempty"`
+	PlaceName            *string `json:"placeName,omitempty"`
+	EventDate            *string `json:"eventDate,omitempty"`
+	BudgetPesewas        *int    `json:"budgetPesewas,omitempty"`
+	CurrencyCode         string  `json:"currencyCode"`
+	Note                 string  `json:"note"`
+	CreatedAt            string  `json:"createdAt"`
+	OrganizerDisplayName string  `json:"organizerDisplayName"`
+}
+
+// Prices are integer pesewas (100 = GHS 1.00). eventDate is YYYY-MM-DD. At least one field (or a note) is required.
+type TalentRequestInput struct {
+	EventTypeCode *string `json:"eventTypeCode,omitempty"`
+	GenreCode     *string `json:"genreCode,omitempty"`
+	PlaceCode     *string `json:"placeCode,omitempty"`
+	EventDate     *string `json:"eventDate,omitempty"`
+	BudgetPesewas *int    `json:"budgetPesewas,omitempty"`
+	Note          *string `json:"note,omitempty"`
+}
+
 type UpdateTalentProfileInput struct {
 	Headline *string `json:"headline,omitempty"`
 	Bio      *string `json:"bio,omitempty"`
