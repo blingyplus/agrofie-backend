@@ -350,7 +350,8 @@ func mapBookingErr(err error) error {
 	switch {
 	case errors.Is(err, booking.ErrInvalidInput), errors.Is(err, booking.ErrRateNotFound),
 		errors.Is(err, booking.ErrTalentNotBookable), errors.Is(err, booking.ErrNotAvailable),
-		errors.Is(err, booking.ErrConflict), errors.Is(err, booking.ErrNotPending):
+		errors.Is(err, booking.ErrConflict), errors.Is(err, booking.ErrNotPending),
+		errors.Is(err, booking.ErrNotYourTurn), errors.Is(err, booking.ErrMaxRounds):
 		return &gqlerror.Error{Message: err.Error(), Extensions: map[string]any{"code": "BAD_USER_INPUT"}}
 	case errors.Is(err, booking.ErrNotFound):
 		return &gqlerror.Error{Message: "booking not found", Extensions: map[string]any{"code": "NOT_FOUND"}}
@@ -377,6 +378,7 @@ func toModelOrganizerBooking(b *booking.OrganizerBookingItem) *model.OrganizerBo
 		ID: b.ID, StatusCode: b.StatusCode, StatusName: b.StatusName,
 		StartsAt: b.StartsAt.Format(time.RFC3339), EndsAt: b.EndsAt.Format(time.RFC3339), VenueText: b.VenueText,
 		QuotedAmount: b.QuotedAmount, CurrencyCode: b.CurrencyCode,
+		LastOfferByRole: b.LastOfferByRole, CounterCount: b.CounterCount, AwaitingMyResponse: b.AwaitingMyResponse,
 		TalentDisplayName: b.TalentDisplayName, TalentID: b.TalentID, EventTypeName: b.EventTypeName,
 	}
 }
@@ -386,12 +388,43 @@ func toModelTalentBooking(b *booking.TalentBookingItem) *model.TalentBooking {
 		ID: b.ID, StatusCode: b.StatusCode, StatusName: b.StatusName,
 		StartsAt: b.StartsAt.Format(time.RFC3339), EndsAt: b.EndsAt.Format(time.RFC3339), VenueText: b.VenueText,
 		QuotedAmount: b.QuotedAmount, CurrencyCode: b.CurrencyCode,
+		LastOfferByRole: b.LastOfferByRole, CounterCount: b.CounterCount, AwaitingMyResponse: b.AwaitingMyResponse,
 		OrganizerDisplayName: b.OrganizerDisplayName, OrganizerID: b.OrganizerID, EventTypeName: b.EventTypeName,
 	}
 }
 
+func toModelOffers(in []booking.Offer) []*model.BookingOffer {
+	out := make([]*model.BookingOffer, 0, len(in))
+	for _, o := range in {
+		out = append(out, &model.BookingOffer{
+			ID: o.ID, Round: o.Round, ByRole: o.ByRole, ByName: o.ByName, ByMe: o.ByMe,
+			Amount: o.Amount, AmountPesewas: int(o.AmountPesewas), CurrencyCode: o.CurrencyCode,
+			StartsAt: o.StartsAt.Format(time.RFC3339), EndsAt: o.EndsAt.Format(time.RFC3339),
+			Note: o.Note, CreatedAt: o.CreatedAt.Format(time.RFC3339),
+		})
+	}
+	return out
+}
+
+func toCounterInput(in model.CounterBookingInput) (booking.CounterInput, error) {
+	out := booking.CounterInput{BookingID: in.BookingID, AmountPesewas: int64(in.AmountPesewas), CurrencyCode: in.CurrencyCode, Note: in.Note}
+	if in.StartsAt != nil || in.EndsAt != nil {
+		if in.StartsAt == nil || in.EndsAt == nil {
+			return out, &gqlerror.Error{Message: "provide both startsAt and endsAt, or neither", Extensions: map[string]any{"code": "BAD_USER_INPUT"}}
+		}
+		starts, ends, err := parseRange(*in.StartsAt, *in.EndsAt)
+		if err != nil {
+			return out, err
+		}
+		out.StartsAt, out.EndsAt = &starts, &ends
+	}
+	return out, nil
+}
+
 func toModelBookingDetail(b *booking.Detail) *model.BookingDetail {
 	return &model.BookingDetail{
+		Offers:          toModelOffers(b.Offers),
+		LastOfferByRole: b.LastOfferByRole, CounterCount: b.CounterCount, AwaitingMyResponse: b.AwaitingMyResponse,
 		ID: b.ID, StatusCode: b.StatusCode, StatusName: b.StatusName,
 		StartsAt: b.StartsAt.Format(time.RFC3339), EndsAt: b.EndsAt.Format(time.RFC3339), VenueText: b.VenueText,
 		QuotedAmount: b.QuotedAmount, CurrencyCode: b.CurrencyCode,

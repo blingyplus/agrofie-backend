@@ -70,12 +70,38 @@ type BookingDetail struct {
 	EventTypeName        *string `json:"eventTypeName,omitempty"`
 	// Only set once the booking has been accepted.
 	TermsText *string `json:"termsText,omitempty"`
+	// organizer or talent: who made the latest offer.
+	LastOfferByRole string `json:"lastOfferByRole"`
+	// Counter-offers made so far (the opening inquiry is not counted).
+	CounterCount int `json:"counterCount"`
+	// True when the booking is live and the caller owes the next move (accept, counter or decline).
+	AwaitingMyResponse bool `json:"awaitingMyResponse"`
+	// Full negotiation trail, oldest first.
+	Offers []*BookingOffer `json:"offers"`
 	// The most recent payment attempt for this booking, if any.
 	Payment *Payment `json:"payment,omitempty"`
 	// Every review left on this booking (0, 1, or 2 — one per side).
 	Reviews []*Review `json:"reviews"`
 	// Every dispute opened on this booking, newest first.
 	Disputes []*Dispute `json:"disputes"`
+}
+
+// One proposal in a booking's negotiation trail (round 1 is the organizer's original inquiry).
+type BookingOffer struct {
+	ID    string `json:"id"`
+	Round int    `json:"round"`
+	// organizer or talent
+	ByRole string `json:"byRole"`
+	ByName string `json:"byName"`
+	ByMe   bool   `json:"byMe"`
+	// Decimal GHS, e.g. "1250.00".
+	Amount        string  `json:"amount"`
+	AmountPesewas int     `json:"amountPesewas"`
+	CurrencyCode  string  `json:"currencyCode"`
+	StartsAt      string  `json:"startsAt"`
+	EndsAt        string  `json:"endsAt"`
+	Note          *string `json:"note,omitempty"`
+	CreatedAt     string  `json:"createdAt"`
 }
 
 type Checkout struct {
@@ -90,6 +116,17 @@ type ConnectPayoutInput struct {
 	SettlementType SettlementType `json:"settlementType"`
 	BankCode       string         `json:"bankCode"`
 	AccountNumber  string         `json:"accountNumber"`
+}
+
+// Prices are integer pesewas (100 = GHS 1.00), 1 .. 100,000,000. startsAt and endsAt must be given together (or both omitted to keep the current dates).
+type CounterBookingInput struct {
+	BookingID     string `json:"bookingId"`
+	AmountPesewas int    `json:"amountPesewas"`
+	// Optional; must match the booking currency (GHS).
+	CurrencyCode *string `json:"currencyCode,omitempty"`
+	StartsAt     *string `json:"startsAt,omitempty"`
+	EndsAt       *string `json:"endsAt,omitempty"`
+	Note         *string `json:"note,omitempty"`
 }
 
 type Country struct {
@@ -163,6 +200,12 @@ type OrganizerBooking struct {
 	TalentDisplayName string  `json:"talentDisplayName"`
 	TalentID          string  `json:"talentId"`
 	EventTypeName     *string `json:"eventTypeName,omitempty"`
+	// organizer or talent: who made the latest offer.
+	LastOfferByRole string `json:"lastOfferByRole"`
+	// Counter-offers made so far (the opening inquiry is not counted).
+	CounterCount int `json:"counterCount"`
+	// True when the booking is live and the caller owes the next move (accept, counter or decline).
+	AwaitingMyResponse bool `json:"awaitingMyResponse"`
 }
 
 // One Paystack split-checkout attempt for a booking. Amounts are
@@ -286,6 +329,12 @@ type TalentBooking struct {
 	OrganizerDisplayName string  `json:"organizerDisplayName"`
 	OrganizerID          string  `json:"organizerId"`
 	EventTypeName        *string `json:"eventTypeName,omitempty"`
+	// organizer or talent: who made the latest offer.
+	LastOfferByRole string `json:"lastOfferByRole"`
+	// Counter-offers made so far (the opening inquiry is not counted).
+	CounterCount int `json:"counterCount"`
+	// True when the booking is live and the caller owes the next move (accept, counter or decline).
+	AwaitingMyResponse bool `json:"awaitingMyResponse"`
 }
 
 type TalentCard struct {

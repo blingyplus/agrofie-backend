@@ -77,11 +77,15 @@ type ComplexityRoot struct {
 	}
 
 	BookingDetail struct {
+		AwaitingMyResponse   func(childComplexity int) int
+		CounterCount         func(childComplexity int) int
 		CurrencyCode         func(childComplexity int) int
 		Disputes             func(childComplexity int) int
 		EndsAt               func(childComplexity int) int
 		EventTypeName        func(childComplexity int) int
 		ID                   func(childComplexity int) int
+		LastOfferByRole      func(childComplexity int) int
+		Offers               func(childComplexity int) int
 		OrganizerDisplayName func(childComplexity int) int
 		Payment              func(childComplexity int) int
 		QuotedAmount         func(childComplexity int) int
@@ -92,6 +96,21 @@ type ComplexityRoot struct {
 		TalentDisplayName    func(childComplexity int) int
 		TermsText            func(childComplexity int) int
 		VenueText            func(childComplexity int) int
+	}
+
+	BookingOffer struct {
+		Amount        func(childComplexity int) int
+		AmountPesewas func(childComplexity int) int
+		ByMe          func(childComplexity int) int
+		ByName        func(childComplexity int) int
+		ByRole        func(childComplexity int) int
+		CreatedAt     func(childComplexity int) int
+		CurrencyCode  func(childComplexity int) int
+		EndsAt        func(childComplexity int) int
+		ID            func(childComplexity int) int
+		Note          func(childComplexity int) int
+		Round         func(childComplexity int) int
+		StartsAt      func(childComplexity int) int
 	}
 
 	Checkout struct {
@@ -148,11 +167,13 @@ type ComplexityRoot struct {
 
 	Mutation struct {
 		AcceptBooking             func(childComplexity int, id string) int
+		AcceptCounterOffer        func(childComplexity int, id string) int
 		AddMyAvailabilityBlock    func(childComplexity int, input model.AddAvailabilityBlockInput) int
 		ApproveVerification       func(childComplexity int, id string, reviewNotes *string) int
 		CancelBooking             func(childComplexity int, id string) int
 		CompleteBooking           func(childComplexity int, id string) int
 		ConnectMyPayoutAccount    func(childComplexity int, input model.ConnectPayoutInput) int
+		CounterBooking            func(childComplexity int, input model.CounterBookingInput) int
 		DeclineBooking            func(childComplexity int, id string) int
 		InitiateCheckout          func(childComplexity int, bookingID string) int
 		Login                     func(childComplexity int, input model.LoginInput) int
@@ -174,17 +195,20 @@ type ComplexityRoot struct {
 	}
 
 	OrganizerBooking struct {
-		CurrencyCode      func(childComplexity int) int
-		EndsAt            func(childComplexity int) int
-		EventTypeName     func(childComplexity int) int
-		ID                func(childComplexity int) int
-		QuotedAmount      func(childComplexity int) int
-		StartsAt          func(childComplexity int) int
-		StatusCode        func(childComplexity int) int
-		StatusName        func(childComplexity int) int
-		TalentDisplayName func(childComplexity int) int
-		TalentID          func(childComplexity int) int
-		VenueText         func(childComplexity int) int
+		AwaitingMyResponse func(childComplexity int) int
+		CounterCount       func(childComplexity int) int
+		CurrencyCode       func(childComplexity int) int
+		EndsAt             func(childComplexity int) int
+		EventTypeName      func(childComplexity int) int
+		ID                 func(childComplexity int) int
+		LastOfferByRole    func(childComplexity int) int
+		QuotedAmount       func(childComplexity int) int
+		StartsAt           func(childComplexity int) int
+		StatusCode         func(childComplexity int) int
+		StatusName         func(childComplexity int) int
+		TalentDisplayName  func(childComplexity int) int
+		TalentID           func(childComplexity int) int
+		VenueText          func(childComplexity int) int
 	}
 
 	Payment struct {
@@ -276,10 +300,13 @@ type ComplexityRoot struct {
 	}
 
 	TalentBooking struct {
+		AwaitingMyResponse   func(childComplexity int) int
+		CounterCount         func(childComplexity int) int
 		CurrencyCode         func(childComplexity int) int
 		EndsAt               func(childComplexity int) int
 		EventTypeName        func(childComplexity int) int
 		ID                   func(childComplexity int) int
+		LastOfferByRole      func(childComplexity int) int
 		OrganizerDisplayName func(childComplexity int) int
 		OrganizerID          func(childComplexity int) int
 		QuotedAmount         func(childComplexity int) int
@@ -367,6 +394,8 @@ type MutationResolver interface {
 	RequestBooking(ctx context.Context, input model.RequestBookingInput) (*model.OrganizerBooking, error)
 	AcceptBooking(ctx context.Context, id string) (*model.TalentBooking, error)
 	DeclineBooking(ctx context.Context, id string) (*model.TalentBooking, error)
+	CounterBooking(ctx context.Context, input model.CounterBookingInput) (*model.BookingDetail, error)
+	AcceptCounterOffer(ctx context.Context, id string) (*model.BookingDetail, error)
 	CancelBooking(ctx context.Context, id string) (*model.OrganizerBooking, error)
 	InitiateCheckout(ctx context.Context, bookingID string) (*model.Checkout, error)
 	VerifyPayment(ctx context.Context, bookingID string) (*model.Payment, error)
@@ -577,6 +606,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.AvailabilityWindow.StartsAt(childComplexity), true
 
+	case "BookingDetail.awaitingMyResponse":
+		if e.ComplexityRoot.BookingDetail.AwaitingMyResponse == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BookingDetail.AwaitingMyResponse(childComplexity), true
+	case "BookingDetail.counterCount":
+		if e.ComplexityRoot.BookingDetail.CounterCount == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BookingDetail.CounterCount(childComplexity), true
 	case "BookingDetail.currencyCode":
 		if e.ComplexityRoot.BookingDetail.CurrencyCode == nil {
 			break
@@ -607,6 +648,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.BookingDetail.ID(childComplexity), true
+	case "BookingDetail.lastOfferByRole":
+		if e.ComplexityRoot.BookingDetail.LastOfferByRole == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BookingDetail.LastOfferByRole(childComplexity), true
+	case "BookingDetail.offers":
+		if e.ComplexityRoot.BookingDetail.Offers == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BookingDetail.Offers(childComplexity), true
 	case "BookingDetail.organizerDisplayName":
 		if e.ComplexityRoot.BookingDetail.OrganizerDisplayName == nil {
 			break
@@ -667,6 +720,79 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.BookingDetail.VenueText(childComplexity), true
+
+	case "BookingOffer.amount":
+		if e.ComplexityRoot.BookingOffer.Amount == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BookingOffer.Amount(childComplexity), true
+	case "BookingOffer.amountPesewas":
+		if e.ComplexityRoot.BookingOffer.AmountPesewas == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BookingOffer.AmountPesewas(childComplexity), true
+	case "BookingOffer.byMe":
+		if e.ComplexityRoot.BookingOffer.ByMe == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BookingOffer.ByMe(childComplexity), true
+	case "BookingOffer.byName":
+		if e.ComplexityRoot.BookingOffer.ByName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BookingOffer.ByName(childComplexity), true
+	case "BookingOffer.byRole":
+		if e.ComplexityRoot.BookingOffer.ByRole == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BookingOffer.ByRole(childComplexity), true
+	case "BookingOffer.createdAt":
+		if e.ComplexityRoot.BookingOffer.CreatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BookingOffer.CreatedAt(childComplexity), true
+	case "BookingOffer.currencyCode":
+		if e.ComplexityRoot.BookingOffer.CurrencyCode == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BookingOffer.CurrencyCode(childComplexity), true
+	case "BookingOffer.endsAt":
+		if e.ComplexityRoot.BookingOffer.EndsAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BookingOffer.EndsAt(childComplexity), true
+	case "BookingOffer.id":
+		if e.ComplexityRoot.BookingOffer.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BookingOffer.ID(childComplexity), true
+	case "BookingOffer.note":
+		if e.ComplexityRoot.BookingOffer.Note == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BookingOffer.Note(childComplexity), true
+	case "BookingOffer.round":
+		if e.ComplexityRoot.BookingOffer.Round == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BookingOffer.Round(childComplexity), true
+	case "BookingOffer.startsAt":
+		if e.ComplexityRoot.BookingOffer.StartsAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BookingOffer.StartsAt(childComplexity), true
 
 	case "Checkout.amountPesewas":
 		if e.ComplexityRoot.Checkout.AmountPesewas == nil {
@@ -889,6 +1015,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.AcceptBooking(childComplexity, args["id"].(string)), true
+	case "Mutation.acceptCounterOffer":
+		if e.ComplexityRoot.Mutation.AcceptCounterOffer == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_acceptCounterOffer_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.AcceptCounterOffer(childComplexity, args["id"].(string)), true
 	case "Mutation.addMyAvailabilityBlock":
 		if e.ComplexityRoot.Mutation.AddMyAvailabilityBlock == nil {
 			break
@@ -944,6 +1081,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.ConnectMyPayoutAccount(childComplexity, args["input"].(model.ConnectPayoutInput)), true
+	case "Mutation.counterBooking":
+		if e.ComplexityRoot.Mutation.CounterBooking == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_counterBooking_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.CounterBooking(childComplexity, args["input"].(model.CounterBookingInput)), true
 	case "Mutation.declineBooking":
 		if e.ComplexityRoot.Mutation.DeclineBooking == nil {
 			break
@@ -1138,6 +1286,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Mutation.VerifyPayment(childComplexity, args["bookingId"].(string)), true
 
+	case "OrganizerBooking.awaitingMyResponse":
+		if e.ComplexityRoot.OrganizerBooking.AwaitingMyResponse == nil {
+			break
+		}
+
+		return e.ComplexityRoot.OrganizerBooking.AwaitingMyResponse(childComplexity), true
+	case "OrganizerBooking.counterCount":
+		if e.ComplexityRoot.OrganizerBooking.CounterCount == nil {
+			break
+		}
+
+		return e.ComplexityRoot.OrganizerBooking.CounterCount(childComplexity), true
 	case "OrganizerBooking.currencyCode":
 		if e.ComplexityRoot.OrganizerBooking.CurrencyCode == nil {
 			break
@@ -1162,6 +1322,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.OrganizerBooking.ID(childComplexity), true
+	case "OrganizerBooking.lastOfferByRole":
+		if e.ComplexityRoot.OrganizerBooking.LastOfferByRole == nil {
+			break
+		}
+
+		return e.ComplexityRoot.OrganizerBooking.LastOfferByRole(childComplexity), true
 	case "OrganizerBooking.quotedAmount":
 		if e.ComplexityRoot.OrganizerBooking.QuotedAmount == nil {
 			break
@@ -1676,6 +1842,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Tag.Name(childComplexity), true
 
+	case "TalentBooking.awaitingMyResponse":
+		if e.ComplexityRoot.TalentBooking.AwaitingMyResponse == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TalentBooking.AwaitingMyResponse(childComplexity), true
+	case "TalentBooking.counterCount":
+		if e.ComplexityRoot.TalentBooking.CounterCount == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TalentBooking.CounterCount(childComplexity), true
 	case "TalentBooking.currencyCode":
 		if e.ComplexityRoot.TalentBooking.CurrencyCode == nil {
 			break
@@ -1700,6 +1878,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.TalentBooking.ID(childComplexity), true
+	case "TalentBooking.lastOfferByRole":
+		if e.ComplexityRoot.TalentBooking.LastOfferByRole == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TalentBooking.LastOfferByRole(childComplexity), true
 	case "TalentBooking.organizerDisplayName":
 		if e.ComplexityRoot.TalentBooking.OrganizerDisplayName == nil {
 			break
@@ -1998,6 +2182,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
 		ec.unmarshalInputAddAvailabilityBlockInput,
 		ec.unmarshalInputConnectPayoutInput,
+		ec.unmarshalInputCounterBookingInput,
 		ec.unmarshalInputLoginInput,
 		ec.unmarshalInputOpenDisputeInput,
 		ec.unmarshalInputRateInput,
@@ -2201,6 +2386,14 @@ func (ec *executionContext) childFields_BookingDetail(ctx context.Context, field
 		return ec.fieldContext_BookingDetail_eventTypeName(ctx, field)
 	case "termsText":
 		return ec.fieldContext_BookingDetail_termsText(ctx, field)
+	case "lastOfferByRole":
+		return ec.fieldContext_BookingDetail_lastOfferByRole(ctx, field)
+	case "counterCount":
+		return ec.fieldContext_BookingDetail_counterCount(ctx, field)
+	case "awaitingMyResponse":
+		return ec.fieldContext_BookingDetail_awaitingMyResponse(ctx, field)
+	case "offers":
+		return ec.fieldContext_BookingDetail_offers(ctx, field)
 	case "payment":
 		return ec.fieldContext_BookingDetail_payment(ctx, field)
 	case "reviews":
@@ -2209,6 +2402,36 @@ func (ec *executionContext) childFields_BookingDetail(ctx context.Context, field
 		return ec.fieldContext_BookingDetail_disputes(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type BookingDetail", field.Name)
+}
+
+func (ec *executionContext) childFields_BookingOffer(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "id":
+		return ec.fieldContext_BookingOffer_id(ctx, field)
+	case "round":
+		return ec.fieldContext_BookingOffer_round(ctx, field)
+	case "byRole":
+		return ec.fieldContext_BookingOffer_byRole(ctx, field)
+	case "byName":
+		return ec.fieldContext_BookingOffer_byName(ctx, field)
+	case "byMe":
+		return ec.fieldContext_BookingOffer_byMe(ctx, field)
+	case "amount":
+		return ec.fieldContext_BookingOffer_amount(ctx, field)
+	case "amountPesewas":
+		return ec.fieldContext_BookingOffer_amountPesewas(ctx, field)
+	case "currencyCode":
+		return ec.fieldContext_BookingOffer_currencyCode(ctx, field)
+	case "startsAt":
+		return ec.fieldContext_BookingOffer_startsAt(ctx, field)
+	case "endsAt":
+		return ec.fieldContext_BookingOffer_endsAt(ctx, field)
+	case "note":
+		return ec.fieldContext_BookingOffer_note(ctx, field)
+	case "createdAt":
+		return ec.fieldContext_BookingOffer_createdAt(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type BookingOffer", field.Name)
 }
 
 func (ec *executionContext) childFields_Checkout(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -2339,6 +2562,12 @@ func (ec *executionContext) childFields_OrganizerBooking(ctx context.Context, fi
 		return ec.fieldContext_OrganizerBooking_talentId(ctx, field)
 	case "eventTypeName":
 		return ec.fieldContext_OrganizerBooking_eventTypeName(ctx, field)
+	case "lastOfferByRole":
+		return ec.fieldContext_OrganizerBooking_lastOfferByRole(ctx, field)
+	case "counterCount":
+		return ec.fieldContext_OrganizerBooking_counterCount(ctx, field)
+	case "awaitingMyResponse":
+		return ec.fieldContext_OrganizerBooking_awaitingMyResponse(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type OrganizerBooking", field.Name)
 }
@@ -2483,6 +2712,12 @@ func (ec *executionContext) childFields_TalentBooking(ctx context.Context, field
 		return ec.fieldContext_TalentBooking_organizerId(ctx, field)
 	case "eventTypeName":
 		return ec.fieldContext_TalentBooking_eventTypeName(ctx, field)
+	case "lastOfferByRole":
+		return ec.fieldContext_TalentBooking_lastOfferByRole(ctx, field)
+	case "counterCount":
+		return ec.fieldContext_TalentBooking_counterCount(ctx, field)
+	case "awaitingMyResponse":
+		return ec.fieldContext_TalentBooking_awaitingMyResponse(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type TalentBooking", field.Name)
 }
@@ -2741,6 +2976,20 @@ func (ec *executionContext) field_Mutation_acceptBooking_args(ctx context.Contex
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_acceptCounterOffer_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_addMyAvailabilityBlock_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -2811,6 +3060,20 @@ func (ec *executionContext) field_Mutation_connectMyPayoutAccount_args(ctx conte
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
 		func(ctx context.Context, v any) (model.ConnectPayoutInput, error) {
 			return ec.unmarshalNConnectPayoutInput2githubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐConnectPayoutInput(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_counterBooking_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
+		func(ctx context.Context, v any) (model.CounterBookingInput, error) {
+			return ec.unmarshalNCounterBookingInput2githubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐCounterBookingInput(ctx, v)
 		})
 	if err != nil {
 		return nil, err
@@ -4393,6 +4656,107 @@ func (ec *executionContext) fieldContext_BookingDetail_termsText(_ context.Conte
 	return graphql.NewScalarFieldContext("BookingDetail", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
+func (ec *executionContext) _BookingDetail_lastOfferByRole(ctx context.Context, field graphql.CollectedField, obj *model.BookingDetail) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BookingDetail_lastOfferByRole(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.LastOfferByRole, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BookingDetail_lastOfferByRole(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BookingDetail", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BookingDetail_counterCount(ctx context.Context, field graphql.CollectedField, obj *model.BookingDetail) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BookingDetail_counterCount(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CounterCount, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BookingDetail_counterCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BookingDetail", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _BookingDetail_awaitingMyResponse(ctx context.Context, field graphql.CollectedField, obj *model.BookingDetail) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BookingDetail_awaitingMyResponse(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.AwaitingMyResponse, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BookingDetail_awaitingMyResponse(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BookingDetail", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _BookingDetail_offers(ctx context.Context, field graphql.CollectedField, obj *model.BookingDetail) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BookingDetail_offers(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Offers, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.BookingOffer) graphql.Marshaler {
+			return ec.marshalNBookingOffer2ᚕᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐBookingOfferᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BookingDetail_offers(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BookingDetail",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_BookingOffer(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _BookingDetail_payment(ctx context.Context, field graphql.CollectedField, obj *model.BookingDetail) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -4487,6 +4851,282 @@ func (ec *executionContext) fieldContext_BookingDetail_disputes(_ context.Contex
 		},
 	}
 	return fc, nil
+}
+
+func (ec *executionContext) _BookingOffer_id(ctx context.Context, field graphql.CollectedField, obj *model.BookingOffer) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BookingOffer_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BookingOffer_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BookingOffer", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _BookingOffer_round(ctx context.Context, field graphql.CollectedField, obj *model.BookingOffer) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BookingOffer_round(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Round, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BookingOffer_round(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BookingOffer", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _BookingOffer_byRole(ctx context.Context, field graphql.CollectedField, obj *model.BookingOffer) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BookingOffer_byRole(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ByRole, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BookingOffer_byRole(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BookingOffer", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BookingOffer_byName(ctx context.Context, field graphql.CollectedField, obj *model.BookingOffer) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BookingOffer_byName(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ByName, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BookingOffer_byName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BookingOffer", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BookingOffer_byMe(ctx context.Context, field graphql.CollectedField, obj *model.BookingOffer) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BookingOffer_byMe(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ByMe, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BookingOffer_byMe(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BookingOffer", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _BookingOffer_amount(ctx context.Context, field graphql.CollectedField, obj *model.BookingOffer) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BookingOffer_amount(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Amount, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BookingOffer_amount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BookingOffer", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BookingOffer_amountPesewas(ctx context.Context, field graphql.CollectedField, obj *model.BookingOffer) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BookingOffer_amountPesewas(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.AmountPesewas, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BookingOffer_amountPesewas(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BookingOffer", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _BookingOffer_currencyCode(ctx context.Context, field graphql.CollectedField, obj *model.BookingOffer) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BookingOffer_currencyCode(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CurrencyCode, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BookingOffer_currencyCode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BookingOffer", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BookingOffer_startsAt(ctx context.Context, field graphql.CollectedField, obj *model.BookingOffer) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BookingOffer_startsAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.StartsAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BookingOffer_startsAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BookingOffer", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BookingOffer_endsAt(ctx context.Context, field graphql.CollectedField, obj *model.BookingOffer) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BookingOffer_endsAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.EndsAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BookingOffer_endsAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BookingOffer", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BookingOffer_note(ctx context.Context, field graphql.CollectedField, obj *model.BookingOffer) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BookingOffer_note(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Note, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_BookingOffer_note(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BookingOffer", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _BookingOffer_createdAt(ctx context.Context, field graphql.CollectedField, obj *model.BookingOffer) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_BookingOffer_createdAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_BookingOffer_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("BookingOffer", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) _Checkout_checkoutUrl(ctx context.Context, field graphql.CollectedField, obj *model.Checkout) (ret graphql.Marshaler) {
@@ -6263,6 +6903,120 @@ func (ec *executionContext) fieldContext_Mutation_declineBooking(ctx context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_counterBooking(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_counterBooking(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().CounterBooking(ctx, fc.Args["input"].(model.CounterBookingInput))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Authenticated == nil {
+					var zeroVal *model.BookingDetail
+					return zeroVal, errors.New("directive authenticated is not implemented")
+				}
+				return ec.Directives.Authenticated(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		func(ctx context.Context, selections ast.SelectionSet, v *model.BookingDetail) graphql.Marshaler {
+			return ec.marshalNBookingDetail2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐBookingDetail(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_counterBooking(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_BookingDetail(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_counterBooking_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_acceptCounterOffer(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_acceptCounterOffer(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().AcceptCounterOffer(ctx, fc.Args["id"].(string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Authenticated == nil {
+					var zeroVal *model.BookingDetail
+					return zeroVal, errors.New("directive authenticated is not implemented")
+				}
+				return ec.Directives.Authenticated(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		func(ctx context.Context, selections ast.SelectionSet, v *model.BookingDetail) graphql.Marshaler {
+			return ec.marshalNBookingDetail2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐBookingDetail(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_acceptCounterOffer(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_BookingDetail(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_acceptCounterOffer_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_cancelBooking(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -6933,6 +7687,75 @@ func (ec *executionContext) _OrganizerBooking_eventTypeName(ctx context.Context,
 }
 func (ec *executionContext) fieldContext_OrganizerBooking_eventTypeName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("OrganizerBooking", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _OrganizerBooking_lastOfferByRole(ctx context.Context, field graphql.CollectedField, obj *model.OrganizerBooking) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_OrganizerBooking_lastOfferByRole(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.LastOfferByRole, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_OrganizerBooking_lastOfferByRole(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("OrganizerBooking", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _OrganizerBooking_counterCount(ctx context.Context, field graphql.CollectedField, obj *model.OrganizerBooking) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_OrganizerBooking_counterCount(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CounterCount, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_OrganizerBooking_counterCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("OrganizerBooking", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _OrganizerBooking_awaitingMyResponse(ctx context.Context, field graphql.CollectedField, obj *model.OrganizerBooking) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_OrganizerBooking_awaitingMyResponse(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.AwaitingMyResponse, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_OrganizerBooking_awaitingMyResponse(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("OrganizerBooking", field, false, false, errors.New("field of type Boolean does not have child fields"))
 }
 
 func (ec *executionContext) _Payment_reference(ctx context.Context, field graphql.CollectedField, obj *model.Payment) (ret graphql.Marshaler) {
@@ -9326,6 +10149,75 @@ func (ec *executionContext) fieldContext_TalentBooking_eventTypeName(_ context.C
 	return graphql.NewScalarFieldContext("TalentBooking", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
+func (ec *executionContext) _TalentBooking_lastOfferByRole(ctx context.Context, field graphql.CollectedField, obj *model.TalentBooking) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TalentBooking_lastOfferByRole(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.LastOfferByRole, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TalentBooking_lastOfferByRole(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TalentBooking", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _TalentBooking_counterCount(ctx context.Context, field graphql.CollectedField, obj *model.TalentBooking) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TalentBooking_counterCount(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CounterCount, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TalentBooking_counterCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TalentBooking", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _TalentBooking_awaitingMyResponse(ctx context.Context, field graphql.CollectedField, obj *model.TalentBooking) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TalentBooking_awaitingMyResponse(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.AwaitingMyResponse, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TalentBooking_awaitingMyResponse(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TalentBooking", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
 func (ec *executionContext) _TalentCard_id(ctx context.Context, field graphql.CollectedField, obj *model.TalentCard) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -11488,6 +12380,71 @@ func (ec *executionContext) unmarshalInputConnectPayoutInput(ctx context.Context
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputCounterBookingInput(ctx context.Context, obj any) (model.CounterBookingInput, error) {
+	var it model.CounterBookingInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"bookingId", "amountPesewas", "currencyCode", "startsAt", "endsAt", "note"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "bookingId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bookingId"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BookingID = data
+		case "amountPesewas":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("amountPesewas"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AmountPesewas = data
+		case "currencyCode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCode"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCode = data
+		case "startsAt":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("startsAt"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StartsAt = data
+		case "endsAt":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("endsAt"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EndsAt = data
+		case "note":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("note"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Note = data
+		}
+	}
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputLoginInput(ctx context.Context, obj any) (model.LoginInput, error) {
 	var it model.LoginInput
 	if obj == nil {
@@ -12319,6 +13276,26 @@ func (ec *executionContext) _BookingDetail(ctx context.Context, sel ast.Selectio
 			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
+		case "lastOfferByRole":
+			out.Values[i] = ec._BookingDetail_lastOfferByRole(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "counterCount":
+			out.Values[i] = ec._BookingDetail_counterCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "awaitingMyResponse":
+			out.Values[i] = ec._BookingDetail_awaitingMyResponse(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "offers":
+			out.Values[i] = ec._BookingDetail_offers(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "payment":
 			out.Values[i] = ec._BookingDetail_payment(ctx, field, obj)
 			if out.Values[i] == graphql.RequiredNull {
@@ -12331,6 +13308,99 @@ func (ec *executionContext) _BookingDetail(ctx context.Context, sel ast.Selectio
 			}
 		case "disputes":
 			out.Values[i] = ec._BookingDetail_disputes(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var bookingOfferImplementors = []string{"BookingOffer"}
+
+func (ec *executionContext) _BookingOffer(ctx context.Context, sel ast.SelectionSet, obj *model.BookingOffer) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, bookingOfferImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("BookingOffer")
+		case "id":
+			out.Values[i] = ec._BookingOffer_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "round":
+			out.Values[i] = ec._BookingOffer_round(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "byRole":
+			out.Values[i] = ec._BookingOffer_byRole(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "byName":
+			out.Values[i] = ec._BookingOffer_byName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "byMe":
+			out.Values[i] = ec._BookingOffer_byMe(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "amount":
+			out.Values[i] = ec._BookingOffer_amount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "amountPesewas":
+			out.Values[i] = ec._BookingOffer_amountPesewas(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "currencyCode":
+			out.Values[i] = ec._BookingOffer_currencyCode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "startsAt":
+			out.Values[i] = ec._BookingOffer_startsAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "endsAt":
+			out.Values[i] = ec._BookingOffer_endsAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "note":
+			out.Values[i] = ec._BookingOffer_note(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "createdAt":
+			out.Values[i] = ec._BookingOffer_createdAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -12862,6 +13932,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "counterBooking":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_counterBooking(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "acceptCounterOffer":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_acceptCounterOffer(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "cancelBooking":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_cancelBooking(ctx, field)
@@ -12997,6 +14081,21 @@ func (ec *executionContext) _OrganizerBooking(ctx context.Context, sel ast.Selec
 		case "eventTypeName":
 			out.Values[i] = ec._OrganizerBooking_eventTypeName(ctx, field, obj)
 			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "lastOfferByRole":
+			out.Values[i] = ec._OrganizerBooking_lastOfferByRole(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "counterCount":
+			out.Values[i] = ec._OrganizerBooking_counterCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "awaitingMyResponse":
+			out.Values[i] = ec._OrganizerBooking_awaitingMyResponse(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		default:
@@ -14170,6 +15269,21 @@ func (ec *executionContext) _TalentBooking(ctx context.Context, sel ast.Selectio
 			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
+		case "lastOfferByRole":
+			out.Values[i] = ec._TalentBooking_lastOfferByRole(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "counterCount":
+			out.Values[i] = ec._TalentBooking_counterCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "awaitingMyResponse":
+			out.Values[i] = ec._TalentBooking_awaitingMyResponse(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -15051,6 +16165,32 @@ func (ec *executionContext) marshalNBookingDetail2ᚖgithubᚗcomᚋblingyplus�
 	return ec._BookingDetail(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNBookingOffer2ᚕᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐBookingOfferᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.BookingOffer) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNBookingOffer2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐBookingOffer(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNBookingOffer2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐBookingOffer(ctx context.Context, sel ast.SelectionSet, v *model.BookingOffer) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._BookingOffer(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNBoolean2bool(ctx context.Context, v any) (bool, error) {
 	res, err := graphql.UnmarshalBoolean(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -15079,6 +16219,11 @@ func (ec *executionContext) marshalNCheckout2ᚖgithubᚗcomᚋblingyplusᚋagro
 
 func (ec *executionContext) unmarshalNConnectPayoutInput2githubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐConnectPayoutInput(ctx context.Context, v any) (model.ConnectPayoutInput, error) {
 	res, err := ec.unmarshalInputConnectPayoutInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNCounterBookingInput2githubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐCounterBookingInput(ctx context.Context, v any) (model.CounterBookingInput, error) {
+	res, err := ec.unmarshalInputCounterBookingInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 

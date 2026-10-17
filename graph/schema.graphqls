@@ -107,6 +107,12 @@ type Mutation {
   """Decline a pending inquiry."""
   declineBooking(id: ID!): TalentBooking! @hasRole(code: "talent")
 
+  """Counter a live booking (inquiry or countered) with a new price and optionally new dates and a note. Only the party who did NOT make the last move may counter; at most 6 counters per booking."""
+  counterBooking(input: CounterBookingInput!): BookingDetail! @authenticated
+
+  """Accept the other party's latest offer (their turn to respond only): moves the booking to agreed and locks that offer as the contract terms. Works for either party; talents may also use acceptBooking."""
+  acceptCounterOffer(id: ID!): BookingDetail! @authenticated
+
   """Withdraw the caller's own pending inquiry. Once agreed, cancelling goes through a dispute instead."""
   cancelBooking(id: ID!): OrganizerBooking! @hasRole(code: "organizer")
 
@@ -372,6 +378,35 @@ type AvailabilityWindow {
   isAvailable: Boolean!
 }
 
+"""Prices are integer pesewas (100 = GHS 1.00), 1 .. 100,000,000. startsAt and endsAt must be given together (or both omitted to keep the current dates)."""
+input CounterBookingInput {
+  bookingId: ID!
+  amountPesewas: Int!
+  """Optional; must match the booking currency (GHS)."""
+  currencyCode: String
+  startsAt: String
+  endsAt: String
+  note: String
+}
+
+"""One proposal in a booking's negotiation trail (round 1 is the organizer's original inquiry)."""
+type BookingOffer {
+  id: ID!
+  round: Int!
+  """organizer or talent"""
+  byRole: String!
+  byName: String!
+  byMe: Boolean!
+  """Decimal GHS, e.g. "1250.00"."""
+  amount: String!
+  amountPesewas: Int!
+  currencyCode: String!
+  startsAt: String!
+  endsAt: String!
+  note: String
+  createdAt: String!
+}
+
 """Dates and times are ISO 8601 strings (e.g. "2026-12-10T00:00:00Z")."""
 input RequestBookingInput {
   talentId: ID!
@@ -397,6 +432,12 @@ type OrganizerBooking {
   talentDisplayName: String!
   talentId: ID!
   eventTypeName: String
+  """organizer or talent: who made the latest offer."""
+  lastOfferByRole: String!
+  """Counter-offers made so far (the opening inquiry is not counted)."""
+  counterCount: Int!
+  """True when the booking is live and the caller owes the next move (accept, counter or decline)."""
+  awaitingMyResponse: Boolean!
 }
 
 type TalentBooking {
@@ -411,6 +452,12 @@ type TalentBooking {
   organizerDisplayName: String!
   organizerId: ID!
   eventTypeName: String
+  """organizer or talent: who made the latest offer."""
+  lastOfferByRole: String!
+  """Counter-offers made so far (the opening inquiry is not counted)."""
+  counterCount: Int!
+  """True when the booking is live and the caller owes the next move (accept, counter or decline)."""
+  awaitingMyResponse: Boolean!
 }
 
 type BookingDetail {
@@ -427,6 +474,14 @@ type BookingDetail {
   eventTypeName: String
   """Only set once the booking has been accepted."""
   termsText: String
+  """organizer or talent: who made the latest offer."""
+  lastOfferByRole: String!
+  """Counter-offers made so far (the opening inquiry is not counted)."""
+  counterCount: Int!
+  """True when the booking is live and the caller owes the next move (accept, counter or decline)."""
+  awaitingMyResponse: Boolean!
+  """Full negotiation trail, oldest first."""
+  offers: [BookingOffer!]!
   """The most recent payment attempt for this booking, if any."""
   payment: Payment
   """Every review left on this booking (0, 1, or 2 — one per side)."""

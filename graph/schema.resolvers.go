@@ -216,6 +216,28 @@ func (r *mutationResolver) DeclineBooking(ctx context.Context, id string) (*mode
 	return r.talentBookingByID(ctx, p.UserID, id)
 }
 
+// CounterBooking is the resolver for the counterBooking field.
+func (r *mutationResolver) CounterBooking(ctx context.Context, input model.CounterBookingInput) (*model.BookingDetail, error) {
+	p, _ := gqlauth.FromContext(ctx)
+	in, err := toCounterInput(input)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := r.Bookings.CounterBooking(ctx, p.UserID, in); err != nil {
+		return nil, mapBookingErr(err)
+	}
+	return r.bookingDetail(ctx, p.UserID, input.BookingID)
+}
+
+// AcceptCounterOffer is the resolver for the acceptCounterOffer field.
+func (r *mutationResolver) AcceptCounterOffer(ctx context.Context, id string) (*model.BookingDetail, error) {
+	p, _ := gqlauth.FromContext(ctx)
+	if _, err := r.Bookings.AcceptBooking(ctx, p.UserID, id); err != nil {
+		return nil, mapBookingErr(err)
+	}
+	return r.bookingDetail(ctx, p.UserID, id)
+}
+
 // CancelBooking is the resolver for the cancelBooking field.
 func (r *mutationResolver) CancelBooking(ctx context.Context, id string) (*model.OrganizerBooking, error) {
 	p, _ := gqlauth.FromContext(ctx)
