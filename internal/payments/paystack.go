@@ -160,7 +160,7 @@ type initializeDTO struct {
 func (p *Paystack) InitializeCheckout(ctx context.Context, in CheckoutInput) (Checkout, error) {
 	var res paystackEnvelope[initializeDTO]
 	err := p.do(ctx, http.MethodPost, "/transaction/initialize", initializeBody{
-		Email:             in.PayerEmail,
+		Email:             paystackSafeEmail(in.PayerEmail),
 		Amount:            in.AmountPesewas,
 		Reference:         in.Reference,
 		Currency:          in.CurrencyCode,
@@ -201,3 +201,20 @@ func (p *Paystack) VerifyWebhookSignature(rawBody []byte, signatureHeader string
 }
 
 var _ Provider = (*Paystack)(nil)
+
+// paystackSafeEmail returns an address Paystack will accept. Paystack validates
+// the TLD, so dev/test addresses such as demo@agrofie.local are rejected with
+// "Invalid Email Address Passed". Those get the local part re-homed on a real
+// domain; the receipt address is only used by Paystack for its own receipts.
+func paystackSafeEmail(email string) string {
+	at := strings.LastIndex(email, "@")
+	if at <= 0 {
+		return email
+	}
+	domain := strings.ToLower(email[at+1:])
+	tld := domain[strings.LastIndex(domain, ".")+1:]
+	if !strings.Contains(domain, ".") || tld == "local" || tld == "test" || tld == "localhost" || tld == "invalid" || tld == "example" {
+		return email[:at] + "@agrofie.app"
+	}
+	return email
+}
