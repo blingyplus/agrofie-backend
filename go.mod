@@ -9,7 +9,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/sqlc-dev/sqlc v1.31.1
-	github.com/vektah/gqlparser/v2 v2.5.37
+	github.com/vektah/gqlparser/v2 v2.5.62
 	golang.org/x/image v0.47.0
 	golang.org/x/net v0.60.0
 	google.golang.org/protobuf v1.36.12
