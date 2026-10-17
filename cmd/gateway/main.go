@@ -206,6 +206,6 @@ func fakePayComplete(svc *checkout.Service) http.HandlerFunc {
 			return
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_, _ = fmt.Fprintf(w, `<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><body style="font-family:system-ui;text-align:center;margin-top:60px"><h2>Test payment: %s</h2><p>Return to the Agrofie app and tap "I've paid" / refresh.</p>`, html.EscapeString(event))
+		_, _ = fmt.Fprintf(w, `<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><body style="font-family:system-ui;text-align:center;margin-top:60px"><h2>Test payment: %s</h2><p>Return to the Agrofie app and tap "I've paid" / refresh.</p><p><a href="agrofie://" style="display:inline-block;background:#7a1f3d;color:#fff;padding:16px 28px;border-radius:14px;text-decoration:none;font-size:18px;font-weight:700">Back to Agrofie</a></p>`, html.EscapeString(event))
 	}
 }
