@@ -29,7 +29,7 @@ trap '"$(dirname "$0")/e2e-cleanup.sh"' EXIT
 step "public app config (GET /config)"
 R=$(curl -sS -i "$GW/config"); echo "$R" | grep -qi '^cache-control:' && ok "config cache-control" || fail "config cache-control missing"
 R=$(curl -sS "$GW/config"); expect "config version" "$R" .version 1
-expect "config invite derives from base" "$R" '(.inviteUrl|startswith(.webBaseUrl))' true
+expect "config invite derives from base" "$R" '(.webBaseUrl as $b | .inviteUrl | startswith($b))' true
 expect "config profile template" "$R" '.profileUrlTemplate|contains("{id}")' true
 expect "config has flags + maintenance" "$R" '(.featureFlags|type)+(.maintenance.enabled|tostring)' objectfalse
 
