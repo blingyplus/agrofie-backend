@@ -215,13 +215,33 @@ type MediaType struct {
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
+type OrganizerEventType struct {
+	OrganizerProfileID pgtype.UUID `json:"organizer_profile_id"`
+	EventTypeID        pgtype.UUID `json:"event_type_id"`
+}
+
 type OrganizerProfile struct {
-	ID           pgtype.UUID        `json:"id"`
-	UserID       pgtype.UUID        `json:"user_id"`
-	Organization *string            `json:"organization"`
-	Bio          *string            `json:"bio"`
-	CreatedAt    pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+	ID             pgtype.UUID        `json:"id"`
+	UserID         pgtype.UUID        `json:"user_id"`
+	Organization   *string            `json:"organization"`
+	Bio            *string            `json:"bio"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	HomeGeoPlaceID pgtype.UUID        `json:"home_geo_place_id"`
+	Phone          *string            `json:"phone"`
+}
+
+type PasswordResetRequest struct {
+	Email            string             `json:"email"`
+	FlowID           string             `json:"flow_id"`
+	CsrfToken        string             `json:"csrf_token"`
+	Cookies          []byte             `json:"cookies"`
+	Attempts         int32              `json:"attempts"`
+	SettingsFlowID   *string            `json:"settings_flow_id"`
+	VerifiedCodeHash *string            `json:"verified_code_hash"`
+	RequestedAt      pgtype.Timestamptz `json:"requested_at"`
+	WindowStartedAt  pgtype.Timestamptz `json:"window_started_at"`
+	WindowCount      int32              `json:"window_count"`
 }
 
 type Payment struct {

@@ -190,6 +190,18 @@ R=$(gql "$ORG" 'mutation($i:ID!){setTalentRequestStatus(id:$i,statusCode:"matche
 R=$(gql "$ADM" 'mutation($i:ID!){setTalentRequestStatus(id:$i,statusCode:"matched"){statusCode}}' "{\"i\":\"$TR\"}"); expect "admin marks matched" "$R" '.data.setTalentRequestStatus.statusCode' matched
 R=$(gql "$ADM" 'mutation($i:ID!){setTalentRequestStatus(id:$i,statusCode:"bogus"){statusCode}}' "{\"i\":\"$TR\"}"); echo "$R" | jq -e '.errors' >/dev/null && ok "bad status rejected" || fail "bad status accepted"
 
+step "organizer profile"
+R=$(gql "$TAL" 'query{myOrganizerProfile{displayName}}'); echo "$R" | jq -e '.errors' >/dev/null && ok "talent cannot read organizer profile" || fail "talent read organizer profile"
+R=$(gql "$ORG" 'query{myOrganizerProfile{displayName organization homePlaceCode eventTypes{code}}}'); expect "new organizer profile is empty" "$R" '.data.myOrganizerProfile|[.organization,.homePlaceCode,(.eventTypes|length)]|tostring' '[null,null,0]'
+R=$(gql "$ORG" 'mutation{updateMyOrganizerProfile(input:{organization:"E2E Events Ltd",phone:"+233 24 000 1111",homePlaceCode:"ashanti",eventTypeCodes:["wedding","funeral"]}){organization phone homePlaceCode homePlaceName eventTypes{code name}}}')
+expect "profile saved" "$R" '.data.updateMyOrganizerProfile|[.organization,.homePlaceCode,(.eventTypes|map(.code)|sort|join(","))]|join("|")' 'E2E Events Ltd|ashanti|funeral,wedding'
+R=$(gql "$ORG" 'mutation{updateMyOrganizerProfile(input:{organization:""}){organization homePlaceCode eventTypes{code}}}'); expect "partial update keeps region + events" "$R" '.data.updateMyOrganizerProfile|[.organization,.homePlaceCode,(.eventTypes|length)]|tostring' '[null,"ashanti",2]'
+R=$(gql "$ORG" 'mutation{updateMyOrganizerProfile(input:{eventTypeCodes:["nope"]}){organization}}'); echo "$R" | jq -e '.errors' >/dev/null && ok "unknown event type rejected" || fail "unknown event type accepted"
+R=$(gql "$ORG" 'query{myOrganizerProfile{homePlaceName eventTypes{code}}}'); expect "profile persisted" "$R" '.data.myOrganizerProfile.eventTypes|length' 2
+
+step "forgot password (see scripts/e2e-reset.sh)"
+E2E_NESTED=1 bash "$(dirname "$0")/e2e-reset.sh" "$GW" || FAILS=$((FAILS+1))
+
 step "demo seed (skipped if make seed-demo not run)"
 R=$(gql "" 'mutation($i:LoginInput!){login(input:$i){sessionToken}}' '{"i":{"identifier":"demo.organizer@agrofie.local","password":"changeme-seed-organizer"}}')
 DORG=$(val "$R" .data.login.sessionToken)

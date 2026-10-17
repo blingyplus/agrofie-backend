@@ -29,6 +29,8 @@ Rule: if a **name, type, status, or category can change** or needs **admin contr
 | `user_roles` | M2M roles (`talent` / `organizer` / `admin` via `roles` lookup) |
 | `sessions` | **Unused this slice** — Kratos session tokens are the source of truth (avoids dual-write). Redis cache later if needed. |
 
+`password_reset_requests` (migration 000015): server-side state of an in-progress Kratos recovery (flow id, CSRF, flow cookies, attempt counters), one row per lowercased email; it also drives the reset throttling and is deleted on success.
+
 Kratos tables live in Postgres schema `kratos` (same database, `search_path=kratos`). Do not query them from app SQL — use the auth service / Kratos Admin API.
 
 ## Talent / organizer
@@ -36,7 +38,8 @@ Kratos tables live in Postgres schema `kratos` (same database, `search_path=krat
 | Table | Purpose |
 | --- | --- |
 | `talent_profiles` | headline, bio, home geo, searchable flag |
-| `organizer_profiles` | org fields |
+| `organizer_profiles` | organization, bio, contact phone, home geo place (migration 000016) |
+| `organizer_event_types` | M2M: event types the organizer hosts (lookup `event_types`) |
 | `talent_genres`, `talent_types_map`, `talent_languages`, `talent_service_areas` | M2M |
 | `talent_rates` | Versioned pricing (`effective_from` / `effective_to`) |
 | `media_assets`, `verifications`, `availability_blocks` | Split off profile row |

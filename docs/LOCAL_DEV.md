@@ -58,6 +58,14 @@ make run-gateway   # :8080
 
 Fresh DB after schema changes: `docker compose down -v` then `up --build` (Postgres init + Kratos schema).
 
+## Forgot password (email)
+
+`requestPasswordReset(email)` / `resetPassword(email, code, newPassword)` run Kratos' recovery flow (code method) behind the gateway; the client never talks to Kratos. Locally Kratos delivers to MailHog: open http://localhost:8025 to read the 6-digit code (or script it: `curl -s 'http://localhost:8025/api/v2/search?kind=to&query=<email>' | jq -r '.items[0].Content.Body'` and take the line that is exactly six digits). `scripts/e2e-reset.sh` automates the whole flow (also run by `scripts/e2e.sh`).
+
+Throttling: one code per email per 30s, five per hour, five wrong codes per issued code; codes live 15 minutes. Unknown emails get the same responses, so account existence is never revealed.
+
+**Production needs real SMTP.** Without it no reset email is delivered. Set the Kratos courier through the environment, never in git: `COURIER_SMTP_CONNECTION_URI=smtps://USER:PASSWORD@smtp.example.com:465/` and `COURIER_SMTP_FROM_ADDRESS=no-reply@yourdomain` (wired in `docker-compose.yml`; templates live in `deploy/kratos/courier-templates/`). Also update the `base_url` / `allowed_return_urls` in `deploy/kratos/kratos.yml` to your public domain.
+
 ## Client
 
 ```bash

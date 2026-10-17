@@ -41,6 +41,8 @@ make test
 
 Start with [AGENTS.md](./AGENTS.md) and [docs/](./docs/).
 
+**Forgot password:** Kratos recovery (code method) via the gateway; locally the 6-digit code lands in MailHog (http://localhost:8025). **Production requires SMTP credentials** for Kratos' courier (`COURIER_SMTP_CONNECTION_URI`, `COURIER_SMTP_FROM_ADDRESS`; see `docs/LOCAL_DEV.md`), otherwise no reset emails are sent. Test it with `scripts/e2e-reset.sh`.
+
 Schema migrations: `db/migrations/`. GraphQL schema: `graph/schema.graphqls`. Kratos config: `deploy/kratos/`.
 
 ## Manual end-to-end testing (phone / no Paystack)

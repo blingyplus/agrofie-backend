@@ -62,6 +62,9 @@ services:
     environment:
       DSN: postgres://agrofie:agrofie@postgres:5432/agrofie?sslmode=disable&search_path=kratos
       LOG_LEVEL: info
+      # Production: set a real SMTP server (e.g. smtps://user:pass@smtp.host:465/).
+      COURIER_SMTP_CONNECTION_URI: ${COURIER_SMTP_CONNECTION_URI:-smtp://mailhog:1025/?disable_starttls=true}
+      COURIER_SMTP_FROM_ADDRESS: ${COURIER_SMTP_FROM_ADDRESS:-noreply@agrofie.local}
     ports:
       - "4433:4433"
       - "4434:4434"

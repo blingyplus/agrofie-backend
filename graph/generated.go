@@ -184,6 +184,8 @@ type ComplexityRoot struct {
 		RejectVerification        func(childComplexity int, id string, reviewNotes *string) int
 		RemoveMyAvailabilityBlock func(childComplexity int, id string) int
 		RequestBooking            func(childComplexity int, input model.RequestBookingInput) int
+		RequestPasswordReset      func(childComplexity int, email string) int
+		ResetPassword             func(childComplexity int, email string, code string, newPassword string) int
 		ResolveDispute            func(childComplexity int, id string, statusCode string, resolutionNote *string) int
 		SetLookupActive           func(childComplexity int, table model.LookupTable, code string, isActive bool) int
 		SetMyRates                func(childComplexity int, rates []*model.RateInput) int
@@ -192,6 +194,7 @@ type ComplexityRoot struct {
 		SubmitReview              func(childComplexity int, input model.SubmitReviewInput) int
 		SubmitVerification        func(childComplexity int, input model.SubmitVerificationInput) int
 		UpdateLookupName          func(childComplexity int, table model.LookupTable, code string, name string) int
+		UpdateMyOrganizerProfile  func(childComplexity int, input model.UpdateOrganizerProfileInput) int
 		UpdateMyTalentProfile     func(childComplexity int, input model.UpdateTalentProfileInput) int
 		VerifyPayment             func(childComplexity int, bookingID string) int
 	}
@@ -211,6 +214,15 @@ type ComplexityRoot struct {
 		TalentDisplayName  func(childComplexity int) int
 		TalentID           func(childComplexity int) int
 		VenueText          func(childComplexity int) int
+	}
+
+	OrganizerProfile struct {
+		DisplayName   func(childComplexity int) int
+		EventTypes    func(childComplexity int) int
+		HomePlaceCode func(childComplexity int) int
+		HomePlaceName func(childComplexity int) int
+		Organization  func(childComplexity int) int
+		Phone         func(childComplexity int) int
 	}
 
 	Payment struct {
@@ -255,6 +267,7 @@ type ComplexityRoot struct {
 		MyAvailability        func(childComplexity int, from string, to string) int
 		MyBookingsAsOrganizer func(childComplexity int) int
 		MyBookingsAsTalent    func(childComplexity int) int
+		MyOrganizerProfile    func(childComplexity int) int
 		MyPayoutAccount       func(childComplexity int) int
 		MyTalentProfile       func(childComplexity int) int
 		MyTalentRequests      func(childComplexity int) int
@@ -402,6 +415,8 @@ type MutationResolver interface {
 	Register(ctx context.Context, input model.RegisterInput) (*model.AuthPayload, error)
 	Login(ctx context.Context, input model.LoginInput) (*model.AuthPayload, error)
 	Logout(ctx context.Context) (bool, error)
+	RequestPasswordReset(ctx context.Context, email string) (bool, error)
+	ResetPassword(ctx context.Context, email string, code string, newPassword string) (bool, error)
 	UpdateLookupName(ctx context.Context, table model.LookupTable, code string, name string) (*model.Lookup, error)
 	SetLookupActive(ctx context.Context, table model.LookupTable, code string, isActive bool) (*model.Lookup, error)
 	UpdateMyTalentProfile(ctx context.Context, input model.UpdateTalentProfileInput) (*model.TalentProfile, error)
@@ -426,6 +441,7 @@ type MutationResolver interface {
 	OpenDispute(ctx context.Context, input model.OpenDisputeInput) (*model.Dispute, error)
 	ResolveDispute(ctx context.Context, id string, statusCode string, resolutionNote *string) (*model.AdminDispute, error)
 	CreateTalentRequest(ctx context.Context, input model.TalentRequestInput) (*model.TalentRequest, error)
+	UpdateMyOrganizerProfile(ctx context.Context, input model.UpdateOrganizerProfileInput) (*model.OrganizerProfile, error)
 	SetTalentRequestStatus(ctx context.Context, id string, statusCode string) (*model.TalentRequest, error)
 }
 type QueryResolver interface {
@@ -457,6 +473,7 @@ type QueryResolver interface {
 	TalentReviewSummary(ctx context.Context, talentID string) (*model.ReviewSummary, error)
 	Disputes(ctx context.Context, statusCode *string) ([]*model.AdminDispute, error)
 	MyTalentRequests(ctx context.Context) ([]*model.TalentRequest, error)
+	MyOrganizerProfile(ctx context.Context) (*model.OrganizerProfile, error)
 	TalentRequests(ctx context.Context, statusCode *string) ([]*model.TalentRequest, error)
 }
 
@@ -1223,6 +1240,28 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.RequestBooking(childComplexity, args["input"].(model.RequestBookingInput)), true
+	case "Mutation.requestPasswordReset":
+		if e.ComplexityRoot.Mutation.RequestPasswordReset == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_requestPasswordReset_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.RequestPasswordReset(childComplexity, args["email"].(string)), true
+	case "Mutation.resetPassword":
+		if e.ComplexityRoot.Mutation.ResetPassword == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_resetPassword_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.ResetPassword(childComplexity, args["email"].(string), args["code"].(string), args["newPassword"].(string)), true
 	case "Mutation.resolveDispute":
 		if e.ComplexityRoot.Mutation.ResolveDispute == nil {
 			break
@@ -1311,6 +1350,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.UpdateLookupName(childComplexity, args["table"].(model.LookupTable), args["code"].(string), args["name"].(string)), true
+	case "Mutation.updateMyOrganizerProfile":
+		if e.ComplexityRoot.Mutation.UpdateMyOrganizerProfile == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateMyOrganizerProfile_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.UpdateMyOrganizerProfile(childComplexity, args["input"].(model.UpdateOrganizerProfileInput)), true
 	case "Mutation.updateMyTalentProfile":
 		if e.ComplexityRoot.Mutation.UpdateMyTalentProfile == nil {
 			break
@@ -1418,6 +1468,43 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.OrganizerBooking.VenueText(childComplexity), true
+
+	case "OrganizerProfile.displayName":
+		if e.ComplexityRoot.OrganizerProfile.DisplayName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.OrganizerProfile.DisplayName(childComplexity), true
+	case "OrganizerProfile.eventTypes":
+		if e.ComplexityRoot.OrganizerProfile.EventTypes == nil {
+			break
+		}
+
+		return e.ComplexityRoot.OrganizerProfile.EventTypes(childComplexity), true
+	case "OrganizerProfile.homePlaceCode":
+		if e.ComplexityRoot.OrganizerProfile.HomePlaceCode == nil {
+			break
+		}
+
+		return e.ComplexityRoot.OrganizerProfile.HomePlaceCode(childComplexity), true
+	case "OrganizerProfile.homePlaceName":
+		if e.ComplexityRoot.OrganizerProfile.HomePlaceName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.OrganizerProfile.HomePlaceName(childComplexity), true
+	case "OrganizerProfile.organization":
+		if e.ComplexityRoot.OrganizerProfile.Organization == nil {
+			break
+		}
+
+		return e.ComplexityRoot.OrganizerProfile.Organization(childComplexity), true
+	case "OrganizerProfile.phone":
+		if e.ComplexityRoot.OrganizerProfile.Phone == nil {
+			break
+		}
+
+		return e.ComplexityRoot.OrganizerProfile.Phone(childComplexity), true
 
 	case "Payment.amountPesewas":
 		if e.ComplexityRoot.Payment.AmountPesewas == nil {
@@ -1665,6 +1752,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.MyBookingsAsTalent(childComplexity), true
+	case "Query.myOrganizerProfile":
+		if e.ComplexityRoot.Query.MyOrganizerProfile == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.MyOrganizerProfile(childComplexity), true
 	case "Query.myPayoutAccount":
 		if e.ComplexityRoot.Query.MyPayoutAccount == nil {
 			break
@@ -2348,6 +2441,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputSubmitVerificationInput,
 		ec.unmarshalInputTalentFilter,
 		ec.unmarshalInputTalentRequestInput,
+		ec.unmarshalInputUpdateOrganizerProfileInput,
 		ec.unmarshalInputUpdateTalentProfileInput,
 	)
 	first := true
@@ -2727,6 +2821,24 @@ func (ec *executionContext) childFields_OrganizerBooking(ctx context.Context, fi
 		return ec.fieldContext_OrganizerBooking_awaitingMyResponse(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type OrganizerBooking", field.Name)
+}
+
+func (ec *executionContext) childFields_OrganizerProfile(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "displayName":
+		return ec.fieldContext_OrganizerProfile_displayName(ctx, field)
+	case "organization":
+		return ec.fieldContext_OrganizerProfile_organization(ctx, field)
+	case "phone":
+		return ec.fieldContext_OrganizerProfile_phone(ctx, field)
+	case "homePlaceCode":
+		return ec.fieldContext_OrganizerProfile_homePlaceCode(ctx, field)
+	case "homePlaceName":
+		return ec.fieldContext_OrganizerProfile_homePlaceName(ctx, field)
+	case "eventTypes":
+		return ec.fieldContext_OrganizerProfile_eventTypes(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type OrganizerProfile", field.Name)
 }
 
 func (ec *executionContext) childFields_Payment(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -3409,6 +3521,50 @@ func (ec *executionContext) field_Mutation_requestBooking_args(ctx context.Conte
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_requestPasswordReset_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "email",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["email"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_resetPassword_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "email",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["email"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "code",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["code"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "newPassword",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["newPassword"] = arg2
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_resolveDispute_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -3590,6 +3746,20 @@ func (ec *executionContext) field_Mutation_updateLookupName_args(ctx context.Con
 		return nil, err
 	}
 	args["name"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateMyOrganizerProfile_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
+		func(ctx context.Context, v any) (model.UpdateOrganizerProfileInput, error) {
+			return ec.unmarshalNUpdateOrganizerProfileInput2githubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐUpdateOrganizerProfileInput(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
 	return args, nil
 }
 
@@ -6278,6 +6448,94 @@ func (ec *executionContext) fieldContext_Mutation_logout(_ context.Context, fiel
 	return graphql.NewScalarFieldContext("Mutation", field, true, true, errors.New("field of type Boolean does not have child fields"))
 }
 
+func (ec *executionContext) _Mutation_requestPasswordReset(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_requestPasswordReset(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().RequestPasswordReset(ctx, fc.Args["email"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_requestPasswordReset(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_requestPasswordReset_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_resetPassword(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_resetPassword(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().ResetPassword(ctx, fc.Args["email"].(string), fc.Args["code"].(string), fc.Args["newPassword"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_resetPassword(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_resetPassword_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_updateLookupName(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -7741,6 +7999,68 @@ func (ec *executionContext) fieldContext_Mutation_createTalentRequest(ctx contex
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_updateMyOrganizerProfile(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_updateMyOrganizerProfile(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().UpdateMyOrganizerProfile(ctx, fc.Args["input"].(model.UpdateOrganizerProfileInput))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				code, err := ec.unmarshalNString2string(ctx, "organizer")
+				if err != nil {
+					var zeroVal *model.OrganizerProfile
+					return zeroVal, err
+				}
+				if ec.Directives.HasRole == nil {
+					var zeroVal *model.OrganizerProfile
+					return zeroVal, errors.New("directive hasRole is not implemented")
+				}
+				return ec.Directives.HasRole(ctx, nil, directive0, code)
+			}
+
+			next = directive1
+			return next
+		},
+		func(ctx context.Context, selections ast.SelectionSet, v *model.OrganizerProfile) graphql.Marshaler {
+			return ec.marshalNOrganizerProfile2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐOrganizerProfile(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_updateMyOrganizerProfile(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_OrganizerProfile(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateMyOrganizerProfile_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_setTalentRequestStatus(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -8123,6 +8443,153 @@ func (ec *executionContext) _OrganizerBooking_awaitingMyResponse(ctx context.Con
 }
 func (ec *executionContext) fieldContext_OrganizerBooking_awaitingMyResponse(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("OrganizerBooking", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _OrganizerProfile_displayName(ctx context.Context, field graphql.CollectedField, obj *model.OrganizerProfile) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_OrganizerProfile_displayName(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.DisplayName, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_OrganizerProfile_displayName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("OrganizerProfile", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _OrganizerProfile_organization(ctx context.Context, field graphql.CollectedField, obj *model.OrganizerProfile) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_OrganizerProfile_organization(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Organization, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_OrganizerProfile_organization(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("OrganizerProfile", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _OrganizerProfile_phone(ctx context.Context, field graphql.CollectedField, obj *model.OrganizerProfile) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_OrganizerProfile_phone(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Phone, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_OrganizerProfile_phone(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("OrganizerProfile", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _OrganizerProfile_homePlaceCode(ctx context.Context, field graphql.CollectedField, obj *model.OrganizerProfile) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_OrganizerProfile_homePlaceCode(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.HomePlaceCode, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_OrganizerProfile_homePlaceCode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("OrganizerProfile", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _OrganizerProfile_homePlaceName(ctx context.Context, field graphql.CollectedField, obj *model.OrganizerProfile) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_OrganizerProfile_homePlaceName(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.HomePlaceName, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_OrganizerProfile_homePlaceName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("OrganizerProfile", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _OrganizerProfile_eventTypes(ctx context.Context, field graphql.CollectedField, obj *model.OrganizerProfile) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_OrganizerProfile_eventTypes(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.EventTypes, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.Tag) graphql.Marshaler {
+			return ec.marshalNTag2ᚕᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐTagᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_OrganizerProfile_eventTypes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OrganizerProfile",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Tag(ctx, field)
+		},
+	}
+	return fc, nil
 }
 
 func (ec *executionContext) _Payment_reference(ctx context.Context, field graphql.CollectedField, obj *model.Payment) (ret graphql.Marshaler) {
@@ -9864,6 +10331,56 @@ func (ec *executionContext) fieldContext_Query_myTalentRequests(_ context.Contex
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return ec.childFields_TalentRequest(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_myOrganizerProfile(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_myOrganizerProfile(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().MyOrganizerProfile(ctx)
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				code, err := ec.unmarshalNString2string(ctx, "organizer")
+				if err != nil {
+					var zeroVal *model.OrganizerProfile
+					return zeroVal, err
+				}
+				if ec.Directives.HasRole == nil {
+					var zeroVal *model.OrganizerProfile
+					return zeroVal, errors.New("directive hasRole is not implemented")
+				}
+				return ec.Directives.HasRole(ctx, nil, directive0, code)
+			}
+
+			next = directive1
+			return next
+		},
+		func(ctx context.Context, selections ast.SelectionSet, v *model.OrganizerProfile) graphql.Marshaler {
+			return ec.marshalNOrganizerProfile2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐOrganizerProfile(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_myOrganizerProfile(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_OrganizerProfile(ctx, field)
 		},
 	}
 	return fc, nil
@@ -13756,6 +14273,64 @@ func (ec *executionContext) unmarshalInputTalentRequestInput(ctx context.Context
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputUpdateOrganizerProfileInput(ctx context.Context, obj any) (model.UpdateOrganizerProfileInput, error) {
+	var it model.UpdateOrganizerProfileInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"displayName", "organization", "phone", "homePlaceCode", "eventTypeCodes"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "displayName":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("displayName"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DisplayName = data
+		case "organization":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("organization"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Organization = data
+		case "phone":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("phone"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Phone = data
+		case "homePlaceCode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("homePlaceCode"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HomePlaceCode = data
+		case "eventTypeCodes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("eventTypeCodes"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EventTypeCodes = data
+		}
+	}
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputUpdateTalentProfileInput(ctx context.Context, obj any) (model.UpdateTalentProfileInput, error) {
 	var it model.UpdateTalentProfileInput
 	if obj == nil {
@@ -14723,6 +15298,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "requestPasswordReset":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_requestPasswordReset(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "resetPassword":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_resetPassword(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "updateLookupName":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_updateLookupName(ctx, field)
@@ -14891,6 +15480,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "updateMyOrganizerProfile":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateMyOrganizerProfile(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "setTalentRequestStatus":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_setTalentRequestStatus(ctx, field)
@@ -14998,6 +15594,69 @@ func (ec *executionContext) _OrganizerBooking(ctx context.Context, sel ast.Selec
 			}
 		case "awaitingMyResponse":
 			out.Values[i] = ec._OrganizerBooking_awaitingMyResponse(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var organizerProfileImplementors = []string{"OrganizerProfile"}
+
+func (ec *executionContext) _OrganizerProfile(ctx context.Context, sel ast.SelectionSet, obj *model.OrganizerProfile) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, organizerProfileImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("OrganizerProfile")
+		case "displayName":
+			out.Values[i] = ec._OrganizerProfile_displayName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "organization":
+			out.Values[i] = ec._OrganizerProfile_organization(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "phone":
+			out.Values[i] = ec._OrganizerProfile_phone(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "homePlaceCode":
+			out.Values[i] = ec._OrganizerProfile_homePlaceCode(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "homePlaceName":
+			out.Values[i] = ec._OrganizerProfile_homePlaceName(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "eventTypes":
+			out.Values[i] = ec._OrganizerProfile_eventTypes(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -15835,6 +16494,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_myTalentRequests(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "myOrganizerProfile":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_myOrganizerProfile(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -17490,6 +18171,16 @@ func (ec *executionContext) marshalNOrganizerBooking2ᚖgithubᚗcomᚋblingyplu
 	return ec._OrganizerBooking(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNOrganizerProfile2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐOrganizerProfile(ctx context.Context, sel ast.SelectionSet, v *model.OrganizerProfile) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._OrganizerProfile(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNPayment2ᚖgithubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐPayment(ctx context.Context, sel ast.SelectionSet, v *model.Payment) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -17844,6 +18535,11 @@ func (ec *executionContext) marshalNTalentRequest2ᚖgithubᚗcomᚋblingyplus�
 
 func (ec *executionContext) unmarshalNTalentRequestInput2githubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐTalentRequestInput(ctx context.Context, v any) (model.TalentRequestInput, error) {
 	res, err := ec.unmarshalInputTalentRequestInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNUpdateOrganizerProfileInput2githubᚗcomᚋblingyplusᚋagrofieᚑbackendᚋgraphᚋmodelᚐUpdateOrganizerProfileInput(ctx context.Context, v any) (model.UpdateOrganizerProfileInput, error) {
+	res, err := ec.unmarshalInputUpdateOrganizerProfileInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 

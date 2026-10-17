@@ -17,6 +17,7 @@ import (
 	"github.com/blingyplus/agrofie-backend/graph/model"
 	"github.com/blingyplus/agrofie-backend/internal/discovery"
 	"github.com/blingyplus/agrofie-backend/internal/lookup"
+	"github.com/blingyplus/agrofie-backend/internal/organizerprofile"
 	"github.com/blingyplus/agrofie-backend/internal/talentprofile"
 	"github.com/blingyplus/agrofie-backend/internal/talentrequest"
 	"github.com/blingyplus/agrofie-backend/internal/verification"
@@ -64,6 +65,24 @@ func (r *mutationResolver) Logout(ctx context.Context) (bool, error) {
 		SessionToken: p.Token,
 	}))
 	if err != nil {
+		return false, mapConnectErr(err)
+	}
+	return true, nil
+}
+
+// RequestPasswordReset is the resolver for the requestPasswordReset field.
+func (r *mutationResolver) RequestPasswordReset(ctx context.Context, email string) (bool, error) {
+	if _, err := r.AuthClient.RequestPasswordReset(ctx, connect.NewRequest(&agrofierv1.RequestPasswordResetRequest{Email: email})); err != nil {
+		return false, mapConnectErr(err)
+	}
+	return true, nil
+}
+
+// ResetPassword is the resolver for the resetPassword field.
+func (r *mutationResolver) ResetPassword(ctx context.Context, email string, code string, newPassword string) (bool, error) {
+	if _, err := r.AuthClient.ResetPassword(ctx, connect.NewRequest(&agrofierv1.ResetPasswordRequest{
+		Email: email, Code: code, NewPassword: newPassword,
+	})); err != nil {
 		return false, mapConnectErr(err)
 	}
 	return true, nil
@@ -319,6 +338,19 @@ func (r *mutationResolver) CreateTalentRequest(ctx context.Context, input model.
 		return nil, mapTalentRequestErr(err)
 	}
 	return toModelTalentRequest(out), nil
+}
+
+// UpdateMyOrganizerProfile is the resolver for the updateMyOrganizerProfile field.
+func (r *mutationResolver) UpdateMyOrganizerProfile(ctx context.Context, input model.UpdateOrganizerProfileInput) (*model.OrganizerProfile, error) {
+	p, _ := gqlauth.FromContext(ctx)
+	out, err := r.OrganizerProfiles.Update(ctx, p.UserID, organizerprofile.UpdateInput{
+		DisplayName: input.DisplayName, Organization: input.Organization, Phone: input.Phone,
+		HomePlaceCode: input.HomePlaceCode, EventTypeCodes: input.EventTypeCodes,
+	})
+	if err != nil {
+		return nil, mapOrganizerProfileErr(err)
+	}
+	return toModelOrganizerProfile(out), nil
 }
 
 // SetTalentRequestStatus is the resolver for the setTalentRequestStatus field.
@@ -640,6 +672,16 @@ func (r *queryResolver) MyTalentRequests(ctx context.Context) ([]*model.TalentRe
 		return nil, mapTalentRequestErr(err)
 	}
 	return toModelTalentRequests(rows), nil
+}
+
+// MyOrganizerProfile is the resolver for the myOrganizerProfile field.
+func (r *queryResolver) MyOrganizerProfile(ctx context.Context) (*model.OrganizerProfile, error) {
+	p, _ := gqlauth.FromContext(ctx)
+	out, err := r.OrganizerProfiles.Get(ctx, p.UserID)
+	if err != nil {
+		return nil, mapOrganizerProfileErr(err)
+	}
+	return toModelOrganizerProfile(out), nil
 }
 
 // TalentRequests is the resolver for the talentRequests field.

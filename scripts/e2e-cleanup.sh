@@ -28,6 +28,7 @@ DELETE FROM bookings WHERE id IN (SELECT id FROM _b);  -- cascades events, contr
 DELETE FROM reviews WHERE author_user_id IN (SELECT id FROM _u);
 DELETE FROM booking_status_events WHERE actor_user_id IN (SELECT id FROM _u);
 UPDATE verifications SET reviewed_by = NULL WHERE reviewed_by IN (SELECT id FROM _u);
+DELETE FROM password_reset_requests WHERE email LIKE ANY($ARR);
 DELETE FROM users WHERE id IN (SELECT id FROM _u);      -- cascades profiles, talent_*, rates, payout, availability
 COMMIT;
 SQL

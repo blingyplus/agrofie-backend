@@ -64,6 +64,9 @@ type Query {
   """The caller's own talent requests, newest first. Requires the organizer role."""
   myTalentRequests: [TalentRequest!]! @hasRole(code: "organizer")
 
+  """The caller's own organizer profile (name, organisation, phone, home region, event types hosted). Requires the organizer role."""
+  myOrganizerProfile: OrganizerProfile! @hasRole(code: "organizer")
+
   """All talent requests, newest first, optionally filtered to one status (open, matched, closed). Requires the admin role."""
   talentRequests(statusCode: String): [TalentRequest!]! @hasRole(code: "admin")
 }
@@ -72,6 +75,12 @@ type Mutation {
   register(input: RegisterInput!): AuthPayload!
   login(input: LoginInput!): AuthPayload!
   logout: Boolean! @authenticated
+
+  """Email a 6-digit recovery code (Kratos recovery, code method). Always returns true for a well-formed address: it never reveals whether the account exists, and is throttled per address (1 per 30s, 5 per hour)."""
+  requestPasswordReset(email: String!): Boolean!
+
+  """Redeem the emailed code and set a new password. Signs the account out everywhere. Errors are user-friendly (wrong or expired code, password too weak)."""
+  resetPassword(email: String!, code: String!, newPassword: String!): Boolean!
 
   """Rename a lookup display name. Never changes immutable code."""
   updateLookupName(table: LookupTable!, code: String!, name: String!): Lookup! @hasRole(code: "admin")
@@ -142,6 +151,9 @@ type Mutation {
 
   """Pitch the Agrofie team a request when Discover has nothing suitable. Organizer only; talent are not notified."""
   createTalentRequest(input: TalentRequestInput!): TalentRequest! @hasRole(code: "organizer")
+
+  """Update the caller's own organizer profile. A null field is unchanged; an empty string clears organization/phone/homePlaceCode; an empty list clears eventTypeCodes. Requires the organizer role."""
+  updateMyOrganizerProfile(input: UpdateOrganizerProfileInput!): OrganizerProfile! @hasRole(code: "organizer")
 
   """Move a talent request to open, matched or closed. Requires the admin role."""
   setTalentRequestStatus(id: ID!, statusCode: String!): TalentRequest! @hasRole(code: "admin")
@@ -608,4 +620,24 @@ type TalentRequest {
   note: String!
   createdAt: String!
   organizerDisplayName: String!
+}
+
+type OrganizerProfile {
+  displayName: String!
+  organization: String
+  phone: String
+  homePlaceCode: String
+  homePlaceName: String
+  """Event types the organizer hosts (lookup tags)."""
+  eventTypes: [Tag!]!
+}
+
+input UpdateOrganizerProfileInput {
+  displayName: String
+  organization: String
+  """Contact phone (not the login phone)."""
+  phone: String
+  """A geo place code (the organizer's home region)."""
+  homePlaceCode: String
+  eventTypeCodes: [String!]
 }

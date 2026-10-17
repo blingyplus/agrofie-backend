@@ -192,9 +192,18 @@ VALUES ($1)
 RETURNING id, user_id, organization, bio, created_at, updated_at
 `
 
-func (q *Queries) InsertOrganizerProfile(ctx context.Context, userID pgtype.UUID) (OrganizerProfile, error) {
+type InsertOrganizerProfileRow struct {
+	ID           pgtype.UUID        `json:"id"`
+	UserID       pgtype.UUID        `json:"user_id"`
+	Organization *string            `json:"organization"`
+	Bio          *string            `json:"bio"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) InsertOrganizerProfile(ctx context.Context, userID pgtype.UUID) (InsertOrganizerProfileRow, error) {
 	row := q.db.QueryRow(ctx, insertOrganizerProfile, userID)
-	var i OrganizerProfile
+	var i InsertOrganizerProfileRow
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,

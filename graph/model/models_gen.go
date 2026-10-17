@@ -208,6 +208,16 @@ type OrganizerBooking struct {
 	AwaitingMyResponse bool `json:"awaitingMyResponse"`
 }
 
+type OrganizerProfile struct {
+	DisplayName   string  `json:"displayName"`
+	Organization  *string `json:"organization,omitempty"`
+	Phone         *string `json:"phone,omitempty"`
+	HomePlaceCode *string `json:"homePlaceCode,omitempty"`
+	HomePlaceName *string `json:"homePlaceName,omitempty"`
+	// Event types the organizer hosts (lookup tags).
+	EventTypes []*Tag `json:"eventTypes"`
+}
+
 // One Paystack split-checkout attempt for a booking. Amounts are
 // integer pesewas; commissionPesewas is what Agrofie keeps, the rest
 // settles to the talent's own subaccount.
@@ -421,6 +431,16 @@ type TalentRequestInput struct {
 	EventDate     *string `json:"eventDate,omitempty"`
 	BudgetPesewas *int    `json:"budgetPesewas,omitempty"`
 	Note          *string `json:"note,omitempty"`
+}
+
+type UpdateOrganizerProfileInput struct {
+	DisplayName  *string `json:"displayName,omitempty"`
+	Organization *string `json:"organization,omitempty"`
+	// Contact phone (not the login phone).
+	Phone *string `json:"phone,omitempty"`
+	// A geo place code (the organizer's home region).
+	HomePlaceCode  *string  `json:"homePlaceCode,omitempty"`
+	EventTypeCodes []string `json:"eventTypeCodes,omitempty"`
 }
 
 type UpdateTalentProfileInput struct {

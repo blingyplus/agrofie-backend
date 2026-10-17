@@ -26,6 +26,7 @@ import (
 	"github.com/blingyplus/agrofie-backend/internal/gateway/probe"
 	"github.com/blingyplus/agrofie-backend/internal/health"
 	"github.com/blingyplus/agrofie-backend/internal/lookup"
+	"github.com/blingyplus/agrofie-backend/internal/organizerprofile"
 	"github.com/blingyplus/agrofie-backend/internal/payments"
 	"github.com/blingyplus/agrofie-backend/internal/review"
 	"github.com/blingyplus/agrofie-backend/internal/talentprofile"
@@ -71,18 +72,19 @@ func main() {
 	prober := probe.NewConnectProber(cfg.AuthURL, cfg.BookingURL, cfg.PaymentsURL)
 	authClient := graph.NewAuthClient(cfg.AuthURL)
 	resolver := &graph.Resolver{
-		Lookups:        lookups,
-		Discovery:      discoverySvc,
-		TalentProfiles: talentProfiles,
-		Verifications:  verifications,
-		Availability:   availabilitySvc,
-		Bookings:       bookings,
-		Checkout:       checkoutSvc,
-		Reviews:        reviewsSvc,
-		Disputes:       disputesSvc,
-		TalentRequests: talentrequest.NewService(pool),
-		Prober:         prober,
-		AuthClient:     authClient,
+		Lookups:           lookups,
+		Discovery:         discoverySvc,
+		TalentProfiles:    talentProfiles,
+		Verifications:     verifications,
+		Availability:      availabilitySvc,
+		Bookings:          bookings,
+		Checkout:          checkoutSvc,
+		Reviews:           reviewsSvc,
+		Disputes:          disputesSvc,
+		TalentRequests:    talentrequest.NewService(pool),
+		OrganizerProfiles: organizerprofile.NewService(pool),
+		Prober:            prober,
+		AuthClient:        authClient,
 	}
 
 	schemaCfg := graph.Config{Resolvers: resolver}

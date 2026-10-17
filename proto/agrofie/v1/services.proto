@@ -55,6 +55,20 @@ message LoginResponse {
 
 message LogoutResponse {}
 
+message RequestPasswordResetRequest {
+  string email = 1;
+}
+
+message RequestPasswordResetResponse {}
+
+message ResetPasswordRequest {
+  string email = 1;
+  string code = 2;
+  string new_password = 3;
+}
+
+message ResetPasswordResponse {}
+
 message WhoAmIResponse {
   User user = 1;
 }
@@ -65,6 +79,8 @@ service AuthService {
   rpc Login(LoginRequest) returns (LoginResponse);
   rpc Logout(LogoutRequest) returns (LogoutResponse);
   rpc WhoAmI(WhoAmIRequest) returns (WhoAmIResponse);
+  rpc RequestPasswordReset(RequestPasswordResetRequest) returns (RequestPasswordResetResponse);
+  rpc ResetPassword(ResetPasswordRequest) returns (ResetPasswordResponse);
 }
 
 service BookingService {

@@ -90,6 +90,26 @@ func (s *authServer) WhoAmI(
 	return connect.NewResponse(&agrofierv1.WhoAmIResponse{User: toProtoUser(user)}), nil
 }
 
+func (s *authServer) RequestPasswordReset(
+	ctx context.Context,
+	req *connect.Request[agrofierv1.RequestPasswordResetRequest],
+) (*connect.Response[agrofierv1.RequestPasswordResetResponse], error) {
+	if err := s.svc.RequestPasswordReset(ctx, req.Msg.GetEmail()); err != nil {
+		return nil, mapAuthError(err)
+	}
+	return connect.NewResponse(&agrofierv1.RequestPasswordResetResponse{}), nil
+}
+
+func (s *authServer) ResetPassword(
+	ctx context.Context,
+	req *connect.Request[agrofierv1.ResetPasswordRequest],
+) (*connect.Response[agrofierv1.ResetPasswordResponse], error) {
+	if err := s.svc.ResetPassword(ctx, req.Msg.GetEmail(), req.Msg.GetCode(), req.Msg.GetNewPassword()); err != nil {
+		return nil, mapAuthError(err)
+	}
+	return connect.NewResponse(&agrofierv1.ResetPasswordResponse{}), nil
+}
+
 func toProtoSession(s *auth.Session) *agrofierv1.AuthSession {
 	return &agrofierv1.AuthSession{
 		SessionToken: s.Token,
@@ -108,7 +128,10 @@ func toProtoUser(u *auth.User) *agrofierv1.User {
 }
 
 func mapAuthError(err error) error {
+	var friendly auth.FriendlyError
 	switch {
+	case errors.Is(err, auth.ErrInvalidCode), errors.As(err, &friendly):
+		return connect.NewError(connect.CodeInvalidArgument, err)
 	case errors.Is(err, auth.ErrInvalidInput):
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	case errors.Is(err, auth.ErrForbiddenRole):

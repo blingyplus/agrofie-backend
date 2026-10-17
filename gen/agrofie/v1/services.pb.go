@@ -577,6 +577,182 @@ func (*LogoutResponse) Descriptor() ([]byte, []int) {
 	return file_agrofie_v1_services_proto_rawDescGZIP(), []int{10}
 }
 
+type RequestPasswordResetRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Email         string                 `protobuf:"bytes,1,opt,name=email,proto3" json:"email,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RequestPasswordResetRequest) Reset() {
+	*x = RequestPasswordResetRequest{}
+	mi := &file_agrofie_v1_services_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RequestPasswordResetRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RequestPasswordResetRequest) ProtoMessage() {}
+
+func (x *RequestPasswordResetRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_agrofie_v1_services_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RequestPasswordResetRequest.ProtoReflect.Descriptor instead.
+func (*RequestPasswordResetRequest) Descriptor() ([]byte, []int) {
+	return file_agrofie_v1_services_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *RequestPasswordResetRequest) GetEmail() string {
+	if x != nil {
+		return x.Email
+	}
+	return ""
+}
+
+type RequestPasswordResetResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RequestPasswordResetResponse) Reset() {
+	*x = RequestPasswordResetResponse{}
+	mi := &file_agrofie_v1_services_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RequestPasswordResetResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RequestPasswordResetResponse) ProtoMessage() {}
+
+func (x *RequestPasswordResetResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_agrofie_v1_services_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RequestPasswordResetResponse.ProtoReflect.Descriptor instead.
+func (*RequestPasswordResetResponse) Descriptor() ([]byte, []int) {
+	return file_agrofie_v1_services_proto_rawDescGZIP(), []int{12}
+}
+
+type ResetPasswordRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Email         string                 `protobuf:"bytes,1,opt,name=email,proto3" json:"email,omitempty"`
+	Code          string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
+	NewPassword   string                 `protobuf:"bytes,3,opt,name=new_password,json=newPassword,proto3" json:"new_password,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResetPasswordRequest) Reset() {
+	*x = ResetPasswordRequest{}
+	mi := &file_agrofie_v1_services_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResetPasswordRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResetPasswordRequest) ProtoMessage() {}
+
+func (x *ResetPasswordRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_agrofie_v1_services_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResetPasswordRequest.ProtoReflect.Descriptor instead.
+func (*ResetPasswordRequest) Descriptor() ([]byte, []int) {
+	return file_agrofie_v1_services_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *ResetPasswordRequest) GetEmail() string {
+	if x != nil {
+		return x.Email
+	}
+	return ""
+}
+
+func (x *ResetPasswordRequest) GetCode() string {
+	if x != nil {
+		return x.Code
+	}
+	return ""
+}
+
+func (x *ResetPasswordRequest) GetNewPassword() string {
+	if x != nil {
+		return x.NewPassword
+	}
+	return ""
+}
+
+type ResetPasswordResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResetPasswordResponse) Reset() {
+	*x = ResetPasswordResponse{}
+	mi := &file_agrofie_v1_services_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResetPasswordResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResetPasswordResponse) ProtoMessage() {}
+
+func (x *ResetPasswordResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_agrofie_v1_services_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResetPasswordResponse.ProtoReflect.Descriptor instead.
+func (*ResetPasswordResponse) Descriptor() ([]byte, []int) {
+	return file_agrofie_v1_services_proto_rawDescGZIP(), []int{14}
+}
+
 type WhoAmIResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	User          *User                  `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
@@ -586,7 +762,7 @@ type WhoAmIResponse struct {
 
 func (x *WhoAmIResponse) Reset() {
 	*x = WhoAmIResponse{}
-	mi := &file_agrofie_v1_services_proto_msgTypes[11]
+	mi := &file_agrofie_v1_services_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -598,7 +774,7 @@ func (x *WhoAmIResponse) String() string {
 func (*WhoAmIResponse) ProtoMessage() {}
 
 func (x *WhoAmIResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agrofie_v1_services_proto_msgTypes[11]
+	mi := &file_agrofie_v1_services_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -611,7 +787,7 @@ func (x *WhoAmIResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WhoAmIResponse.ProtoReflect.Descriptor instead.
 func (*WhoAmIResponse) Descriptor() ([]byte, []int) {
-	return file_agrofie_v1_services_proto_rawDescGZIP(), []int{11}
+	return file_agrofie_v1_services_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *WhoAmIResponse) GetUser() *User {
@@ -660,15 +836,25 @@ const file_agrofie_v1_services_proto_rawDesc = "" +
 	"\asession\x18\x01 \x01(\v2\x17.agrofie.v1.AuthSessionR\asession\"B\n" +
 	"\rLoginResponse\x121\n" +
 	"\asession\x18\x01 \x01(\v2\x17.agrofie.v1.AuthSessionR\asession\"\x10\n" +
-	"\x0eLogoutResponse\"6\n" +
+	"\x0eLogoutResponse\"3\n" +
+	"\x1bRequestPasswordResetRequest\x12\x14\n" +
+	"\x05email\x18\x01 \x01(\tR\x05email\"\x1e\n" +
+	"\x1cRequestPasswordResetResponse\"c\n" +
+	"\x14ResetPasswordRequest\x12\x14\n" +
+	"\x05email\x18\x01 \x01(\tR\x05email\x12\x12\n" +
+	"\x04code\x18\x02 \x01(\tR\x04code\x12!\n" +
+	"\fnew_password\x18\x03 \x01(\tR\vnewPassword\"\x17\n" +
+	"\x15ResetPasswordResponse\"6\n" +
 	"\x0eWhoAmIResponse\x12$\n" +
-	"\x04user\x18\x01 \x01(\v2\x10.agrofie.v1.UserR\x04user2\xd5\x02\n" +
+	"\x04user\x18\x01 \x01(\v2\x10.agrofie.v1.UserR\x04user2\x96\x04\n" +
 	"\vAuthService\x12?\n" +
 	"\x06Health\x12\x19.agrofie.v1.HealthRequest\x1a\x1a.agrofie.v1.HealthResponse\x12E\n" +
 	"\bRegister\x12\x1b.agrofie.v1.RegisterRequest\x1a\x1c.agrofie.v1.RegisterResponse\x12<\n" +
 	"\x05Login\x12\x18.agrofie.v1.LoginRequest\x1a\x19.agrofie.v1.LoginResponse\x12?\n" +
 	"\x06Logout\x12\x19.agrofie.v1.LogoutRequest\x1a\x1a.agrofie.v1.LogoutResponse\x12?\n" +
-	"\x06WhoAmI\x12\x19.agrofie.v1.WhoAmIRequest\x1a\x1a.agrofie.v1.WhoAmIResponse2Q\n" +
+	"\x06WhoAmI\x12\x19.agrofie.v1.WhoAmIRequest\x1a\x1a.agrofie.v1.WhoAmIResponse\x12i\n" +
+	"\x14RequestPasswordReset\x12'.agrofie.v1.RequestPasswordResetRequest\x1a(.agrofie.v1.RequestPasswordResetResponse\x12T\n" +
+	"\rResetPassword\x12 .agrofie.v1.ResetPasswordRequest\x1a!.agrofie.v1.ResetPasswordResponse2Q\n" +
 	"\x0eBookingService\x12?\n" +
 	"\x06Health\x12\x19.agrofie.v1.HealthRequest\x1a\x1a.agrofie.v1.HealthResponse2R\n" +
 	"\x0fPaymentsService\x12?\n" +
@@ -686,20 +872,24 @@ func file_agrofie_v1_services_proto_rawDescGZIP() []byte {
 	return file_agrofie_v1_services_proto_rawDescData
 }
 
-var file_agrofie_v1_services_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_agrofie_v1_services_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_agrofie_v1_services_proto_goTypes = []any{
-	(*HealthRequest)(nil),    // 0: agrofie.v1.HealthRequest
-	(*HealthResponse)(nil),   // 1: agrofie.v1.HealthResponse
-	(*User)(nil),             // 2: agrofie.v1.User
-	(*RegisterRequest)(nil),  // 3: agrofie.v1.RegisterRequest
-	(*LoginRequest)(nil),     // 4: agrofie.v1.LoginRequest
-	(*LogoutRequest)(nil),    // 5: agrofie.v1.LogoutRequest
-	(*WhoAmIRequest)(nil),    // 6: agrofie.v1.WhoAmIRequest
-	(*AuthSession)(nil),      // 7: agrofie.v1.AuthSession
-	(*RegisterResponse)(nil), // 8: agrofie.v1.RegisterResponse
-	(*LoginResponse)(nil),    // 9: agrofie.v1.LoginResponse
-	(*LogoutResponse)(nil),   // 10: agrofie.v1.LogoutResponse
-	(*WhoAmIResponse)(nil),   // 11: agrofie.v1.WhoAmIResponse
+	(*HealthRequest)(nil),                // 0: agrofie.v1.HealthRequest
+	(*HealthResponse)(nil),               // 1: agrofie.v1.HealthResponse
+	(*User)(nil),                         // 2: agrofie.v1.User
+	(*RegisterRequest)(nil),              // 3: agrofie.v1.RegisterRequest
+	(*LoginRequest)(nil),                 // 4: agrofie.v1.LoginRequest
+	(*LogoutRequest)(nil),                // 5: agrofie.v1.LogoutRequest
+	(*WhoAmIRequest)(nil),                // 6: agrofie.v1.WhoAmIRequest
+	(*AuthSession)(nil),                  // 7: agrofie.v1.AuthSession
+	(*RegisterResponse)(nil),             // 8: agrofie.v1.RegisterResponse
+	(*LoginResponse)(nil),                // 9: agrofie.v1.LoginResponse
+	(*LogoutResponse)(nil),               // 10: agrofie.v1.LogoutResponse
+	(*RequestPasswordResetRequest)(nil),  // 11: agrofie.v1.RequestPasswordResetRequest
+	(*RequestPasswordResetResponse)(nil), // 12: agrofie.v1.RequestPasswordResetResponse
+	(*ResetPasswordRequest)(nil),         // 13: agrofie.v1.ResetPasswordRequest
+	(*ResetPasswordResponse)(nil),        // 14: agrofie.v1.ResetPasswordResponse
+	(*WhoAmIResponse)(nil),               // 15: agrofie.v1.WhoAmIResponse
 }
 var file_agrofie_v1_services_proto_depIdxs = []int32{
 	2,  // 0: agrofie.v1.AuthSession.user:type_name -> agrofie.v1.User
@@ -711,17 +901,21 @@ var file_agrofie_v1_services_proto_depIdxs = []int32{
 	4,  // 6: agrofie.v1.AuthService.Login:input_type -> agrofie.v1.LoginRequest
 	5,  // 7: agrofie.v1.AuthService.Logout:input_type -> agrofie.v1.LogoutRequest
 	6,  // 8: agrofie.v1.AuthService.WhoAmI:input_type -> agrofie.v1.WhoAmIRequest
-	0,  // 9: agrofie.v1.BookingService.Health:input_type -> agrofie.v1.HealthRequest
-	0,  // 10: agrofie.v1.PaymentsService.Health:input_type -> agrofie.v1.HealthRequest
-	1,  // 11: agrofie.v1.AuthService.Health:output_type -> agrofie.v1.HealthResponse
-	8,  // 12: agrofie.v1.AuthService.Register:output_type -> agrofie.v1.RegisterResponse
-	9,  // 13: agrofie.v1.AuthService.Login:output_type -> agrofie.v1.LoginResponse
-	10, // 14: agrofie.v1.AuthService.Logout:output_type -> agrofie.v1.LogoutResponse
-	11, // 15: agrofie.v1.AuthService.WhoAmI:output_type -> agrofie.v1.WhoAmIResponse
-	1,  // 16: agrofie.v1.BookingService.Health:output_type -> agrofie.v1.HealthResponse
-	1,  // 17: agrofie.v1.PaymentsService.Health:output_type -> agrofie.v1.HealthResponse
-	11, // [11:18] is the sub-list for method output_type
-	4,  // [4:11] is the sub-list for method input_type
+	11, // 9: agrofie.v1.AuthService.RequestPasswordReset:input_type -> agrofie.v1.RequestPasswordResetRequest
+	13, // 10: agrofie.v1.AuthService.ResetPassword:input_type -> agrofie.v1.ResetPasswordRequest
+	0,  // 11: agrofie.v1.BookingService.Health:input_type -> agrofie.v1.HealthRequest
+	0,  // 12: agrofie.v1.PaymentsService.Health:input_type -> agrofie.v1.HealthRequest
+	1,  // 13: agrofie.v1.AuthService.Health:output_type -> agrofie.v1.HealthResponse
+	8,  // 14: agrofie.v1.AuthService.Register:output_type -> agrofie.v1.RegisterResponse
+	9,  // 15: agrofie.v1.AuthService.Login:output_type -> agrofie.v1.LoginResponse
+	10, // 16: agrofie.v1.AuthService.Logout:output_type -> agrofie.v1.LogoutResponse
+	15, // 17: agrofie.v1.AuthService.WhoAmI:output_type -> agrofie.v1.WhoAmIResponse
+	12, // 18: agrofie.v1.AuthService.RequestPasswordReset:output_type -> agrofie.v1.RequestPasswordResetResponse
+	14, // 19: agrofie.v1.AuthService.ResetPassword:output_type -> agrofie.v1.ResetPasswordResponse
+	1,  // 20: agrofie.v1.BookingService.Health:output_type -> agrofie.v1.HealthResponse
+	1,  // 21: agrofie.v1.PaymentsService.Health:output_type -> agrofie.v1.HealthResponse
+	13, // [13:22] is the sub-list for method output_type
+	4,  // [4:13] is the sub-list for method input_type
 	4,  // [4:4] is the sub-list for extension type_name
 	4,  // [4:4] is the sub-list for extension extendee
 	0,  // [0:4] is the sub-list for field type_name
@@ -738,7 +932,7 @@ func file_agrofie_v1_services_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_agrofie_v1_services_proto_rawDesc), len(file_agrofie_v1_services_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   12,
+			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   3,
 		},

@@ -40,6 +40,8 @@ selfservice:
       enabled: true
     code:
       enabled: true
+      config:
+        lifespan: 15m   # recovery / verification codes live 15 minutes
   flows:
     error:
       ui_url: http://localhost:8080/error
@@ -50,6 +52,7 @@ selfservice:
       enabled: true
       ui_url: http://localhost:8080/recovery
       use: code
+      lifespan: 15m
     verification:
       enabled: true
       ui_url: http://localhost:8080/verification
@@ -96,6 +99,12 @@ identity:
       url: file:///etc/config/kratos/identity.schema.json
 
 courier:
+  # Branded recovery emails (6-digit code). Plain files, see courier-templates/.
+  template_override_path: /etc/config/kratos/courier-templates
+  # Local dev delivers to MailHog (http://localhost:8025). In production set the
+  # real SMTP server through the environment (never commit credentials):
+  #   COURIER_SMTP_CONNECTION_URI=smtps://USER:PASSWORD@smtp.example.com:465/
+  #   COURIER_SMTP_FROM_ADDRESS=no-reply@yourdomain
   smtp:
     connection_uri: smtp://mailhog:1025/?disable_starttls=true
     from_address: noreply@agrofie.local

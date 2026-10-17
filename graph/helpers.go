@@ -16,6 +16,7 @@ import (
 	"github.com/blingyplus/agrofie-backend/internal/discovery"
 	"github.com/blingyplus/agrofie-backend/internal/dispute"
 	"github.com/blingyplus/agrofie-backend/internal/lookup"
+	"github.com/blingyplus/agrofie-backend/internal/organizerprofile"
 	"github.com/blingyplus/agrofie-backend/internal/payments"
 	"github.com/blingyplus/agrofie-backend/internal/review"
 	"github.com/blingyplus/agrofie-backend/internal/talentprofile"
@@ -658,4 +659,24 @@ func toModelTalentRequests(rs []talentrequest.Request) []*model.TalentRequest {
 		out = append(out, toModelTalentRequest(&rs[i]))
 	}
 	return out
+}
+
+func mapOrganizerProfileErr(err error) error {
+	switch {
+	case errors.Is(err, organizerprofile.ErrInvalidInput), errors.Is(err, organizerprofile.ErrUnknownCode):
+		return &gqlerror.Error{Message: err.Error(), Extensions: map[string]any{"code": "BAD_USER_INPUT"}}
+	default:
+		return err
+	}
+}
+
+func toModelOrganizerProfile(p *organizerprofile.Profile) *model.OrganizerProfile {
+	tags := make([]*model.Tag, 0, len(p.EventTypes))
+	for _, t := range p.EventTypes {
+		tags = append(tags, &model.Tag{Code: t.Code, Name: t.Name})
+	}
+	return &model.OrganizerProfile{
+		DisplayName: p.DisplayName, Organization: p.Organization, Phone: p.Phone,
+		HomePlaceCode: p.HomePlaceCode, HomePlaceName: p.HomePlaceName, EventTypes: tags,
+	}
 }
