@@ -3,7 +3,7 @@ module github.com/blingyplus/agrofie-backend
 go 1.26.7
 
 require (
-	connectrpc.com/connect v1.21.0
+	connectrpc.com/connect v1.21.1
 	github.com/99designs/gqlgen v0.17.95
 	github.com/golang-migrate/migrate/v4 v4.20.1
 	github.com/google/uuid v1.6.0
