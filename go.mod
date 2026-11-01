@@ -9,7 +9,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/sqlc-dev/sqlc v1.31.1
-	github.com/vektah/gqlparser/v2 v2.5.37
+	github.com/vektah/gqlparser/v2 v2.5.64
 	golang.org/x/image v0.47.0
 	golang.org/x/net v0.60.0
 	google.golang.org/protobuf v1.36.12
@@ -18,7 +18,7 @@ require (
 require (
 	cel.dev/expr v0.25.3 // indirect
 	filippo.io/edwards25519 v1.1.1 // indirect
-	github.com/agnivade/levenshtein v1.2.1 // indirect
+	github.com/agnivade/levenshtein v1.2.2 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/coder/websocket v1.8.15 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
